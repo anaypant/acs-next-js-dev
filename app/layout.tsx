@@ -1,36 +1,67 @@
-import type { Metadata, Viewport } from "next";
-import { Inter, Playfair_Display, Montserrat } from 'next/font/google';
-import "./globals.css";
-import ClientLayout from './ClientLayout';
-import Script from 'next/script';
-
-const inter = Inter({
-    subsets: ['latin'],
-    display: 'swap',
-    variable: '--font-inter',
-});
-
-const playfair = Playfair_Display({
-    subsets: ['latin'],
-    display: 'swap',
-    variable: '--font-playfair',
-});
-
-const montserrat = Montserrat({
-    subsets: ['latin'],
-    display: 'swap',
-    variable: '--font-montserrat',
-});
+import { Metadata, Viewport } from 'next';
+import { getFontClasses } from './config/fonts';
+import './globals.css';
 
 export const viewport: Viewport = {
     width: 'device-width',
     initialScale: 1,
-    themeColor: '#0A2F1F',
+    minimumScale: 1,
+    maximumScale: 5,
+    themeColor: '#ffffff',
+    colorScheme: 'light dark',
+    viewportFit: 'cover',
 };
 
 export const metadata: Metadata = {
-    title: 'ACS - AI-Powered Real Estate Platform',
-    description: 'Transform your real estate business with AI-powered insights and automation.',
+    metadataBase: new URL('https://acs-next-js.dev'),
+    title: {
+        template: '%s | ACS Next.js',
+        default: 'ACS Next.js - Modern Web Development',
+    },
+    description: 'Advanced web development solutions using Next.js, featuring modern design patterns, optimized performance, and best practices for enterprise applications.',
+    keywords: ['Next.js', 'React', 'TypeScript', 'Web Development', 'Enterprise Solutions', 'Performance Optimization'],
+    authors: [{ name: 'ACS Development Team' }],
+    creator: 'ACS Development',
+    publisher: 'ACS Technology Solutions',
+    formatDetection: {
+        email: false,
+        address: false,
+        telephone: false,
+    },
+    openGraph: {
+        type: 'website',
+        locale: 'en_US',
+        siteName: 'ACS Next.js',
+        title: 'ACS Next.js Development',
+        description: 'Enterprise-grade Next.js solutions with modern design patterns and optimized performance.',
+        images: [
+            {
+                url: '/og-image.jpg',
+                width: 1200,
+                height: 630,
+                alt: 'ACS Next.js Development',
+            },
+        ],
+    },
+    twitter: {
+        card: 'summary_large_image',
+        site: '@acs_development',
+        creator: '@acs_development',
+        title: 'ACS Next.js Development',
+        description: 'Enterprise-grade Next.js solutions with modern design patterns and optimized performance.',
+        images: ['/twitter-image.jpg'],
+    },
+    robots: {
+        index: true,
+        follow: true,
+        googleBot: {
+            index: true,
+            follow: true,
+            'max-video-preview': -1,
+            'max-image-preview': 'large',
+            'max-snippet': -1,
+        },
+    },
 };
 
 export default function RootLayout({
@@ -38,45 +69,9 @@ export default function RootLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const fontClasses = `${inter.variable} ${playfair.variable} ${montserrat.variable}`;
-    
     return (
-        <html lang="en" suppressHydrationWarning>
-            <head>
-                <Script id="theme-script" strategy="beforeInteractive">
-                    {`
-                        (function() {
-                            try {
-                                let theme = localStorage.getItem('theme');
-                                if (!theme) {
-                                    theme = 'light';
-                                    localStorage.setItem('theme', theme);
-                                }
-                                
-                                // Remove any existing theme classes
-                                document.documentElement.classList.remove('light', 'dark');
-                                document.documentElement.classList.add(${JSON.stringify(fontClasses)});
-                                
-                                // Add the current theme class
-                                document.documentElement.classList.add(theme);
-                                document.documentElement.setAttribute('data-theme', theme);
-                                
-                                // Prevent flash by setting background color immediately
-                                document.documentElement.style.backgroundColor = 
-                                    theme === 'dark' ? '#000000' : '#ffffff';
-                            } catch (e) {
-                                // Fallback to light theme if localStorage is not available
-                                document.documentElement.classList.add('light');
-                                document.documentElement.classList.add(${JSON.stringify(fontClasses)});
-                                document.documentElement.setAttribute('data-theme', 'light');
-                            }
-                        })();
-                    `}
-                </Script>
-            </head>
-            <body className={`font-sans antialiased min-h-screen ${fontClasses}`}>
-                <ClientLayout>{children}</ClientLayout>
-            </body>
+        <html lang="en" className={getFontClasses()}>
+            <body>{children}</body>
         </html>
     );
 }

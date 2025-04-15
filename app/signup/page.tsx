@@ -1,265 +1,160 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
-    Container,
-    Typography,
-    TextField,
-    Button,
-    Link as MuiLink,
+    Container, Box, Typography, TextField, Button, Alert, CircularProgress, Link as MuiLink
 } from '@mui/material';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 
 const SignupPage = () => {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
-    const [formData, setFormData] = useState({
-        name: '',
-        email: '',
+    const [error, setError] = useState<string | null>(null);
+    const [formData, setFormData] = useState({ 
+        email: '', 
         password: '',
+        name: '' 
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
+        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+        setError(null);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+        setError(null);
+
+        // Check if full name is provided
+        const nameParts = formData.name.trim().split(/\s+/);
+        if (nameParts.length < 2) {
+            setError('Please provide both your first and last name');
+            setLoading(false);
+            return;
+        }
+
+        // Check for uppercase characters in password
+        if (!/[A-Z]/.test(formData.password)) {
+            setError('Password must contain at least one uppercase character');
+            setLoading(false);
+            return;
+        }
+
+        // Check for numeric characters in password
+        if (!/[0-9]/.test(formData.password)) {
+            setError('Password must contain at least one number');
+            setLoading(false);
+            return;
+        }
+
+        // Check for special characters in password
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
+            setError('Password must contain at least one special character (!@#$%^&*(),.?":{}|<>)');
+            setLoading(false);
+            return;
+        }
+
         try {
-            // TODO: Implement actual signup logic here
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            router.push('/dashboard');
-        } catch (err) {
-            console.error(err);
+            // Step 1: Sign up with Cognito
+            const signupResponse = await fetch('/api/auth/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData),
+            });
+
+            const signupData = await signupResponse.json();
+            
+            if (!signupResponse.ok) {
+                if (signupData.error && signupData.error.includes('already exists')) {
+                    throw new Error('An account with this email already exists. Please sign in instead.');
+                }
+                throw new Error(signupData.message || 'Failed to sign up');
+            }
+
+            // Store necessary data in localStorage for the verification page
+            localStorage.setItem('signupData', JSON.stringify({
+                email: formData.email,
+                userSub: signupData.userSub,
+                name: formData.name,
+                password: formData.password // Store password for verification
+            }));
+
+            // Redirect to verification page with email
+            router.push(`/verify-email?email=${encodeURIComponent(formData.email)}`);
+        } catch (err: any) {
+            console.error("Signup Error:", err);
+            setError(err.message || 'An unexpected error occurred');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen flex">
-            {/* Left Side - Animated Background with Logo */}
-            <div className="hidden md:flex md:w-[45%] bg-[#0A2F1F] relative items-center justify-center">
-                <Image
-                    src="/signup-bg.jpg"
-                    alt="Background"
-                    fill
-                    className="object-cover"
-                    priority
-                />
-                <div className="absolute inset-0 bg-[#0A2F1F]/60 backdrop-blur-[2px]" />
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0A2F1F]/30 to-[#0A2F1F]/70" />
-                <Typography 
-                    variant="h2" 
-                    component="h1" 
-                    className="text-white text-7xl font-bold relative z-10"
-                >
-                    ACS
-                </Typography>
-            </div>
+        <Container maxWidth="xs">
+            <Box sx={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <Typography component="h1" variant="h5">Sign Up</Typography>
+                {error && (
+                    <Alert severity="error" sx={{ width: '100%', mt: 2 }} onClose={() => setError(null)}>
+                        {error}
+                    </Alert>
+                )}
 
-            {/* Right Side - Sign Up Form */}
-            <div className="flex-1 flex items-center justify-center p-8 md:p-16 bg-[#f8faf9]">
-                <div className="w-full max-w-[440px] space-y-12">
-                    <div className="text-center space-y-3">
-                        <Typography variant="h4" className="text-3xl font-bold text-[#0A2F1F]">
-                            Get Started Now
-                        </Typography>
-                        <Typography variant="body1" className="text-gray-600">
-                            Enter your Credentials to access your account
-                        </Typography>
-                    </div>
-
-                    <form onSubmit={handleSubmit} className="space-y-12">
-                        <div className="flex flex-col gap-8">
-                            <div className="mt-4">
-                                <TextField
-                                    fullWidth
-                                    name="name"
-                                    placeholder="Enter your name"
-                                    label="Name"
-                                    variant="outlined"
-                                    value={formData.name}
-                                    onChange={handleChange}
-                                    sx={{
-                                        marginBottom: '32px',
-                                        '& .MuiOutlinedInput-root': {
-                                            backgroundColor: 'white',
-                                            borderRadius: '12px',
-                                            '&:hover fieldset': {
-                                                borderColor: '#0A2F1F80',
-                                            },
-                                            '&.Mui-focused fieldset': {
-                                                borderColor: '#0A2F1F',
-                                            }
-                                        },
-                                        '& .MuiInputLabel-root': {
-                                            color: '#666666',
-                                            '&.Mui-focused': {
-                                                color: '#0A2F1F',
-                                            }
-                                        }
-                                    }}
-                                />
-                                <TextField
-                                    fullWidth
-                                    name="email"
-                                    type="email"
-                                    placeholder="Enter your email"
-                                    label="Email address"
-                                    variant="outlined"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                    sx={{
-                                        marginBottom: '32px',
-                                        '& .MuiOutlinedInput-root': {
-                                            backgroundColor: 'white',
-                                            borderRadius: '12px',
-                                            '&:hover fieldset': {
-                                                borderColor: '#0A2F1F80',
-                                            },
-                                            '&.Mui-focused fieldset': {
-                                                borderColor: '#0A2F1F',
-                                            }
-                                        },
-                                        '& .MuiInputLabel-root': {
-                                            color: '#666666',
-                                            '&.Mui-focused': {
-                                                color: '#0A2F1F',
-                                            }
-                                        }
-                                    }}
-                                />
-                                <TextField
-                                    fullWidth
-                                    name="password"
-                                    type="password"
-                                    placeholder="Enter your password"
-                                    label="Password"
-                                    variant="outlined"
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                    sx={{
-                                        marginBottom: '32px',
-                                        '& .MuiOutlinedInput-root': {
-                                            backgroundColor: 'white',
-                                            borderRadius: '12px',
-                                            '&:hover fieldset': {
-                                                borderColor: '#0A2F1F80',
-                                            },
-                                            '&.Mui-focused fieldset': {
-                                                borderColor: '#0A2F1F',
-                                            }
-                                        },
-                                        '& .MuiInputLabel-root': {
-                                            color: '#666666',
-                                            '&.Mui-focused': {
-                                                color: '#0A2F1F',
-                                            }
-                                        }
-                                    }}
-                                />
-                            </div>
-
-                            <Button
-                                type="submit"
-                                fullWidth
-                                variant="contained"
-                                disabled={loading}
-                                sx={{
-                                    py: 2,
-                                    mt: 4,
-                                    bgcolor: '#0A2F1F',
-                                    borderRadius: '12px',
-                                    textTransform: 'none',
-                                    fontSize: '1rem',
-                                    fontWeight: 500,
-                                    '&:hover': {
-                                        bgcolor: '#0D3B26'
-                                    }
-                                }}
-                            >
-                                {loading ? 'Creating account...' : 'Sign Up'}
-                            </Button>
-
-                            <div className="relative">
-                                <div className="absolute inset-0 flex items-center">
-                                    <div className="w-full border-t border-gray-200"></div>
-                                </div>
-                                <div className="relative flex justify-center text-sm">
-                                    <span className="px-6 bg-[#f8faf9] text-gray-500">or continue with</span>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <Button
-                                    fullWidth
-                                    variant="outlined"
-                                    startIcon={
-                                        <Image 
-                                            src="/google.svg" 
-                                            alt="Google" 
-                                            width={20} 
-                                            height={20}
-                                        />
-                                    }
-                                    className="py-3 border-gray-200 text-gray-700 bg-white hover:bg-gray-50 normal-case rounded-xl"
-                                >
-                                    Google
-                                </Button>
-                                <Button
-                                    fullWidth
-                                    variant="outlined"
-                                    startIcon={
-                                        <Image 
-                                            src="/apple.svg" 
-                                            alt="Apple" 
-                                            width={20} 
-                                            height={20}
-                                        />
-                                    }
-                                    className="py-3 border-gray-200 text-gray-700 bg-white hover:bg-gray-50 normal-case rounded-xl"
-                                >
-                                    Apple
-                                </Button>
-                            </div>
-
-                            <div className="text-center">
-                                <Typography 
-                                    variant="body2" 
-                                    className="text-gray-600"
-                                >
-                                    Have an account?{' '}
-                                    <MuiLink
-                                        component={Link}
-                                        href="/login"
-                                        sx={{ 
-                                            color: '#0A2F1F',
-                                            fontWeight: 600,
-                                            textDecoration: 'none',
-                                            '&:hover': {
-                                                textDecoration: 'underline',
-                                                color: '#0D3B26'
-                                            }
-                                        }}
-                                    >
-                                        Sign In
-                                    </MuiLink>
-                                </Typography>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
+                <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1, width: '100%' }}>
+                    <TextField 
+                        margin="normal" 
+                        required 
+                        fullWidth 
+                        id="name" 
+                        label="Full Name (First and Last Name)" 
+                        name="name" 
+                        autoComplete="name" 
+                        autoFocus 
+                        value={formData.name} 
+                        onChange={handleChange} 
+                    />
+                    <TextField 
+                        margin="normal" 
+                        required 
+                        fullWidth 
+                        id="email" 
+                        label="Email Address" 
+                        name="email" 
+                        autoComplete="email" 
+                        value={formData.email} 
+                        onChange={handleChange} 
+                    />
+                    <TextField 
+                        margin="normal" 
+                        required 
+                        fullWidth 
+                        name="password" 
+                        label="Password" 
+                        type="password" 
+                        id="password" 
+                        autoComplete="new-password" 
+                        value={formData.password} 
+                        onChange={handleChange}
+                    />
+                    <Button 
+                        type="submit" 
+                        fullWidth 
+                        variant="contained" 
+                        sx={{ mt: 3, mb: 2 }} 
+                        disabled={loading}
+                    >
+                        {loading ? <CircularProgress size={24} /> : 'Sign Up'}
+                    </Button>
+                    <Box sx={{ textAlign: 'center' }}>
+                        <MuiLink component={Link} href="/login" variant="body2">
+                            Already have an account? Sign In
+                        </MuiLink>
+                    </Box>
+                </Box>
+            </Box>
+        </Container>
     );
 };
 
-export default SignupPage; 
+export default SignupPage;

@@ -55,6 +55,19 @@ const LandingNavbar = () => {
                         
                         <Button
                             component={Link}
+                            href="/login"
+                            variant="text"
+                            className={`${
+                                isDark 
+                                    ? 'text-white hover:text-emerald-300' 
+                                    : 'text-[#0A2F1F]/70 hover:text-[#0A2F1F]'
+                            } transform transition-all duration-300`}
+                        >
+                            Sign in
+                        </Button>
+                        
+                        <Button
+                            component={Link}
                             href="/signup"
                             variant="contained"
                             className={`${

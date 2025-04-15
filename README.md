@@ -34,3 +34,22 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Environment Variables
+
+This project requires several environment variables to be set up for AWS Cognito authentication. Create a `.env.local` file in the root directory with the following variables:
+
+1. Copy the `.env.example` file to `.env.local`:
+```bash
+cp .env.example .env.local
+```
+
+2. Fill in the values in `.env.local` with your AWS Cognito configuration:
+- `NEXT_PUBLIC_COGNITO_USER_POOL_ID`: Your Cognito User Pool ID
+- `NEXT_PUBLIC_COGNITO_CLIENT_ID`: Your Cognito App Client ID
+- `NEXT_PUBLIC_COGNITO_REGION`: AWS region of your Cognito User Pool
+- `NEXT_PUBLIC_API_BASE_URL`: Your API Gateway URL
+- `COGNITO_CLIENT_SECRET`: Your Cognito App Client Secret (server-side only)
+- `JWT_SECRET`: A secure secret key for JWT signing
+
+Note: Never commit the `.env.local` file to version control. It's already added to `.gitignore`.
