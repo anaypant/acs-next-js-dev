@@ -10,7 +10,7 @@ const Footer = () => {
     const currentYear = new Date().getFullYear();
 
     return (
-        <footer className="py-8 bg-white border-t border-gray-200">
+        <footer className="py-8 bg-[#0A2F1F]/5 border-t border-[#0A2F1F]/10">
             <Container maxWidth="xl">
                 <Stack
                     direction={{ xs: 'column', sm: 'row' }}
@@ -21,19 +21,13 @@ const Footer = () => {
                     <Stack spacing={2} alignItems={{ xs: 'center', sm: 'flex-start' }}>
                         <Typography
                             variant="h6"
-                            sx={{
-                                color: theme.palette.text.primary,
-                                fontWeight: 700
-                            }}
+                            className="text-[#0A2F1F] font-bold"
                         >
                             ACS
                         </Typography>
                         <Typography
                             variant="body2"
-                            sx={{
-                                color: theme.palette.text.secondary,
-                                textAlign: { xs: 'center', sm: 'left' }
-                            }}
+                            className="text-[#0A2F1F]/70 text-center sm:text-left"
                         >
                             © {currentYear} ACS. All rights reserved.
                         </Typography>
@@ -42,25 +36,13 @@ const Footer = () => {
                     <Stack direction="row" spacing={3}>
                         <Link
                             href="/privacy"
-                            sx={{
-                                color: theme.palette.text.secondary,
-                                textDecoration: 'none',
-                                '&:hover': {
-                                    color: theme.palette.text.primary
-                                }
-                            }}
+                            className="text-[#0A2F1F]/70 hover:text-[#0A2F1F] transition-colors no-underline"
                         >
                             Privacy Policy
                         </Link>
                         <Link
                             href="/terms"
-                            sx={{
-                                color: theme.palette.text.secondary,
-                                textDecoration: 'none',
-                                '&:hover': {
-                                    color: theme.palette.text.primary
-                                }
-                            }}
+                            className="text-[#0A2F1F]/70 hover:text-[#0A2F1F] transition-colors no-underline"
                         >
                             Terms of Service
                         </Link>

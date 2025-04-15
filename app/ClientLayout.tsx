@@ -5,6 +5,7 @@ import { CssBaseline, Box } from '@mui/material';
 import { ThemeProvider } from './theme/ThemeContext';
 import Navbar from './Navbar';
 import Footer from './components/Footer';
+import { usePathname } from 'next/navigation';
 
 interface ClientLayoutProps {
     children: React.ReactNode;
@@ -12,6 +13,8 @@ interface ClientLayoutProps {
 
 export default function ClientLayout({ children }: ClientLayoutProps) {
     const [mounted, setMounted] = useState(false);
+    const pathname = usePathname();
+    const isHomePage = pathname === '/';
 
     useEffect(() => {
         setMounted(true);
@@ -31,7 +34,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
                     minHeight: '100vh',
                 }}
             >
-                <Navbar />
+                {!isHomePage && <Navbar />}
                 <Box
                     component="main"
                     sx={{
