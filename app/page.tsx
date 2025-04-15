@@ -2,21 +2,20 @@
 
 import React from 'react';
 import dynamic from 'next/dynamic';
+import HeroSection from './LandingPage/HeroSection';
+import FeaturesSection from './LandingPage/FeaturesSection';
+import { featuresData } from './constants/features';
 
 // Import Layout Components
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
-import HeroSection from './LandingPage/HeroSection';
 
 // Remove unused configurations
-export default function LandingPage() {
+export default function Home() {
     return (
-        <div className="min-h-screen bg-white">
-            <Navbar />
+        <div className="min-h-screen bg-white grid-background">
             <main>
                 <HeroSection />
+                <FeaturesSection features={featuresData} />
             </main>
-            <Footer />
         </div>
     );
 }
