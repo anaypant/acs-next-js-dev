@@ -20,7 +20,7 @@ const FeaturesSection: React.FC<FeaturesSectionProps> = ({ features }) => {
     const theme = useTheme();
 
     return (
-        <section id={FEATURES_SECTION_ID} className="py-16 bg-gradient-to-b from-white to-gray-50">
+        <section id={FEATURES_SECTION_ID} className="py-16">
             <Container maxWidth="lg">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}

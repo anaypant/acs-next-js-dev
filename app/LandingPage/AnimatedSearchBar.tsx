@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { TextField, Button } from '@mui/material';
 
 const PLACEHOLDER_TEXTS = [
@@ -19,16 +19,9 @@ const TYPING_SPEED = 100;
 const AnimatedSearchBar: React.FC = () => {
     const [currentPlaceholder, setCurrentPlaceholder] = useState('');
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [mounted, setMounted] = useState(false);
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setCurrentIndex((prevIndex) => (prevIndex + 1) % PLACEHOLDER_TEXTS.length);
-        }, TYPING_DELAY);
-
-        return () => clearInterval(interval);
-    }, []);
-
-    useEffect(() => {
+    const animateText = useCallback(() => {
         let currentText = '';
         let charIndex = 0;
 
@@ -42,6 +35,39 @@ const AnimatedSearchBar: React.FC = () => {
 
         return () => clearInterval(typingInterval);
     }, [currentIndex]);
+
+    useEffect(() => {
+        setMounted(true);
+        return () => setMounted(false);
+    }, []);
+
+    useEffect(() => {
+        if (!mounted) return;
+
+        const indexInterval = setInterval(() => {
+            setCurrentIndex((prevIndex) => (prevIndex + 1) % PLACEHOLDER_TEXTS.length);
+        }, TYPING_DELAY);
+
+        return () => clearInterval(indexInterval);
+    }, [mounted]);
+
+    useEffect(() => {
+        if (!mounted) return;
+        return animateText();
+    }, [currentIndex, mounted, animateText]);
+
+    if (!mounted) {
+        return (
+            <TextField
+                fullWidth
+                placeholder={PLACEHOLDER_TEXTS[0]}
+                variant="outlined"
+                sx={{
+                    visibility: 'hidden',
+                }}
+            />
+        );
+    }
 
     return (
         <div className="mb-4 max-w-[600px] w-[90%] flex items-center gap-0 rounded-[50px] overflow-hidden shadow-lg bg-gradient-to-r from-[rgb(55,56,75)] to-[rgb(65,66,85)]">

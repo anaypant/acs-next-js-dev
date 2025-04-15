@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Playfair_Display, Montserrat } from 'next/font/google';
 import "./globals.css";
 import ClientLayout from './ClientLayout';
+import Script from 'next/script';
 
 const inter = Inter({
     subsets: ['latin'],
@@ -21,18 +22,15 @@ const montserrat = Montserrat({
     variable: '--font-montserrat',
 });
 
+export const viewport: Viewport = {
+    width: 'device-width',
+    initialScale: 1,
+    themeColor: '#0A2F1F',
+};
+
 export const metadata: Metadata = {
-    title: "ACS - AI-Powered Real Estate Solutions",
-    description: "Transform your real estate business with AI-powered insights, automated lead scoring, and virtual staging.",
-    keywords: ["real estate", "AI", "property management", "real estate technology", "property analytics"],
-    authors: [{ name: "ACS Team" }],
-    viewport: "width=device-width, initial-scale=1",
-    themeColor: "#0A2F1F",
-    manifest: "/manifest.json",
-    icons: {
-        icon: "/favicon.ico",
-        apple: "/apple-touch-icon.png",
-    },
+    title: 'ACS - AI-Powered Real Estate Platform',
+    description: 'Transform your real estate business with AI-powered insights and automation.',
 };
 
 export default function RootLayout({
@@ -40,14 +38,43 @@ export default function RootLayout({
 }: {
     children: React.ReactNode;
 }) {
+    const fontClasses = `${inter.variable} ${playfair.variable} ${montserrat.variable}`;
+    
     return (
-        <html lang="en" className={`${inter.variable} ${playfair.variable} ${montserrat.variable}`}>
+        <html lang="en" suppressHydrationWarning>
             <head>
-                <meta charSet="utf-8" />
-                <meta name="viewport" content="width=device-width, initial-scale=1" />
-                <link rel="icon" href="/favicon.ico" />
+                <Script id="theme-script" strategy="beforeInteractive">
+                    {`
+                        (function() {
+                            try {
+                                let theme = localStorage.getItem('theme');
+                                if (!theme) {
+                                    theme = 'light';
+                                    localStorage.setItem('theme', theme);
+                                }
+                                
+                                // Remove any existing theme classes
+                                document.documentElement.classList.remove('light', 'dark');
+                                document.documentElement.classList.add(${JSON.stringify(fontClasses)});
+                                
+                                // Add the current theme class
+                                document.documentElement.classList.add(theme);
+                                document.documentElement.setAttribute('data-theme', theme);
+                                
+                                // Prevent flash by setting background color immediately
+                                document.documentElement.style.backgroundColor = 
+                                    theme === 'dark' ? '#000000' : '#ffffff';
+                            } catch (e) {
+                                // Fallback to light theme if localStorage is not available
+                                document.documentElement.classList.add('light');
+                                document.documentElement.classList.add(${JSON.stringify(fontClasses)});
+                                document.documentElement.setAttribute('data-theme', 'light');
+                            }
+                        })();
+                    `}
+                </Script>
             </head>
-            <body suppressHydrationWarning className="font-sans antialiased min-h-screen bg-white">
+            <body className={`font-sans antialiased min-h-screen ${fontClasses}`}>
                 <ClientLayout>{children}</ClientLayout>
             </body>
         </html>

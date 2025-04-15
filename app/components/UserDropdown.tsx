@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { FaUserCircle } from 'react-icons/fa';
 import type { User } from '../types/auth';
@@ -21,34 +21,39 @@ interface UserDropdownProps {
 
 const UserDropdown: React.FC<UserDropdownProps> = ({ user, onLogout }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setDropdownOpen(false);
-      }
-    };
-    // Add event listener only when dropdown is open
-    if (dropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    } else {
-      document.removeEventListener('mousedown', handleClickOutside);
+    setMounted(true);
+  }, []);
+
+  const handleClickOutside = useCallback((event: MouseEvent) => {
+    if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      setDropdownOpen(false);
     }
-    // Cleanup listener on component unmount or when dropdown closes
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [dropdownOpen]); // Re-run effect when dropdownOpen changes
+  }, []);
+
+  useEffect(() => {
+    if (mounted && dropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [dropdownOpen, mounted, handleClickOutside]);
 
   const handleLogoutClick = async () => {
-    setDropdownOpen(false); // Close dropdown first
-    await onLogout(); // Call the logout function passed via props
+    setDropdownOpen(false);
+    await onLogout();
   };
 
   const handleLinkClick = () => {
-    setDropdownOpen(false); // Close dropdown when a link is clicked
+    setDropdownOpen(false);
+  };
+
+  if (!mounted) {
+    return null;
   }
 
   return (

@@ -12,7 +12,7 @@ import LandingNavbar from './LandingPage/LandingNavbar';
 // Remove unused configurations
 export default function Home() {
     return (
-        <div className="min-h-screen bg-white grid-background">
+        <div className="min-h-screen grid-background">
             <LandingNavbar />
             <main>
                 <HeroSection />

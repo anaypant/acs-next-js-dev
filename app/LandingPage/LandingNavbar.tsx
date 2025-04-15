@@ -2,38 +2,66 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Button, Container } from '@mui/material';
+import { Button, Container, IconButton, Tooltip } from '@mui/material';
+import { useTheme } from 'next-themes';
+import LightModeIcon from '@mui/icons-material/LightMode';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
 
 const LandingNavbar = () => {
+    const { theme, setTheme } = useTheme();
+    const isDark = theme === 'dark';
+
+    const toggleTheme = () => {
+        setTheme(isDark ? 'light' : 'dark');
+    };
+
     return (
-        <nav className="absolute top-0 left-0 right-0 z-50 py-6">
-            <Container maxWidth="xl">
+        <nav className={`fixed top-0 left-0 right-0 z-50 py-6 backdrop-blur-md ${
+            isDark 
+                ? 'bg-black/40 border-b border-emerald-500/20 shadow-lg shadow-emerald-500/5' 
+                : 'bg-gradient-to-b from-white via-white/95 to-white/75 border-b border-gray-200/20 shadow-sm'
+        }`}>
+            <Container maxWidth="lg">
                 <div className="flex items-center justify-between">
-                    <Link href="/" className="text-[#0A2F1F] text-2xl font-bold">
+                    <Link href="/" className={`text-2xl font-bold ${isDark ? 'text-emerald-300' : 'text-[#0A2F1F]'}`}>
                         ACS
                     </Link>
-
-                    <div className="hidden md:flex items-center space-x-8">
-                        <Link href="/solutions" className="text-[#0A2F1F]/80 hover:text-[#0A2F1F] transition-colors">
+                    
+                    <div className="flex items-center gap-6">
+                        <Link href="/solutions" className={`${isDark ? 'text-white hover:text-emerald-300' : 'text-[#0A2F1F]/70 hover:text-[#0A2F1F]'}`}>
                             Solutions
                         </Link>
-                        <Link href="/case-studies" className="text-[#0A2F1F]/80 hover:text-[#0A2F1F] transition-colors">
+                        <Link href="/case-studies" className={`${isDark ? 'text-white hover:text-emerald-300' : 'text-[#0A2F1F]/70 hover:text-[#0A2F1F]'}`}>
                             Case Studies
                         </Link>
-                        <Link href="/contact" className="text-[#0A2F1F]/80 hover:text-[#0A2F1F] transition-colors">
+                        <Link href="/contact" className={`${isDark ? 'text-white hover:text-emerald-300' : 'text-[#0A2F1F]/70 hover:text-[#0A2F1F]'}`}>
                             Contact
                         </Link>
-                    </div>
-
-                    <div className="flex items-center space-x-4">
-                        <Link href="/login" className="text-[#0A2F1F]/80 hover:text-[#0A2F1F] transition-colors">
-                            Login
-                        </Link>
+                        
+                        <Tooltip title={`Switch to ${isDark ? 'light' : 'dark'} mode`}>
+                            <IconButton 
+                                onClick={toggleTheme}
+                                sx={{
+                                    ml: 2,
+                                    color: isDark ? 'white' : '#0A2F1F',
+                                    '&:hover': {
+                                        color: isDark ? '#34D399' : '#0D3B26'
+                                    }
+                                }}
+                            >
+                                {isDark ? <LightModeIcon /> : <DarkModeIcon />}
+                            </IconButton>
+                        </Tooltip>
+                        
                         <Button
                             component={Link}
                             href="/signup"
                             variant="contained"
-                            className="bg-[#0A2F1F] hover:bg-[#0A2F1F]/90 text-white px-6 py-2"
+                            className={`${
+                                isDark 
+                                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white' 
+                                    : 'bg-[#0A2F1F] hover:bg-[#0D3B26] text-white'
+                            } px-6 py-2 rounded-md shadow-lg transform transition-all duration-300 hover:scale-105`}
                         >
                             Sign up
                         </Button>
