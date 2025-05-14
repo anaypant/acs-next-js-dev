@@ -8,6 +8,13 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      colors: {
+        background: 'var(--background)',
+        foreground: 'var(--foreground)',
+        accent: 'var(--accent)',
+        'accent-light': 'var(--accent-light)',
+        'text-muted': 'var(--text-muted)',
+      },
       fontFamily: {
         sans: ['var(--font-inter)'],
         display: ['var(--font-playfair)'],

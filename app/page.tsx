@@ -1,20 +1,17 @@
-// Last Modified: 2025-04-14 by AI Assistant
-
+'use client';
 import React from 'react';
-import dynamic from 'next/dynamic';
+import TopBar from './LandingPage/TopBar';
 import HeroSection from './LandingPage/HeroSection';
 import FeaturesSection from './LandingPage/FeaturesSection';
 import { featuresData } from './constants/features';
-import LandingNavbar from './LandingPage/LandingNavbar';
 
 // Import Layout Components
 
-// Remove unused configurations
 export default function Home() {
     return (
         <div className="min-h-screen grid-background">
-            <LandingNavbar />
-            <main>
+            <TopBar />
+            <main style={{ paddingTop: '48px' }}>
                 <HeroSection />
                 <FeaturesSection features={featuresData} />
             </main>

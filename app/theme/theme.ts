@@ -115,8 +115,6 @@ export const getTheme = (mode: PaletteMode) => {
                 styleOverrides: {
                     root: {
                         textTransform: 'none',
-                        borderRadius: 8,
-                        padding: '8px 16px',
                     },
                     contained: {
                         boxShadow: 'none',

@@ -2,206 +2,157 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@mui/material';
+import React from 'react';
 import Image from 'next/image';
+import ArrowOutwardIcon from '@mui/icons-material/ArrowOutward';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import Link from 'next/link';
-import { featuresData } from '../constants/features';
-import { HERO_CONSTANTS } from '../constants/hero';
-import AddIcon from '@mui/icons-material/Add';
-import RemoveIcon from '@mui/icons-material/Remove';
-import { useTheme } from 'next-themes';
+import { Button, ButtonProps } from '@mui/material';
+import { styled } from '@mui/material/styles';
 
-// Use motion components directly instead of dynamic imports
-const MotionDiv = motion.div;
+// Create styled components to avoid hydration issues
+const StyledButton = styled(Button)<ButtonProps>(({ theme }) => ({
+  textTransform: 'none',
+  '&.MuiButton-outlined': {
+    borderColor: '#0A2F1F',
+    color: '#0A2F1F',
+    '&:hover': {
+      borderColor: '#0A2F1F',
+      backgroundColor: 'rgba(10, 47, 31, 0.08)'
+    }
+  },
+  '&.MuiButton-contained': {
+    backgroundColor: '#0A2F1F',
+    color: 'white',
+    '&:hover': {
+      backgroundColor: '#0D3B26'
+    }
+  }
+}));
+
+const features = [
+  'Pricing Prediction',
+  'Virtual Staging',
+  'Marketing Optimization',
+  'Automated Lead Scoring',
+  'Lorem Ipsum',
+];
 
 const HeroSection: React.FC = () => {
-    const [isMounted, setIsMounted] = useState(false);
-    const [expandedTab, setExpandedTab] = useState<number | null>(null);
-    const { theme, resolvedTheme } = useTheme();
-    const isDark = resolvedTheme === 'dark';
-
-    useEffect(() => {
-        setIsMounted(true);
-    }, []);
-
-    const handleTabClick = (index: number) => {
-        setExpandedTab(expandedTab === index ? null : index);
-    };
-
-    const highlightText = (text: string) => {
-        if (!isMounted) return text;
-        
-        return HERO_CONSTANTS.DESCRIPTION.HIGHLIGHTS.reduce((acc, highlight) => {
-            if (text.includes(highlight)) {
-                return acc.replace(
-                    highlight,
-                    `<span class="${isDark ? 'text-emerald-400' : 'text-[#0A2F1F]'} font-medium">${highlight}</span>`
-                );
-            }
-            return acc;
-        }, text);
-    };
-
-    if (!isMounted) {
-        return (
-            <div className="relative min-h-screen w-full overflow-hidden bg-white">
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent to-gray-50" />
-            </div>
-        );
-    }
-
-    return (
-        <div className={`relative min-h-screen w-full overflow-hidden ${isDark ? 'bg-gradient-to-b from-black via-[#0A2F1F]/10 to-black' : ''}`}>
-            {/* Background Elements */}
-            <div className="absolute inset-0">
-                <div className={`absolute top-20 left-10 w-64 h-64 ${isDark ? 'bg-emerald-500/10' : null} rounded-full mix-blend-${isDark ? 'soft-light' : 'multiply'} filter blur-3xl opacity-${isDark ? '20' : '5'} animate-float`} />
-                <div className={`absolute bottom-20 right-10 w-80 h-80 ${isDark ? 'bg-emerald-500/10' : null} rounded-full mix-blend-${isDark ? 'soft-light' : 'multiply'} filter blur-3xl opacity-${isDark ? '20' : '5'} animate-float`} style={{ animationDelay: '-2s' }} />
-                {/* Grid Lines */}
-                {isDark && (
-                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#4ade8005_1px,transparent_1px),linear-gradient(to_bottom,#4ade8005_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)]" />
-                )}
-            </div>
-            
-            {/* Content */}
-            <div className="relative container mx-auto px-4 py-20 lg:py-32">
-                <div className="grid lg:grid-cols-2 gap-12 lg:gap-0 items-center">
-                    <div className="space-y-8">
-                        <MotionDiv
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.8 }}
-                            className={`text-5xl lg:text-6xl font-display font-bold ${isDark ? 'text-white' : 'text-[#0A2F1F]'}`}
-                        >
-                            <span>{HERO_CONSTANTS.MAIN_TITLE.LINE1}</span>
-                            <br />
-                            <span>{HERO_CONSTANTS.MAIN_TITLE.LINE2}</span>
-                        </MotionDiv>
-
-                        <MotionDiv
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.8, delay: 0.2 }}
-                            className={`text-base ${isDark ? 'text-gray-300' : 'text-[#0A2F1F]/60'} max-w-lg font-sans leading-relaxed`}
-                        >
-                            <p 
-                                dangerouslySetInnerHTML={{ 
-                                    __html: highlightText(HERO_CONSTANTS.DESCRIPTION.TEXT)
-                                }} 
-                                className={`${isDark ? 'bg-black/30 border border-emerald-500/20 rounded-lg p-6 backdrop-blur-sm shadow-lg' : ''} text-base ${isDark ? 'text-white' : 'text-[#0A2F1F]/60'} max-w-lg font-sans leading-relaxed`}
-                            />
-                        </MotionDiv>
-
-                        <MotionDiv
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.8, delay: 0.3 }}
-                            className="flex gap-4"
-                        >
-                            <Button
-                                component={Link}
-                                href="/signup"
-                                variant="contained"
-                                className={`${isDark ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-[#0A2F1F] hover:bg-[#0D3B26]'} text-white px-7 py-2.5 text-base rounded-md shadow-lg transform transition-all duration-300 hover:scale-105 hover:shadow-xl`}
-                            >
-                                Get Started
-                            </Button>
-                        </MotionDiv>
-
-                        <MotionDiv
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.8, delay: 0.4 }}
-                            className="space-y-3"
-                        >
-                            {featuresData.map((feature, index) => (
-                                <MotionDiv
-                                    key={feature.title}
-                                    className={`border ${isDark ? 'border-gray-800/50 hover:border-gray-700/50 bg-gradient-to-r from-black/50' : 'border-[#0A2F1F]/10 hover:border-[#0A2F1F]/20 bg-gradient-to-r from-white/60'} to-transparent rounded-lg overflow-hidden transition-all duration-300 backdrop-blur-[2px]`}
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: 0.5 + index * 0.1 }}
-                                >
-                                    <button
-                                        onClick={() => handleTabClick(index)}
-                                        className="w-full px-6 py-4 text-left flex items-center justify-between"
-                                    >
-                                        <span className={`font-medium ${isDark ? 'text-white' : 'text-[#0A2F1F]'}`}>
-                                            {feature.title}
-                                        </span>
-                                        {expandedTab === index ? (
-                                            <RemoveIcon className={isDark ? 'text-gray-400' : 'text-[#0A2F1F]/60'} />
-                                        ) : (
-                                            <AddIcon className={isDark ? 'text-gray-400' : 'text-[#0A2F1F]/60'} />
-                                        )}
-                                    </button>
-                                    <AnimatePresence>
-                                        {expandedTab === index && (
-                                            <MotionDiv
-                                                initial={{ height: 0, opacity: 0 }}
-                                                animate={{ height: 'auto', opacity: 1 }}
-                                                exit={{ height: 0, opacity: 0 }}
-                                                transition={{ duration: 0.3 }}
-                                                className={`px-6 pb-4 ${isDark ? 'text-gray-400' : 'text-[#0A2F1F]/60'}`}
-                                            >
-                                                {feature.description}
-                                            </MotionDiv>
-                                        )}
-                                    </AnimatePresence>
-                                </MotionDiv>
-                            ))}
-                        </MotionDiv>
-                    </div>
-
-                    <div className="relative h-[570px] lg:h-[760px] pr-6 lg:pr-14">
-                        <MotionDiv
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 0.8, delay: 0.5 }}
-                            className="relative h-full animate-float"
-                        >
-                            <Image
-                                src="/realtor-ai-dashboard.gif"
-                                alt="AI-Powered Real Estate Dashboard"
-                                fill
-                                className="object-contain rounded-xl shadow-xl"
-                                priority
-                            />
-                            
-                            <MotionDiv
-                                className="absolute top-[10%] -right-[5%] w-[170px] h-[114px] rounded-lg overflow-hidden shadow-lg"
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.8 }}
-                            >
-                                <Image
-                                    src="/price-prediction.png"
-                                    alt="Price Prediction Feature"
-                                    fill
-                                    className="object-cover"
-                                />
-                            </MotionDiv>
-                            
-                            <MotionDiv
-                                className="absolute bottom-[15%] -left-[5%] w-[152px] h-[95px] rounded-lg overflow-hidden shadow-lg"
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 1 }}
-                            >
-                                <Image
-                                    src="/email-automation.png"
-                                    alt="Email Communications Automation Feature"
-                                    fill
-                                    className="object-cover"
-                                />
-                            </MotionDiv>
-                        </MotionDiv>
-                    </div>
-                </div>
-            </div>
+  return (
+    <div className="relative min-h-screen w-full overflow-hidden bg-[#f7faf9] grid-background rounded-t-3xl shadow-xl flex flex-col font-inter">
+      {/* Subtle grid background */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#0a2f1f08_1px,transparent_1px),linear-gradient(to_bottom,#0a2f1f08_1px,transparent_1px)] bg-[size:3rem_3rem]" />
+      </div>
+      {/* Navbar inside HeroSection */}
+      <div className="relative z-10 px-2 sm:px-4 pt-3 pb-2">
+        <div className="flex items-center justify-between">
+          <div className="ml-16">
+            <Link href="/" className="text-5xl acs-logo">
+              ACS
+            </Link>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Link href="/" className="text-base font-bold text-[#137954] hover:text-[#38b88b] px-2 py-1 flex items-center gap-1 group">
+              Home
+              <KeyboardArrowDownIcon className="text-[#137954] group-hover:text-[#38b88b] transition-colors duration-200" />
+            </Link>
+            <Link href="/solutions" className="text-base font-bold text-[#137954] hover:text-[#38b88b] px-2 py-1 flex items-center gap-1 group">
+              Solutions
+              <KeyboardArrowDownIcon className="text-[#137954] group-hover:text-[#38b88b] transition-colors duration-200" />
+            </Link>
+            <Link href="/case-studies" className="text-base font-bold text-[#137954] hover:text-[#38b88b] px-2 py-1 flex items-center gap-1 group">
+              Case Studies
+              <KeyboardArrowDownIcon className="text-[#137954] group-hover:text-[#38b88b] transition-colors duration-200" />
+            </Link>
+            <Link href="/contact" className="text-base font-bold text-[#137954] hover:text-[#38b88b] px-2 py-1 flex items-center gap-1 group">
+              Contact
+              <KeyboardArrowDownIcon className="text-[#137954] group-hover:text-[#38b88b] transition-colors duration-200" />
+            </Link>
+          </div>
+          <div className="flex items-center gap-3 mr-12">
+            <StyledButton
+              component={Link as any}
+              href="/login"
+              variant="outlined"
+              className="px-3 py-1 text-base rounded-lg"
+            > 
+              Login
+            </StyledButton>
+            <StyledButton
+              component={Link as any}
+              href="/signup"
+              variant="contained"
+              className="px-3 py-1 text-base rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+            >
+              Sign up
+            </StyledButton>
+          </div>
         </div>
-    );
+      </div>
+      {/* Main hero content centered */}
+      <div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-y-12 gap-x-8 items-start h-full w-full max-w-none px-4 sm:px-8 md:px-16 xl:px-32 mt-8 md:mt-12">
+          {/* Left column */}
+          <div className="space-y-6 lg:pr-16 max-w-3xl w-full">
+            <h1 className="text-[2.2rem] xs:text-[2.8rem] sm:text-[3.5rem] md:text-[4.5rem] lg:text-[5rem] xl:text-[6rem] font-bold italic text-[#137954] leading-[1.05] drop-shadow-md">
+              <span className="italic font-bold text-[#137954] drop-shadow-[0_4px_16px_rgba(19,121,84,0.35)] text-[2.8rem] xs:text-[3.5rem] sm:text-[5rem] md:text-[6rem] lg:text-[7rem] leading-[1.1]">Empowering</span>
+              <br />
+              <span className="font-black not-italic text-[#0A2F1F] inline-block whitespace-nowrap text-[2rem] xs:text-[2.5rem] sm:text-[3.2rem] md:text-[4.2rem] lg:text-[5rem] leading-[1.1]">
+                Realtors with AI
+              </span>
+            </h1>
+            <button className="bg-[#0A2F1F] text-white text-lg sm:text-xl font-bold rounded-lg px-8 sm:px-10 py-3 sm:py-4 shadow-2xl hover:bg-[#134d36] transition-all duration-200">
+              Get Started
+            </button>
+            {/* Features List - Modern Accordion Style */}
+            <div className="mt-8 w-full max-w-full sm:max-w-xl divide-y divide-[#d1e7dd] bg-white/60 rounded-2xl shadow-lg border border-[#e0f2e9]">
+              {features.map((feature, idx) => (
+                <button
+                  key={feature}
+                  className="group w-full flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 text-left focus:outline-none hover:bg-[#e6f7f0] transition-colors"
+                  aria-expanded="false"
+                >
+                  <span className="flex items-center gap-3 text-[#0A2F1F] text-base sm:text-lg font-semibold">
+                    <ArrowOutwardIcon fontSize="small" className="text-[#137954] group-hover:text-[#38b88b] transition-colors duration-200" />
+                    {feature}
+                  </span>
+                  <span className="flex items-center justify-center w-7 h-7 rounded-full border border-[#b6e2d3] bg-white group-hover:bg-[#38b88b]/10 transition-colors">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M9 4V14" stroke="#137954" strokeWidth="2" strokeLinecap="round"/>
+                      <path d="M4 9H14" stroke="#137954" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Right column */}
+          <div className="flex flex-col justify-center lg:justify-end items-center lg:items-end mt-10 lg:mt-0 w-full max-w-2xl ml-auto">
+            <p className="pt-8 md:pt-12 lg:pt-16 text-base sm:text-lg md:text-xl text-[#0A2F1F]/80 max-w-md sm:max-w-lg md:max-w-xl italic text-center lg:text-right">
+              Leverage AI to generate real-time business solutions and make informed decisions faster than ever.
+            </p>
+            <div className="pt-8 md:pt-12 lg:pt-16 relative w-full h-[18rem] sm:h-[24rem] md:h-[28rem] max-w-[16rem] sm:max-w-[22rem] md:max-w-[26rem] drop-shadow-2xl rounded-3xl overflow-hidden mx-auto">
+              <Image
+                src="/mobile-phone-FIGMA.png"
+                alt="AI Realtor Dashboard Phones"
+                fill
+                className="object-contain"
+                sizes="(max-width: 420px) 100vw, 420px"
+                priority
+                unoptimized
+                quality={100}
+                onError={(e) => {
+                  console.error('Image failed to load:', e);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default HeroSection;

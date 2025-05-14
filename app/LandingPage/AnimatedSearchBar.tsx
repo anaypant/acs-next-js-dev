@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { TextField, Button } from '@mui/material';
+import { Button } from '@mui/material';
 
 const PLACEHOLDER_TEXTS = [
     'Search for properties...',
@@ -30,6 +30,8 @@ const AnimatedSearchBar: React.FC = () => {
                 currentText += PLACEHOLDER_TEXTS[currentIndex][charIndex];
                 setCurrentPlaceholder(currentText);
                 charIndex++;
+            } else {
+                clearInterval(typingInterval);
             }
         }, TYPING_SPEED);
 
@@ -38,6 +40,7 @@ const AnimatedSearchBar: React.FC = () => {
 
     useEffect(() => {
         setMounted(true);
+        setCurrentPlaceholder(PLACEHOLDER_TEXTS[0].substring(0, 0));
         return () => setMounted(false);
     }, []);
 
@@ -46,6 +49,7 @@ const AnimatedSearchBar: React.FC = () => {
 
         const indexInterval = setInterval(() => {
             setCurrentIndex((prevIndex) => (prevIndex + 1) % PLACEHOLDER_TEXTS.length);
+            setCurrentPlaceholder('');
         }, TYPING_DELAY);
 
         return () => clearInterval(indexInterval);
@@ -53,58 +57,29 @@ const AnimatedSearchBar: React.FC = () => {
 
     useEffect(() => {
         if (!mounted) return;
-        return animateText();
+        const clearTyping = animateText();
+        return clearTyping;
     }, [currentIndex, mounted, animateText]);
 
     if (!mounted) {
-        return (
-            <TextField
-                fullWidth
-                placeholder={PLACEHOLDER_TEXTS[0]}
-                variant="outlined"
-                sx={{
-                    visibility: 'hidden',
-                }}
-            />
-        );
+        return <div className="h-[60px] mb-4 max-w-[600px] w-[90%] invisible"></div>;
     }
 
     return (
-        <div className="mb-4 max-w-[600px] w-[90%] flex items-center gap-0 rounded-[50px] overflow-hidden shadow-lg bg-gradient-to-r from-[rgb(55,56,75)] to-[rgb(65,66,85)]">
-            <TextField
-                variant="standard"
+        <div className="mb-4 max-w-[600px] w-[90%] flex items-center gap-0 rounded-full overflow-hidden shadow-lg bg-gradient-to-r from-gray-700 via-gray-800 to-gray-900 dark:from-gray-800 dark:via-gray-900 dark:to-black border border-gray-600/50 dark:border-gray-700/50">
+            <input
+                type="text"
                 placeholder={currentPlaceholder}
-                fullWidth
-                InputProps={{
-                    disableUnderline: true,
-                    sx: {
-                        height: '100%',
-                        padding: '15px 25px',
-                        color: 'white',
-                        '& input::placeholder': {
-                            color: 'rgba(255, 255, 255, 0.7)',
-                            opacity: 1
-                        }
-                    }
-                }}
+                className="flex-grow h-full px-6 py-4 bg-transparent text-white placeholder-gray-400 outline-none border-none text-base"
             />
             <Button
                 variant="contained"
+                className="flex-shrink-0 px-6 py-4 rounded-none rounded-r-full font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105"
                 sx={{
-                    px: 4,
-                    py: '15px',
-                    fontWeight: 'bold',
-                    borderRadius: '0 50px 50px 0',
-                    color: 'white',
-                    background: 'linear-gradient(to right, rgb(130, 160, 255), rgb(233, 69, 96))',
-                    boxShadow: '0 4px 15px rgba(233, 69, 96, 0.5)',
-                    transition: 'transform 0.2s ease, background 0.3s ease',
-                    flexShrink: 0,
+                    boxShadow: '0 4px 15px rgba(34, 197, 94, 0.3)',
                     '&:hover': {
-                        background: 'linear-gradient(to right, rgb(150, 180, 255), rgb(255, 90, 120))',
-                        transform: 'scale(1.05)',
-                        boxShadow: '0 6px 20px rgba(233, 69, 96, 0.6)',
-                    },
+                        boxShadow: '0 6px 20px rgba(34, 197, 94, 0.4)',
+                    }
                 }}
             >
                 {SEARCH_BUTTON_TEXT}

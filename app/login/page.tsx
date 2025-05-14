@@ -43,7 +43,7 @@ const LoginPage = () => {
 
     return (
         <div className="min-h-screen flex">
-            <div className="flex-1 flex items-center justify-center p-8 relative bg-[#0A2F1F] overflow-hidden">
+            <div className="flex-1 flex items-start justify-center p-8 pt-20 md:pt-32 relative bg-[#0A2F1F] overflow-hidden">
                 <div 
                     className="absolute inset-0 opacity-30"
                     style={{
@@ -58,10 +58,10 @@ const LoginPage = () => {
                 
                 <div className="w-full max-w-[440px] space-y-12 relative z-10">
                     <div className="text-center space-y-3">
-                        <Typography variant="h4" className="text-4xl font-bold text-white">
+                        <Typography variant="h4" className="text-4xl font-bold" sx={{ color: '#fff !important' }}>
                             Welcome Back!
                         </Typography>
-                        <Typography variant="body1" className="text-gray-200">
+                        <Typography variant="body1" sx={{ color: '#e5e7eb !important' }}>
                             Enter your Credentials to access your account
                         </Typography>
                     </div>
@@ -70,12 +70,12 @@ const LoginPage = () => {
                         <div className="flex flex-col gap-8">
                             <div className="space-y-6">
                                 <div>
-                                    <Typography className="text-white mb-2">Email</Typography>
+                                    <Typography className="mb-2" sx={{ color: '#fff !important' }}>Email</Typography>
                                     <TextField
                                         fullWidth
                                         name="email"
                                         type="email"
-                                        placeholder="Enter your email"
+                                        placeholder="Enter Email"
                                         variant="outlined"
                                         value={formData.email}
                                         onChange={handleChange}
@@ -101,12 +101,12 @@ const LoginPage = () => {
                                     />
                                 </div>
                                 <div>
-                                    <Typography className="text-white mb-2">Password</Typography>
+                                    <Typography className="mb-2" sx={{ color: '#fff !important' }}>Password</Typography>
                                     <TextField
                                         fullWidth
                                         name="password"
                                         type="password"
-                                        placeholder="Enter your password"
+                                        placeholder="Enter Your Password"
                                         variant="outlined"
                                         value={formData.password}
                                         onChange={handleChange}
@@ -151,7 +151,7 @@ const LoginPage = () => {
                                     }
                                 }}
                             >
-                                {loading ? 'Signing in...' : 'SIGN IN'}
+                                {loading ? 'Logging in...' : 'LOG IN'}
                             </Button>
 
                             <div className="relative">
@@ -220,13 +220,13 @@ const LoginPage = () => {
                             </div>
 
                             <div className="text-center">
-                                <Typography className="text-gray-300">
+                                <Typography sx={{ color: '#e5e7eb !important' }}>
                                     Don't have an account?{' '}
                                     <MuiLink
                                         component={Link}
-                                        href="/signup"
+                                        href="/login"
                                         sx={{ 
-                                            color: '#fff',
+                                            color: '#38b88b',
                                             fontWeight: 500,
                                             textDecoration: 'none',
                                             '&:hover': {
