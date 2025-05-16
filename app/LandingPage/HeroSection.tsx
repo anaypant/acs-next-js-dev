@@ -202,18 +202,18 @@ const HeroSection: React.FC = () => {
               <DropdownItem href="/home/pricing">Pricing</DropdownItem>
               <DropdownItem href="/home/about">About Us</DropdownItem>
             </NavItem>
-            <NavItem title="Solutions">
-              <DropdownItem href="/solutions/ai-tools">AI Tools</DropdownItem>
-              <DropdownItem href="/solutions/analytics">Analytics</DropdownItem>
-              <DropdownItem href="/solutions/integrations">Integrations</DropdownItem>
-              <DropdownItem href="/solutions/custom">Custom Solutions</DropdownItem>
-            </NavItem>
-            <NavItem title="Case Studies">
-              <DropdownItem href="/case-studies/success">Success Stories</DropdownItem>
-              <DropdownItem href="/case-studies/industries">Industries</DropdownItem>
-              <DropdownItem href="/case-studies/results">Results</DropdownItem>
-              <DropdownItem href="/case-studies/testimonials">Testimonials</DropdownItem>
-            </NavItem>
+            <Link 
+              href="/solutions" 
+              className=" !important text-base font-bold text-[#137954] hover:text-[#38b88b] px-4 py-1.5 flex items-center gap-1 group bg-white/80 hover:bg-[#e6f7f0] rounded-full border border-[#d1e7dd] shadow-sm transition-all duration-200"
+            >
+              Solutions
+            </Link>
+            <Link 
+              href="/case-studies" 
+              className=" !important text-base font-bold text-[#137954] hover:text-[#38b88b] px-4 py-1.5 flex items-center gap-1 group bg-white/80 hover:bg-[#e6f7f0] rounded-full border border-[#d1e7dd] shadow-sm transition-all duration-200"
+            >
+              Case Studies
+            </Link>
             <NavItem title="Contact">
               <DropdownItem href="/contact/support">Support</DropdownItem>
               <DropdownItem href="/contact/sales">Sales</DropdownItem>
