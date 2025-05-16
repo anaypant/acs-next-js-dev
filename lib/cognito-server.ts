@@ -13,10 +13,10 @@ import {
 } from '@aws-sdk/client-cognito-identity-provider';
 import crypto from 'crypto';
 
-const cognitoRegion = process.env.NEXT_PUBLIC_COGNITO_REGION!;
-const userPoolId = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID!;
-const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID!;
-const clientSecret = process.env.COGNITO_CLIENT_SECRET;
+const cognitoRegion = process.env.AWS_REGION!;
+const userPoolId = process.env.COG_USER_POOL_ID!;
+const clientId = process.env.COG_CLIENT_ID!;
+const clientSecret = process.env.COG_SECRET;
 
 if (!cognitoRegion || !userPoolId || !clientId || !clientSecret) {
     throw new Error("Cognito environment variables are not fully configured.");
@@ -84,7 +84,7 @@ export const signUpUser = async (email: string, password: string, attributes: Re
     }
 };
 
-export const confirmSignUpUser = async (email: string, code: string): Promise<CognitoResult> => {
+export const confirmSignUpUser = async (email: string, code: string, password: string): Promise<CognitoResult> => {
     try {
         await cognitoClient.send(new ConfirmSignUpCommand({
             ClientId: clientId,
@@ -94,7 +94,7 @@ export const confirmSignUpUser = async (email: string, code: string): Promise<Co
         }));
 
         // After confirmation, automatically sign in
-        return signInUser(email, code);
+        return signInUser(email, password);
     } catch (error: any) {
         console.error('Cognito Confirm Sign Up Error:', error);
         return {

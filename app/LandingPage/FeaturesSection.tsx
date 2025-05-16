@@ -1,68 +1,99 @@
 // Last Modified: 2025-04-14 by AI Assistant
 
-'use client';
+"use client"
 
-import React from 'react';
-import Container from '@mui/material/Container';
-import Grid from '@mui/material/Grid';
-import { motion } from 'framer-motion';
-import FeatureCard from '../components/FeatureCard';
-import type { Feature } from '../types/landing'; // Assuming types are defined
-import { useTheme } from 'next-themes'; // Use next-themes hook
-import FeatureAccordion from '../components/FeatureAccordion';
-
-// Constants for Features Section
-const FEATURES_TITLE = "Powerful Features for Real Estate Professionals";
-const FEATURES_SECTION_ID = "features"; // For potential navigation
+import { useState, useEffect } from "react"
+import { motion } from "framer-motion"
+import { BarChart3, Mail, TrendingUp, Users, ArrowRight } from 'lucide-react'
+import { Feature } from '../types/landing'
 
 interface FeaturesSectionProps {
-    features: Feature[]; // Use the defined Feature type
+  features: Feature[];
 }
 
 const FeaturesSection: React.FC<FeaturesSectionProps> = ({ features }) => {
-    const { resolvedTheme } = useTheme(); // Get resolved theme
-    const isDark = resolvedTheme === 'dark';
+  const [activeFeature, setActiveFeature] = useState<number | null>(null)
+  const [scrollY, setScrollY] = useState(0)
 
-    return (
-        <section id={FEATURES_SECTION_ID} className="py-8 lg:py-12 bg-[#f7faf9]">
-            <Container maxWidth="lg" className="px-2 sm:px-4 lg:px-6">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.6 }}
-                    className="text-center mb-8 lg:mb-10"
-                >
-                    <h2 className="text-4xl md:text-5xl font-extrabold mb-6 text-[#0A2F1F]" style={{fontFamily: 'Inter, Arial, Helvetica, sans-serif'}}>
-                        {FEATURES_TITLE}
-                    </h2>
-                    <p className="text-lg md:text-xl max-w-2xl mx-auto text-[#0A2F1F]/80 font-medium" style={{fontFamily: 'Inter, Arial, Helvetica, sans-serif'}}>
-                        Discover how our AI-powered tools can transform your real estate business
-                    </p>
-                </motion.div>
-                <div className="flex justify-center w-full mb-10">
-                  <div className="w-full max-w-xl bg-white/90 rounded-2xl shadow-2xl border border-[#b6e2f1] backdrop-blur-sm p-2 sm:p-4">
-                    <FeatureAccordion features={features} />
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollY(window.scrollY)
+    }
+
+    window.addEventListener("scroll", handleScroll)
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
+
+  return (
+    <section className="relative px-8 py-20 md:py-32 overflow-hidden">
+      <div
+        className="absolute inset-0 bg-gradient-to-r from-[#ebfbf5] to-transparent opacity-70"
+        style={{
+          clipPath: `polygon(0 0, 100% 0, 100% ${100 - scrollY * 0.05}%, 0 100%)`,
+        }}
+      />
+
+      <div className="relative z-10 max-w-6xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-16"
+        >
+          <h1 className="text-4xl md:text-6xl font-bold text-[#003623] mb-4">
+            Powerful Features for <span className="gradient-text italic">Real Estate</span> Professionals
+          </h1>
+          <p className="text-xl text-[#005f3d] max-w-3xl mx-auto">
+            Discover how our AI-powered tools can transform your real estate business
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+          {features.map((feature, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+              className={`bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 ${
+                activeFeature === index ? "ring-2 ring-[#00ad6c]" : ""
+              }`}
+              onClick={() => setActiveFeature(activeFeature === index ? null : index)}
+            >
+              <div className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-4">
+                    {feature.icon && <div className="w-10 h-10 text-[#00ad6c]">{feature.icon}</div>}
+                    <h3 className="text-2xl font-semibold text-[#003623]">{feature.title}</h3>
                   </div>
+                  <button className="text-[#00ad6c]">
+                    <ArrowRight
+                      size={20}
+                      className={`transition-transform duration-300 ${
+                        activeFeature === index ? "rotate-90" : ""
+                      }`}
+                    />
+                  </button>
                 </div>
-                {/* <Grid container spacing={2} justifyContent="center">
-                    {features.map((feature, index) => (
-                        <Grid xs={12} sm={6} md={4} key={index}>
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 0.6, delay: index * 0.1 }}
-                                className="h-full"
-                            >
-                                <FeatureCard feature={feature} index={index} />
-                            </motion.div>
-                        </Grid>
-                    ))}
-                </Grid> */}
-            </Container>
-        </section>
-    );
-};
 
-export default FeaturesSection;
+                <p className="text-gray-700 mb-4">{feature.description}</p>
+              </div>
+
+              {feature.imageUrl && (
+                <div
+                  className={`transition-all duration-500 ${
+                    activeFeature === index ? "max-h-80" : "max-h-0"
+                  } overflow-hidden`}
+                >
+                  <img src={feature.imageUrl} alt={feature.title} className="w-full object-cover" />
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+export default FeaturesSection

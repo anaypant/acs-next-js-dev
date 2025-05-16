@@ -12,7 +12,7 @@ export async function POST(request: Request) {
             }, { status: 400 });
         }
 
-        const result = await confirmSignUpUser(email, password);
+        const result = await confirmSignUpUser(email, code, password);
         
         if (!result.success) {
             return NextResponse.json({ 

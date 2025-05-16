@@ -6,7 +6,6 @@ import {
     Container, Box, Typography, TextField, Button, Alert, CircularProgress, Link as MuiLink
 } from '@mui/material';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import GoogleIcon from '@mui/icons-material/Google';
 import FacebookIcon from '@mui/icons-material/Facebook';
@@ -50,12 +49,28 @@ const SignupPage = () => {
             alert('Please fill all fields, ensure password requirements are met, and passwords match.');
             return;
         }
+        
         try {
-            // TODO: Implement actual signup logic here
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            router.push('/dashboard');
-        } catch (err) {
-            console.error(err);
+            // Step 1: Sign up with Cognito
+            const signupResponse = await fetch('/api/auth/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData),
+            });
+
+            const signupData = await signupResponse.json();
+            
+            if (!signupResponse.ok) {
+                if (signupData.error && signupData.error.includes('already exists')) {
+                    throw new Error('An account with this email already exists. Please sign in instead.');
+                }
+                throw new Error(signupData.message || 'Failed to sign up');
+            }
+                 // Redirect to verification page with email
+            router.push(`/verify-email?email=${encodeURIComponent(formData.email)}`);
+        } catch (err: any) {
+            console.error("Signup Error:", err);
+            setError(err.message || 'An unexpected error occurred');
         } finally {
             setLoading(false);
         }
