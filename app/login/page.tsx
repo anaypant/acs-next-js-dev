@@ -1,23 +1,27 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
+    Container,
+    Box,
     Typography,
     TextField,
     Button,
-    Link as MuiLink,
+    Alert,
+    CircularProgress,
+    Link as MuiLink
 } from '@mui/material';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 
 const LoginPage = () => {
     const router = useRouter();
-    const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         email: '',
-        password: '',
+        password: ''
     });
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -30,12 +34,30 @@ const LoginPage = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+        setError(null);
+
         try {
-            // TODO: Implement actual login logic here
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            router.push('/dashboard');
-        } catch (err) {
-            console.error(err);
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Login failed');
+            }
+
+            if (data.success) {
+                // Store tokens securely
+                localStorage.setItem('accessToken', data.accessToken);
+                localStorage.setItem('idToken', data.idToken);
+                router.push('/dashboard');
+            }
+        } catch (err: any) {
+            console.error('Login Error:', err);
+            setError(err.message || 'An unexpected error occurred');
         } finally {
             setLoading(false);
         }

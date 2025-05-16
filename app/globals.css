@@ -13,7 +13,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-primary);
 }
 
 
@@ -188,10 +188,16 @@ body {
 /* Text styles */
 h1, h2, h3, h4, h5, h6 {
   color: var(--foreground);
+  font-family: var(--font-heading);
+  font-weight: 600;
 }
 
-p {
-  color: var(--foreground);
+p, span, div {
+  font-family: var(--font-primary);
+}
+
+code, pre {
+  font-family: var(--font-mono);
 }
 
 a:not(.MuiButton-root) {

@@ -1,12 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
-    Container,
-    Typography,
-    TextField,
-    Button,
-    Link as MuiLink,
+    Container, Box, Typography, TextField, Button, Alert, CircularProgress, Link as MuiLink
 } from '@mui/material';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -19,10 +16,11 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 const SignupPage = () => {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
-    const [formData, setFormData] = useState({
-        name: '',
-        email: '',
+    const [error, setError] = useState<string | null>(null);
+    const [formData, setFormData] = useState({ 
+        email: '', 
         password: '',
+        name: '' 
     });
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -399,4 +397,4 @@ const SignupPage = () => {
     );
 };
 
-export default SignupPage; 
+export default SignupPage;
