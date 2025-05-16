@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import FeatureCard from '../components/FeatureCard';
 import type { Feature } from '../types/landing'; // Assuming types are defined
 import { useTheme } from 'next-themes'; // Use next-themes hook
+import FeatureAccordion from '../components/FeatureAccordion';
 
 // Constants for Features Section
 const FEATURES_TITLE = "Powerful Features for Real Estate Professionals";
@@ -39,9 +40,14 @@ const FeaturesSection: React.FC<FeaturesSectionProps> = ({ features }) => {
                         Discover how our AI-powered tools can transform your real estate business
                     </p>
                 </motion.div>
-                <Grid container spacing={2} justifyContent="center">
+                <div className="flex justify-center w-full mb-10">
+                  <div className="w-full max-w-xl bg-white/90 rounded-2xl shadow-2xl border border-[#b6e2f1] backdrop-blur-sm p-2 sm:p-4">
+                    <FeatureAccordion features={features} />
+                  </div>
+                </div>
+                {/* <Grid container spacing={2} justifyContent="center">
                     {features.map((feature, index) => (
-                        <Grid component="div" xs={12} sm={6} md={4} key={index}>
+                        <Grid xs={12} sm={6} md={4} key={index}>
                             <motion.div
                                 initial={{ opacity: 0, y: 20 }}
                                 whileInView={{ opacity: 1, y: 0 }}
@@ -53,7 +59,7 @@ const FeaturesSection: React.FC<FeaturesSectionProps> = ({ features }) => {
                             </motion.div>
                         </Grid>
                     ))}
-                </Grid>
+                </Grid> */}
             </Container>
         </section>
     );

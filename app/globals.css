@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: rgba(240, 240, 240, 0.9);
   --foreground: #0A2F1F;
   --grid-size: 40px;
-  --grid-color: rgba(0, 0, 0, 0.08);
-  --grid-shadow: rgba(0, 0, 0, 0.03);
+  --grid-color: rgba(0, 0, 0, 0.1);
+  --grid-shadow: rgba(0, 0, 0, 0.08);
 }
 
 
@@ -65,9 +65,35 @@ body {
   }
 }
 
+@keyframes bgFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes gradient-move {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes gradient-move-passive {
+  0% { background-position: 10% 50%; }
+  50% { background-position: 90% 50%; }
+  100% { background-position: 10% 50%; }
+}
+
+.animate-gradient-move {
+  animation: gradient-move 3s ease-in-out infinite;
+}
+
+.animate-gradient-move-passive {
+  animation: gradient-move-passive 8s ease-in-out infinite;
+}
+
 .grid-background {
   position: relative;
   background-color: var(--background);
+  /* Commenting out the mesh grid background
   background-image: 
     linear-gradient(var(--grid-color) 1px, transparent 1px),
     linear-gradient(90deg, var(--grid-color) 1px, transparent 1px),
@@ -79,18 +105,25 @@ body {
     calc(var(--grid-size)/5) calc(var(--grid-size)/5),
     calc(var(--grid-size)/5) calc(var(--grid-size)/5);
   animation: gridTravel 20s ease-in-out infinite;
+  */
+  background-image: url('/mesh-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  animation: bgFadeIn 1.2s ease;
 }
 
 .grid-background::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(
-    circle at center,
-    transparent 0%,
-    transparent 70%
+  background: linear-gradient(
+    to bottom,
+    rgba(247, 250, 249, 0.45) 0%,
+    rgba(247, 250, 249, 0.65) 100%
   );
-  opacity: 0;
+  backdrop-filter: blur(0.5px);
+  -webkit-backdrop-filter: blur(0.5px);
   pointer-events: none;
 }
 
@@ -99,11 +132,10 @@ body {
   position: absolute;
   inset: 0;
   background: linear-gradient(
-    to bottom right,
-    transparent,
-    var(--background) 100%
+    135deg,
+    rgba(56, 184, 139, 0.02) 0%,
+    transparent 100%
   );
-  opacity: 0.3;
   pointer-events: none;
 }
 

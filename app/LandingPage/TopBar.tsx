@@ -40,7 +40,7 @@ const TopBar = () => {
           <span className="text-white text-xs font-medium cursor-pointer hover:underline transition tracking-[0.02em]">
             Chat with Us
           </span>
-          <Link href="/learn-more" className="text-xs font-medium underline cursor-pointer transition-colors duration-200 !text-[#38b88b] !hover:text-white tracking-[0.02em]">
+          <Link href="/learn-more" className="text-xs font-medium underline cursor-pointer transition-colors duration-200 !text-[#38b88b] hover:!text-[#4fd1a5] tracking-[0.02em]">
             Learn more
           </Link>
         </div>
