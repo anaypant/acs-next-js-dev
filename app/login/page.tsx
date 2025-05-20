@@ -39,6 +39,8 @@ const LoginPage = () => {
     const handleGoogleLogin = async () => {
         try {
             setLoading(true);
+            // Set localStorage to indicate this is an existing user
+            localStorage.setItem('authType', 'existing');
             // Sign in with Google
             const result = await signIn('google', {
                 callbackUrl: '/process-google',

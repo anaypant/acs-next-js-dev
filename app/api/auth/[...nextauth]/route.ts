@@ -9,11 +9,13 @@ declare module "next-auth" {
     user: {
       id: string;
       password?: string;
+      authType?: string;
     } & DefaultSession["user"];
   }
 
   interface User {
     password?: string;
+    authType?: string;
   }
 }
 
@@ -104,6 +106,8 @@ export const authOptions: NextAuthOptions = {
           
           // Store the user data in the token for session creation
           if (loginResponseData.success) {
+            // Set authType in the token
+            user.authType = 'existing';
             return true;
           }
           return false;
@@ -137,6 +141,8 @@ export const authOptions: NextAuthOptions = {
             console.error('Signup error:', data.error);
             return false;
           }
+          // Set authType in the token
+          user.authType = 'new';
           return true;
         } catch (err) {
           console.error('NextAuth Google signup error:', err);
@@ -150,6 +156,8 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.sub;
         session.user.password = token.password;
+        // Add authType to the session
+        session.user.authType = token.authType;
         // Add any additional user data you want in the session
         session.user.provider = token.provider;
       }
@@ -160,6 +168,8 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.password = user.password;
+        // Store the authType in the token
+        token.authType = user.authType;
         // Store the provider in the token
         token.provider = account?.provider;
       }
