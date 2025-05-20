@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { SessionProvider } from '@/app/providers/SessionProvider';
 
 export const viewport: Viewport = {
     width: 'device-width',
@@ -21,7 +22,9 @@ export default function RootLayout({
         <html lang="en">
             <head />
             <body>
-                {children}
+                <SessionProvider>
+                    {children}
+                </SessionProvider>
             </body>
         </html>
     );

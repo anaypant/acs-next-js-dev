@@ -52,30 +52,8 @@ const VerifyEmailPage = () => {
                 throw new Error(verifyData.error || 'Failed to verify email');
             }
 
-            // Generate response email for API Gateway
-            const timestamp = Date.now();
-            const random = Math.random().toString(36).substring(2, 8);
-            const responseEmail = `${timestamp}-${random}@homes.automatedconsultancy.com`;
-
-            // Create user in system with access token
-            const createResponse = await fetch('/api/auth/create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: signupData.email,
-                    uid: signupData.userSub,
-                    session: verifyData.tokens.AccessToken,
-                    responseEmail
-                }),
-            });
-
-            if (!createResponse.ok) {
-                const createData = await createResponse.json();
-                throw new Error(createData.error || 'Failed to create user profile');
-            }
-
             localStorage.removeItem('signupData');
-            router.push('/dashboard');
+            router.push('/new-user');
         } catch (err: any) {
             console.error('Verification Error:', err);
             setError(err.message || 'An unexpected error occurred');
