@@ -19,7 +19,9 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { signIn } from 'next-auth/react';
 import { SignupData } from '../types/auth';
 import Script from 'next/script';
+import { goto404 } from '../utils/error';
 
+// Adding recaptcha to the whole window
 declare global {
   interface Window {
     grecaptcha: {
@@ -30,22 +32,26 @@ declare global {
 }
 
 const SignupPage: React.FC = () => {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [recaptchaReady, setRecaptchaReady] = useState(false);
-  const [formData, setFormData] = useState<SignupData>({
-    name: '',
+  const router = useRouter(); // Navigation to other pages
+  const [loading, setLoading] = useState(false); // If the page is loading (not interactive)
+  const [error, setError] = useState<string | null>(null); // Showing Error Messages
+  const [recaptchaReady, setRecaptchaReady] = useState(false); // Checking that a recaptcha is ready
+  const [formData, setFormData] = useState<SignupData>({ // Email Form Data
+    firstName: '',
+    lastName: '',
     email: '',
     password: '',
     provider: 'form',
   });
+  // Form Fields
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showRequirements, setShowRequirements] = useState(false);
   const [showCaptchaError, setShowCaptchaError] = useState(false);
+  const [showUserExistsError, setShowUserExistsError] = useState(false);
 
+  // Password Checks
   const passwordChecks = [
     { label: 'At least 8 characters', test: (pw: string) => pw.length >= 8 },
     { label: 'One uppercase letter', test: (pw: string) => /[A-Z]/.test(pw) },
@@ -53,6 +59,7 @@ const SignupPage: React.FC = () => {
     { label: 'One symbol', test: (pw: string) => /[^A-Za-z0-9\s]/.test(pw) },
   ];
 
+  // Getting the recaptcha token
   const getCaptchaToken = async (): Promise<string | null> => {
     try {
       const token = await window.grecaptcha.execute(
@@ -61,33 +68,38 @@ const SignupPage: React.FC = () => {
       );
       return token;
     } catch (error) {
-      console.error('reCAPTCHA error:', error);
+      goto404('202', 'Test Error', router);
       return null;
     }
   };
 
+  // Handling the form changes - every time a form changes, do this
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     if (name === 'confirmPassword') setConfirmPassword(value);
     else setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // Handling the form submission - every time the form is submitted, do this
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    const { name, email, password } = formData;
-    const allFilled = name && email && password && confirmPassword;
+    // Checking if all fields are filled
+    const { firstName, lastName, email, password } = formData;
+    const allFilled = firstName && lastName && email && password && confirmPassword;
     const passwordsMatch = password === confirmPassword;
     const allValid = passwordChecks.every(c => c.test(password || ''));
 
+    // If all fields are not filled, show the requirements
     if (!allFilled || !passwordsMatch || !allValid) {
       setShowRequirements(true);
       setLoading(false);
       return;
     }
 
+    // Retrieve recaptcha token, this is passed to backend to verify authentic signup
     const captchaToken = await getCaptchaToken();
     if (!captchaToken) {
       setShowCaptchaError(true);
@@ -95,17 +107,24 @@ const SignupPage: React.FC = () => {
       return;
     }
 
+    // Combine firstName and lastName into name for backend
+    const name = `${firstName} ${lastName}`;
+
+    // Send the data to the backend
     try {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, captchaToken }),
+        body: JSON.stringify({ ...formData, name, captchaToken }),
       });
-      
+
+      // Get the response from the backend
       const payload = await res.json();
       
+      // If the user already exists, show the error
       if (res.status === 409) {
-        setError('User already exists');
+        // If the user already exists, show the error
+        setShowUserExistsError(true);
       } else {
         router.push(`/verify-email?email=${encodeURIComponent(email)}`);
       }
@@ -117,13 +136,13 @@ const SignupPage: React.FC = () => {
     }
   };
 
+  // When sign in with google button is clicked, do this
   const handleGoogleSignIn = () => {
     setLoading(true);
-    signIn('google', { callbackUrl: '/new-user'});
-    // localStorage.setItem('error', JSON.stringify({ code: '202', message: "Test Error" }));
-    // router.push('/404');
+    signIn('google', { callbackUrl: '/process-google'});
   };
 
+  // Page content
   return (
     <>
       <Script
@@ -171,16 +190,52 @@ const SignupPage: React.FC = () => {
               </Typography>
             </div>
 
+            {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-12">
               <div className="flex flex-col gap-8">
+
+                {/* First Name and Last Name */}
                 <div className="mt-4">
+                  <div className="flex flex-row gap-4">
                   <TextField
                     fullWidth
-                    name="name"
-                    placeholder="Enter your full name"
-                    label="Full Name"
+                    name="firstName"
+                    placeholder="Enter your first name"
+                    label="First Name"
                     variant="outlined"
-                    value={formData.name}
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    sx={{
+                      marginBottom: '16px',
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: 'white',
+                        borderRadius: '12px',
+                        color: '#134d36',
+                        '& fieldset': {
+                          borderColor: '#134d36',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: '#0A2F1F',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#0A2F1F',
+                        }
+                      },
+                      '& .MuiInputLabel-root': {
+                        color: '#134d36',
+                        '&.Mui-focused': {
+                          color: '#0A2F1F',
+                        }
+                      }
+                    }}
+                  />
+                  <TextField
+                    fullWidth
+                    name="lastName"
+                    placeholder="Enter your last name"
+                    label="Last Name"
+                    variant="outlined"
+                    value={formData.lastName}
                     onChange={handleChange}
                     sx={{
                       marginBottom: '32px',
@@ -206,6 +261,9 @@ const SignupPage: React.FC = () => {
                       }
                     }}
                   />
+
+                  {/* Email */}
+                  </div>
                   <TextField
                     fullWidth
                     name="email"
@@ -239,6 +297,8 @@ const SignupPage: React.FC = () => {
                       }
                     }}
                   />
+
+                  {/* Password */}
                   <TextField
                     fullWidth
                     name="password"
@@ -271,6 +331,8 @@ const SignupPage: React.FC = () => {
                         }
                       }
                     }}
+
+                    // Password toggle
                     InputProps={{
                       endAdornment: (
                         <button
@@ -288,6 +350,8 @@ const SignupPage: React.FC = () => {
                       ),
                     }}
                   />
+
+                  {/* Confirm Password */}
                   <TextField
                     fullWidth
                     name="confirmPassword"
@@ -482,6 +546,11 @@ const SignupPage: React.FC = () => {
       <Snackbar open={showCaptchaError} autoHideDuration={6000} onClose={() => setShowCaptchaError(false)} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
         <MuiAlert onClose={() => setShowCaptchaError(false)} severity="error" sx={{ width: '100%' }}>
           reCAPTCHA failed. Please try again.
+        </MuiAlert>
+      </Snackbar>
+      <Snackbar open={showUserExistsError} autoHideDuration={6000} onClose={() => setShowUserExistsError(false)} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+        <MuiAlert onClose={() => setShowUserExistsError(false)} severity="error" sx={{ width: '100%' }}>
+          An account with this email already exists. Please try logging in instead.
         </MuiAlert>
       </Snackbar>
     </>

@@ -21,7 +21,9 @@ export interface User {
 export type SignupProvider = 'google' | 'form';
 
 export interface SignupData {
-    name: string;
+    firstName?: string;
+    lastName?: string;
+    name?: string;
     email: string;
     password?: string; // Optional since Google sign-in won't provide this
     provider: SignupProvider;
