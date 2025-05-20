@@ -1,6 +1,7 @@
 import NextAuth, { type DefaultSession, type NextAuthOptions, type User, type Account, type Profile } from "next-auth";
 import Google from "next-auth/providers/google";
-import { config } from '@/lib/config';
+import Credentials from "next-auth/providers/credentials";
+import { config } from '@/lib/local-api-config';
 
 // Extend session and user types to include password
 declare module "next-auth" {
@@ -16,7 +17,7 @@ declare module "next-auth" {
   }
 }
 
-// Generate a secure password that meets requirements
+// Generate a secure password that meets requirements for google signup
 const generateSecurePassword = () => {
   const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const numbers = '0123456789';
@@ -35,18 +36,90 @@ export const authOptions: NextAuthOptions = {
       clientId: config.GOOGLE_CLIENT_ID!,
       clientSecret: config.GOOGLE_CLIENT_SECRET!,
       authorization: { params: { prompt: "consent", access_type: "offline", response_type: "code" } }
+    }),
+    Credentials({
+      name: 'Credentials',
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+        name: { label: "Name", type: "text" }
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          return null;
+        }
+
+        try {
+          const response = await fetch(config.API_URL + `/users/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: credentials.email,
+              password: credentials.password,
+              provider: 'form',
+              name: credentials.name
+            }),
+          });
+
+          const user = await response.json();
+
+          if (!response.ok) {
+            return null;
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+          };
+        } catch (error) {
+          console.error('Credentials auth error:', error);
+          return null;
+        }
+      }
     })
   ],
   secret: config.NEXTAUTH_SECRET,
   callbacks: {
     async signIn({ user, account }: { user: User; account: Account | null }) {
       if (account?.provider === "google") {
+        // Check if this is a new user from Google's perspective
+        if (!account.isNewUser) {
+          // call api/auth/login, pass in email, password, provider
+          const loginData = {
+            email: user.email,
+            password: user.password || "",
+            provider: 'google',
+            name: user.name
+          };
+
+          const loginResponse = await fetch(config.NEXTAUTH_URL + `/api/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(loginData)
+          });
+
+          const loginResponseData = await loginResponse.json();
+          console.log('Login response data:', loginResponseData);
+          
+          // Store the user data in the token for session creation
+          if (loginResponseData.success) {
+            return true;
+          }
+          return false;
+        }
+
         // generate a password for the new user
         user.password = generateSecurePassword();
 
         try {
+          // Split the name into firstName and lastName
+          const [firstName, ...lastNameParts] = user.name?.split(' ') || ['', ''];
+          const lastName = lastNameParts.join(' ') || firstName;
+
           const signupData = {
-            name: user.name,
+            firstName,
+            lastName,
             email: user.email,
             password: user.password,
             provider: 'google',
@@ -64,6 +137,7 @@ export const authOptions: NextAuthOptions = {
             console.error('Signup error:', data.error);
             return false;
           }
+          return true;
         } catch (err) {
           console.error('NextAuth Google signup error:', err);
           return false;
@@ -76,14 +150,18 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.sub;
         session.user.password = token.password;
+        // Add any additional user data you want in the session
+        session.user.provider = token.provider;
       }
       return session;
     },
 
-    async jwt({ token, user }: { token: any; user?: User }) {
+    async jwt({ token, user, account }: { token: any; user?: User; account?: Account | null }) {
       if (user) {
         token.id = user.id;
         token.password = user.password;
+        // Store the provider in the token
+        token.provider = account?.provider;
       }
       return token;
     }

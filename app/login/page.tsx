@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { signIn } from 'next-auth/react';
 import {
     Container,
     Box,
@@ -14,6 +15,7 @@ import {
     CircularProgress,
     Link as MuiLink
 } from '@mui/material';
+import { goto404 } from '../utils/error';
 
 const LoginPage = () => {
     const router = useRouter();
@@ -24,6 +26,7 @@ const LoginPage = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // Handle form changes
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({
@@ -32,33 +35,70 @@ const LoginPage = () => {
         }));
     };
 
+    // Handle Google login
+    const handleGoogleLogin = async () => {
+        try {
+            setLoading(true);
+            // Sign in with Google
+            const result = await signIn('google', {
+                callbackUrl: '/process-google',
+                redirect: true
+            });
+        } catch (err: any) {
+            console.error('Google Login Error:', err);
+            goto404(err.status.toString(), err.statusText, router);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
 
         try {
-            const response = await fetch('/api/auth/login', {
+            // route to api/auth/login, pass in email, password, provider
+            const result = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
+                body: JSON.stringify({ email: formData.email, password: formData.password, provider: 'form', name: ''})
             });
 
-            const data = await response.json();
+            const data = await result.json();
 
-            if (!response.ok) {
-                throw new Error(data.error || 'Login failed');
+            if (!result.ok) {   
+                // if error code is 401, incorrect username or password
+                if (result.status === 401) {
+                    setError('Incorrect username or password');
+                }
+                // if 404, user does not exist
+                else if (result.status === 404) {
+                    setError('User does not exist');
+                }
+                else {
+                    goto404(result.status.toString(), result.statusText, router);
+                }
+                return;
             }
 
-            if (data.success) {
-                // Store tokens securely
-                localStorage.setItem('accessToken', data.accessToken);
-                localStorage.setItem('idToken', data.idToken);
-                router.push('/dashboard');
+            // If API login was successful, create NextAuth session
+            const authResult = await signIn('credentials', {
+                email: formData.email,
+                password: formData.password,
+                redirect: false,
+            });
+
+            if (authResult?.error) {
+                setError('Failed to create session');
+                return;
             }
+
+            // route to dashboard
+            router.push('/dashboard');
         } catch (err: any) {
             console.error('Login Error:', err);
-            setError(err.message || 'An unexpected error occurred');
+            setError('An unexpected error occurred');
         } finally {
             setLoading(false);
         }
@@ -91,6 +131,22 @@ const LoginPage = () => {
 
                     <form onSubmit={handleSubmit} className="space-y-12">
                         <div className="flex flex-col gap-8">
+                            {error && (
+                                <Alert 
+                                    severity="error" 
+                                    sx={{
+                                        backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                                        color: '#ef4444',
+                                        border: '1px solid rgba(220, 38, 38, 0.2)',
+                                        borderRadius: '12px',
+                                        '& .MuiAlert-icon': {
+                                            color: '#ef4444'
+                                        }
+                                    }}
+                                >
+                                    {error}
+                                </Alert>
+                            )}
                             <div className="space-y-6">
                                 <div>
                                     <Typography className="mb-2" sx={{ color: '#fff !important' }}>Email</Typography>
@@ -198,6 +254,8 @@ const LoginPage = () => {
                                             height={20}
                                         />
                                     }
+                                    onClick={handleGoogleLogin}
+                                    disabled={loading}
                                     sx={{
                                         py: 1.5,
                                         borderColor: 'rgba(255,255,255,0.2)',
