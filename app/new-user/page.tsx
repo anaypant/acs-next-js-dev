@@ -1,5 +1,19 @@
 'use client';
 
+// This page is currently disabled and will be used in the future to handle new user onboarding
+// Redirecting to dashboard instead
+
+import { redirect } from 'next/navigation';
+
+export default function NewUserPage() {
+  redirect('/dashboard');
+}
+
+/*
+Original implementation commented out for future use:
+
+'use client';
+
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { config } from '@/lib/local-api-config';
@@ -87,7 +101,7 @@ export default function NewUserPage() {
             />
             <button
               className="mt-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
-              onClick={() => { /* TODO: Add customize logic */ }}
+              onClick={() => { }} // Custom logic for this button will be added in the future
               type="button"
             >
               Customize
@@ -101,3 +115,4 @@ export default function NewUserPage() {
     </div>
   );
 }
+*/

@@ -11,6 +11,16 @@ export default function ProcessGoogle() {
     useEffect(() => {
         const processAuth = () => {
             if (status === 'authenticated' && session?.user?.authType) {
+                // Set session_id cookie if sessionCookie is present
+                const sessionCookie = (session as any).sessionCookie;
+                if (sessionCookie) {
+                    // Extract the session_id value from the Set-Cookie string
+                    const match = sessionCookie.match(/session_id=([^;]+)/);
+                    if (match && match[1]) {
+                        // Set the cookie (cannot set HttpOnly from JS)
+                        document.cookie = `session_id=${match[1]}; path=/; secure; samesite=none;`;
+                    }
+                }
                 // Route based on auth type from session
                 if (session.user.authType === 'existing') {
                     router.push('/new-user');

@@ -1,7 +1,10 @@
 "use client"
 
-import React from "react"
-import { Search, Zap, BarChart, LineChart, Settings, User, ChevronDown, Sun, Moon, Bell, RefreshCw, Edit } from "lucide-react"
+import React, { useState } from "react"
+import { Search, Zap, BarChart, LineChart, Settings, User, ChevronDown, Sun, Moon, Bell, RefreshCw, Edit, LogOut } from "lucide-react"
+import { useSession, signOut } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { goto404 } from "@/app/utils/error"
 
 type SectionKey = "keyWidgets" | "dataVisualization" | "navigation" | "functionalities"
 
@@ -29,6 +32,21 @@ const Sidebar = ({
   sectionsOpen,
   toggleSection,
 }: SidebarProps) => {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
+
+  React.useEffect(() => {
+    if (status === "unauthenticated") {
+      goto404("405", "User not authenticated", router)
+    }
+  }, [status, router])
+
+  const handleLogout = async () => {
+    await signOut({ redirect: false })
+    router.push('/login')
+  }
+
   return (
     <div
       className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-[#1e4d36] dark:bg-[#0e2a1c] transition-all duration-300 overflow-y-auto w-[280px]`}
@@ -97,14 +115,42 @@ const Sidebar = ({
         </div>
       </div>
       <div className="mt-auto p-4 border-t border-[#2a5a42]">
-        <div className="flex items-center gap-3">
-          <div className="relative h-10 w-10 rounded-full overflow-hidden bg-[#2a5a42]">
-            <User className="h-6 w-6 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white" />
+        <div className="relative">
+          <div 
+            className="flex items-center gap-3 cursor-pointer hover:bg-[#2a5a42]/50 rounded-md p-2 transition-colors"
+            onClick={() => setIsProfileOpen(!isProfileOpen)}
+          >
+            <div className="relative h-10 w-10 rounded-full overflow-hidden bg-[#2a5a42]">
+              <User className="h-6 w-6 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white" />
+            </div>
+            <div className="flex-1">
+              <div className="text-sm font-medium text-white">{session?.user?.name || "Loading..."}</div>
+              <div className="text-xs text-white/70">Last active 3h ago</div>
+            </div>
+            <ChevronDown className={`h-4 w-4 text-white/70 transition-transform duration-200 ${isProfileOpen ? "rotate-180" : ""}`} />
           </div>
-          <div>
-            <div className="text-sm font-medium text-white">Mr. Avinash</div>
-            <div className="text-xs text-white/70">Last active 3h ago</div>
-          </div>
+          
+          {isProfileOpen && (
+            <div className="absolute bottom-full left-0 right-0 mb-2 bg-[#2a5a42] rounded-md shadow-lg overflow-hidden animate-in slide-in-from-top-5 duration-200">
+              <button
+                onClick={() => {
+                  setIsProfileOpen(false)
+                  router.push('/settings')
+                }}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-[#1e4d36] transition-colors"
+              >
+                <Settings className="h-4 w-4" />
+                Settings
+              </button>
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-[#1e4d36] transition-colors"
+              >
+                <LogOut className="h-4 w-4" />
+                Log Out
+              </button>
+            </div>
+          )}
         </div>
       </div>
       <button

@@ -2,6 +2,7 @@ import NextAuth, { type DefaultSession, type NextAuthOptions, type User, type Ac
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { config } from '@/lib/local-api-config';
+import { cookies } from 'next/headers';
 
 // Extend session and user types to include password
 declare module "next-auth" {
@@ -10,12 +11,14 @@ declare module "next-auth" {
       id: string;
       password?: string;
       authType?: string;
+      sessionCookie?: string;
     } & DefaultSession["user"];
   }
 
   interface User {
     password?: string;
     authType?: string;
+    sessionCookie?: string;
   }
 }
 
@@ -104,6 +107,12 @@ export const authOptions: NextAuthOptions = {
           const loginResponseData = await loginResponse.json();
           console.log('Login response data:', loginResponseData);
           
+          // Handle Set-Cookie header from login response
+          const setCookieHeader = loginResponse.headers.get('Set-Cookie');
+          if (setCookieHeader) {
+            user.sessionCookie = setCookieHeader;
+          }
+          
           // Store the user data in the token for session creation
           if (loginResponseData.success) {
             // Set authType in the token
@@ -136,6 +145,13 @@ export const authOptions: NextAuthOptions = {
           );
           const data = await res.json();
           console.log('Google signup response data:', data);
+
+          // Handle Set-Cookie header from signup response
+          const setCookieHeader = res.headers.get('Set-Cookie');
+          if (setCookieHeader) {
+            user.sessionCookie = setCookieHeader;
+          }
+
           // allow if already exists
           if (!res.ok && res.status !== 409) {
             console.error('Signup error:', data.error);
@@ -156,10 +172,12 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.sub;
         session.user.password = token.password;
-        // Add authType to the session
         session.user.authType = token.authType;
-        // Add any additional user data you want in the session
         session.user.provider = token.provider;
+      }
+      // Add the session cookie value to the session if present in the token
+      if (token.sessionCookie) {
+        session.sessionCookie = token.sessionCookie;
       }
       return session;
     },
@@ -168,10 +186,12 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.password = user.password;
-        // Store the authType in the token
         token.authType = user.authType;
-        // Store the provider in the token
         token.provider = account?.provider;
+        // If you have the Set-Cookie header from your API, add it to the token
+        if (user.sessionCookie) {
+          token.sessionCookie = user.sessionCookie;
+        }
       }
       return token;
     }

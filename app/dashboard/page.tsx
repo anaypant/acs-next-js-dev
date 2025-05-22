@@ -33,6 +33,9 @@ import AveragePriceWidget from "../components/DashboardPage/AveragePriceWidget"
 import TotalProductsWidget from "../components/DashboardPage/TotalProductsWidget"
 import CampaignDistributionWidget from "../components/DashboardPage/CampaignDistributionWidget"
 import NavigationWidget from "../components/DashboardPage/NavigationWidget"
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { goto404 } from "../utils/error"
 
 // Constants
 const PAGE_TITLE = "Dashboard"
@@ -162,6 +165,8 @@ const DEFAULT_GRID_LAYOUT: Widget[] = [
 
 const Dashboard = () => {
   // State management
+  const router = useRouter()
+  const { data: session, status } = useSession()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [selectedMonth, setSelectedMonth] = useState("March 2022")
   const [activeTab, setActiveTab] = useState("App")
@@ -306,6 +311,19 @@ const Dashboard = () => {
 
   // Effects
   useEffect(() => {
+    console.log('status', status)
+    if (status === 'unauthenticated') {
+      goto404('405', 'User not authenticated', router)
+    }
+    else {
+      // print user info in console
+      console.log('user', session?.user)
+      console.log('session', session)
+      console.log('status', status)
+    }
+  }, [status, router])
+
+  useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 768 && sidebarOpen) {
         setSidebarOpen(false)
@@ -373,7 +391,7 @@ const Dashboard = () => {
         <WidgetComponent
           darkMode={darkMode ? true : false}
           selectedMonth={selectedMonth ? selectedMonth : "March 2022"}
-          userName="Avinash"
+          userName={session?.user?.name || 'Guest'}
         />
       </div>
     )
@@ -391,53 +409,7 @@ const Dashboard = () => {
         toggleSection={toggleSection}
       />
 
-      <main className={`flex-1 ${darkMode ? "bg-[#0e2a1c]" : "bg-[#f5f9f7]"} p-6 transition-all duration-300 ml-[280px]`}>
-        <div 
-          className="grid gap-4 auto-rows-min h-full" 
-          style={{ 
-            gridTemplateColumns: 'repeat(12, minmax(0, 1fr))',
-            minHeight: 'calc(100vh - 3rem)'
-          }}
-        >
-          {widgets
-            .filter(widget => widget.enabled && widget.component)
-            .sort((a, b) => a.order - b.order)
-            .map(renderWidget)}
-        </div>
-
-        {isEditing && (
-          <EditDashboard
-            darkMode={darkMode}
-            widgets={widgets}
-            onWidgetsChange={handleWidgetsChange}
-            onClose={() => setIsEditing(false)}
-          />
-        )}
-      </main>
-
-      {/* CSS for animations */}
-      <style jsx>{`
-        @keyframes dash {
-          to {
-            stroke-dashoffset: 0;
-          }
-        }
-        
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-        
-        @keyframes growBar {
-          from {
-            height: 0;
-          }
-        }
-      `}</style>
+      
     </div>
   )
 }
