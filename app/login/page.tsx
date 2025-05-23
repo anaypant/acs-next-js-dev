@@ -84,11 +84,30 @@ const LoginPage = () => {
                 return;
             }
 
-            // If API login was successful, create NextAuth session
+            // Get the session cookie from the response headers
+            const sessionCookie = result.headers.get('set-cookie');
+            if (sessionCookie) {
+                // Extract the session_id value from the Set-Cookie string
+                const match = sessionCookie.match(/session_id=([^;]+)/);
+                if (match && match[1]) {
+                    // Set the cookie with proper attributes
+                    document.cookie = `session_id=${match[1]}; path=/; secure; samesite=none;`;
+                }
+            }
+
+            // Extract user fields from API response
+            const user = data.user || {};
+
+            // Create NextAuth session
             const authResult = await signIn('credentials', {
-                email: formData.email,
+                email: user.email || formData.email,
                 password: formData.password,
                 redirect: false,
+                callbackUrl: '/dashboard',
+                provider: user.provider || 'form',
+                name: user.name || '',
+                id: user.id,
+                authType: user.authType,
             });
 
             if (authResult?.error) {
@@ -96,8 +115,12 @@ const LoginPage = () => {
                 return;
             }
 
-            // route to dashboard
-            router.push('/dashboard');
+            // If we have a callbackUrl, use it, otherwise default to dashboard
+            if (authResult?.url) {
+                router.push(authResult.url);
+            } else {
+                router.push('/dashboard');
+            }
         } catch (err: any) {
             console.error('Login Error:', err);
             setError('An unexpected error occurred');
@@ -244,7 +267,7 @@ const LoginPage = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
                                 <Button
                                     fullWidth
                                     variant="outlined"
@@ -273,7 +296,7 @@ const LoginPage = () => {
                                 >
                                     Sign in with Google
                                 </Button>
-                                <Button
+                                {/* <Button
                                     fullWidth
                                     variant="outlined"
                                     startIcon={
@@ -299,7 +322,7 @@ const LoginPage = () => {
                                     }}
                                 >
                                     Sign in with Apple
-                                </Button>
+                                </Button> */}
                             </div>
 
                             <div className="text-center">
@@ -307,7 +330,7 @@ const LoginPage = () => {
                                     Don't have an account?{' '}
                                     <MuiLink
                                         component={Link}
-                                        href="/login"
+                                        href="/signup"
                                         sx={{ 
                                             color: '#38b88b',
                                             fontWeight: 500,

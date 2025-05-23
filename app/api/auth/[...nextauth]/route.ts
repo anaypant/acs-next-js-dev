@@ -12,13 +12,17 @@ declare module "next-auth" {
       password?: string;
       authType?: string;
       sessionCookie?: string;
+      provider?: string;
+      accessToken?: string;
     } & DefaultSession["user"];
   }
 
   interface User {
     password?: string;
     authType?: string;
-    sessionCookie?: string;
+    sessionCookie?: string | null;
+    provider?: string;
+    accessToken?: string;
   }
 }
 
@@ -55,6 +59,12 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
+          console.log('Authorize - Starting form-based auth with credentials:', {
+            email: credentials.email,
+            name: credentials.name,
+            provider: 'form'
+          });
+
           const response = await fetch(config.API_URL + `/users/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -66,19 +76,46 @@ export const authOptions: NextAuthOptions = {
             }),
           });
 
-          const user = await response.json();
+          const data = await response.json();
+          console.log('Authorize - API Response:', data);
 
           if (!response.ok) {
+            console.log('Authorize - API request failed:', response.status);
             return null;
           }
 
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.name,
+          // Extract user data from the API response
+          const userData = data.user || data;
+          console.log('Authorize - Extracted user data:', userData);
+          
+          // Extract email from the id_token if not present in userData
+          let email = userData.email;
+          if (!email && response.headers.get('set-cookie')) {
+            const idToken = response.headers.get('set-cookie')?.split('id_token=')[1]?.split(';')[0];
+            if (idToken) {
+              try {
+                const decodedToken = JSON.parse(atob(idToken.split('.')[1]));
+                email = decodedToken.email;
+              } catch (e) {
+                console.error('Failed to decode id_token:', e);
+              }
+            }
+          }
+          
+          const user = {
+            id: userData.id || userData._id || userData.sub || email,
+            email: email || userData.email,
+            name: userData.name || credentials.name,
+            provider: 'form',
+            authType: userData.authType || 'existing',
+            accessToken: userData.accessToken || response.headers.get('set-cookie')?.split('access_token=')[1]?.split(';')[0],
+            sessionCookie: response.headers.get('set-cookie')
           };
+          
+          console.log('Authorize - Returning user object:', user);
+          return user;
         } catch (error) {
-          console.error('Credentials auth error:', error);
+          console.error('Authorize - Credentials auth error:', error);
           return null;
         }
       }
@@ -88,6 +125,10 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ user, account }: { user: User; account: Account | null }) {
       if (account?.provider === "google") {
+        // Store the access token
+        user.accessToken = account.access_token;
+        user.provider = 'google';
+
         // Check if this is a new user from Google's perspective
         if (!account.isNewUser) {
           // call api/auth/login, pass in email, password, provider
@@ -169,30 +210,44 @@ export const authOptions: NextAuthOptions = {
     },
 
     async session({ session, token }: { session: any; token: any }) {
+      console.log('Session Callback - Input:', { session, token });
+      
       if (session.user) {
-        session.user.id = token.sub;
+        // Map all fields from token to session
+        session.user.id = token.id;
+        session.user.email = token.email;
+        session.user.name = token.name;
         session.user.password = token.password;
         session.user.authType = token.authType;
         session.user.provider = token.provider;
+        session.user.accessToken = token.accessToken;
+        session.user.sessionCookie = token.sessionCookie;
       }
-      // Add the session cookie value to the session if present in the token
-      if (token.sessionCookie) {
-        session.sessionCookie = token.sessionCookie;
-      }
+      
+      console.log('Session Callback - Updated session:', session);
       return session;
     },
 
     async jwt({ token, user, account }: { token: any; user?: User; account?: Account | null }) {
+      console.log('JWT Callback - Input:', { token, user, account });
+      
       if (user) {
+        // Initial sign in - store all user fields in the token
         token.id = user.id;
+        token.email = user.email;
+        token.name = user.name;
         token.password = user.password;
         token.authType = user.authType;
-        token.provider = account?.provider;
-        // If you have the Set-Cookie header from your API, add it to the token
-        if (user.sessionCookie) {
-          token.sessionCookie = user.sessionCookie;
-        }
+        token.provider = account?.provider || user.provider;
+        token.accessToken = user.accessToken;
+        token.sessionCookie = user.sessionCookie;
+      } else if (token) {
+        // Subsequent requests - preserve existing token data
+        const existingToken = { ...token };
+        return existingToken;
       }
+      
+      console.log('JWT Callback - Updated token:', token);
       return token;
     }
   },

@@ -1,7 +1,49 @@
 'use client';
 
+import React from 'react';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import {
+    Container,
+    Box,
+    CircularProgress
+} from '@mui/material';
+
+const VerifyEmailPage = () => {
+    const router = useRouter();
+    const { status } = useSession();
+
+    // TODO: Email verification flow will be implemented later
+    // This is a temporary redirect to dashboard
+    // The commented code below contains the email verification implementation
+    // that will be restored when needed
+    React.useEffect(() => {
+        if (status === 'authenticated') {
+            router.push('/dashboard');
+        }
+    }, [status, router]);
+
+    // Show loading state while checking session
+    if (status === 'loading') {
+        return (
+            <Container maxWidth="xs">
+                <Box sx={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <CircularProgress />
+                </Box>
+            </Container>
+        );
+    }
+
+    return null;
+};
+
+/* 
+Original Email Verification Implementation:
+This code will be restored when email verification is needed.
+
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import {
     Container,
     Box,
@@ -11,24 +53,23 @@ import {
     Alert,
     CircularProgress
 } from '@mui/material';
+import { goto404 } from '../utils/error';
 
 const VerifyEmailPage = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { data: session, status } = useSession();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [verificationCode, setVerificationCode] = useState('');
     const email = searchParams.get('email');
-    const [signupData, setSignupData] = useState<any>(null);
 
     useEffect(() => {
-        const storedData = localStorage.getItem('signupData');
-        if (storedData) {
-            setSignupData(JSON.parse(storedData));
-        } else if (!email) {
-            router.push('/signup');
+        // If no email in URL or no session, redirect to signup
+        if (!email || status === 'unauthenticated') {
+            goto404('404', 'Email not found', router);
         }
-    }, [email, router]);
+    }, [email, status, router]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -41,8 +82,7 @@ const VerifyEmailPage = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     email,
-                    code: verificationCode,
-                    password: signupData.password
+                    code: verificationCode
                 }),
             });
 
@@ -52,7 +92,6 @@ const VerifyEmailPage = () => {
                 throw new Error(verifyData.error || 'Failed to verify email');
             }
 
-            localStorage.removeItem('signupData');
             router.push('/new-user');
         } catch (err: any) {
             console.error('Verification Error:', err);
@@ -62,7 +101,19 @@ const VerifyEmailPage = () => {
         }
     };
 
-    if (!email || !signupData) {
+    // Show loading state while checking session
+    if (status === 'loading') {
+        return (
+            <Container maxWidth="xs">
+                <Box sx={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <CircularProgress />
+                </Box>
+            </Container>
+        );
+    }
+
+    // If no email or not authenticated, don't render the form
+    if (!email || status === 'unauthenticated') {
         return null;
     }
 
@@ -107,5 +158,6 @@ const VerifyEmailPage = () => {
         </Container>
     );
 };
+*/
 
 export default VerifyEmailPage; 

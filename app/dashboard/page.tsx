@@ -316,10 +316,19 @@ const Dashboard = () => {
       goto404('405', 'User not authenticated', router)
     }
     else {
-      // print user info in console
-      console.log('user', session?.user)
-      console.log('session', session)
-      console.log('status', status)
+      // Print all session user fields
+      console.log('Session User Fields:')
+      console.log('-------------------')
+      console.log('Full Session:', session)
+      console.log('User Object:', session?.user)
+      console.log('id:', session?.user?.id)
+      console.log('email:', session?.user?.email)
+      console.log('name:', session?.user?.name)
+      console.log('provider:', session?.user?.provider)
+      console.log('authType:', session?.user?.authType)
+      console.log('accessToken:', session?.user?.accessToken)
+      console.log('sessionCookie:', session?.user?.sessionCookie)
+      console.log('-------------------')
     }
   }, [status, router])
 

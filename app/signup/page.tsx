@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Box,
@@ -35,7 +35,9 @@ const SignupPage: React.FC = () => {
   const router = useRouter(); // Navigation to other pages
   const [loading, setLoading] = useState(false); // If the page is loading (not interactive)
   const [error, setError] = useState<string | null>(null); // Showing Error Messages
-  const [recaptchaReady, setRecaptchaReady] = useState(false); // Checking that a recaptcha is ready
+  const [recaptchaReady, setRecaptchaReady] = useState(false);
+  const [recaptchaLoading, setRecaptchaLoading] = useState(true);
+  const [recaptchaError, setRecaptchaError] = useState<string | null>(null);
   const [formData, setFormData] = useState<SignupData>({ // Email Form Data
     firstName: '',
     lastName: '',
@@ -61,14 +63,24 @@ const SignupPage: React.FC = () => {
 
   // Getting the recaptcha token
   const getCaptchaToken = async (): Promise<string | null> => {
+    if (!recaptchaReady || !window.grecaptcha) {
+      setRecaptchaError('reCAPTCHA is not ready. Please refresh the page and try again.');
+      return null;
+    }
+
     try {
       const token = await window.grecaptcha.execute(
         process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!,
         { action: 'signup' }
       );
+      if (!token) {
+        setRecaptchaError('Failed to get reCAPTCHA token. Please try again.');
+        return null;
+      }
       return token;
     } catch (error) {
-      goto404('202', 'Test Error', router);
+      console.error('Captcha error:', error);
+      setRecaptchaError('Failed to verify reCAPTCHA. Please try again.');
       return null;
     }
   };
@@ -85,6 +97,7 @@ const SignupPage: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setRecaptchaError(null);
 
     // Checking if all fields are filled
     const { firstName, lastName, email, password } = formData;
@@ -92,17 +105,20 @@ const SignupPage: React.FC = () => {
     const passwordsMatch = password === confirmPassword;
     const allValid = passwordChecks.every(c => c.test(password || ''));
 
-    // If all fields are not filled, show the requirements
     if (!allFilled || !passwordsMatch || !allValid) {
       setShowRequirements(true);
       setLoading(false);
       return;
     }
 
-    // Retrieve recaptcha token, this is passed to backend to verify authentic signup
+    if (!recaptchaReady) {
+      setRecaptchaError('reCAPTCHA is not ready. Please wait or refresh the page.');
+      setLoading(false);
+      return;
+    }
+
     const captchaToken = await getCaptchaToken();
     if (!captchaToken) {
-      setShowCaptchaError(true);
       setLoading(false);
       return;
     }
@@ -116,6 +132,7 @@ const SignupPage: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...formData, name, captchaToken }),
+        credentials: 'include', // Important: include credentials to handle cookies
       });
 
       // Get the response from the backend
@@ -123,9 +140,29 @@ const SignupPage: React.FC = () => {
       
       // If the user already exists, show the error
       if (res.status === 409) {
-        // If the user already exists, show the error
         setShowUserExistsError(true);
       } else {
+        // Handle session cookie if present
+        const setCookieHeader = res.headers.get('set-cookie');
+        console.log('Response Set-Cookie header:', setCookieHeader);
+        
+        if (setCookieHeader && setCookieHeader.includes('session_id=')) {
+          // The cookie will be automatically set by the browser since we're using credentials: 'include'
+          console.log('Session cookie will be set by browser');
+        }
+
+        // Create NextAuth session
+        const authResult = await signIn('credentials', {
+          email: formData.email,
+          password: formData.password,
+          redirect: false,
+        });
+
+        if (authResult?.error) {
+          setError('Failed to create session');
+          return;
+        }
+
         router.push(`/verify-email?email=${encodeURIComponent(email)}`);
       }
     } catch (err) {
@@ -144,20 +181,79 @@ const SignupPage: React.FC = () => {
     signIn('google', { callbackUrl: '/process-google'});
   };
 
+  // Initialize reCAPTCHA
+  useEffect(() => {
+    let mounted = true;
+    let timeoutId: NodeJS.Timeout | undefined;
+
+    const initializeRecaptcha = async () => {
+      try {
+        // Check if reCAPTCHA is already loaded
+        if (window.grecaptcha) {
+          if (mounted) {
+            setRecaptchaReady(true);
+            setRecaptchaLoading(false);
+          }
+          return;
+        }
+
+        // Load reCAPTCHA script
+        const recaptchaScript = document.createElement('script');
+        recaptchaScript.src = `https://www.google.com/recaptcha/api.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}`;
+        recaptchaScript.async = true;
+        recaptchaScript.defer = true;
+
+        const loadPromise = new Promise<void>((resolve, reject) => {
+          recaptchaScript.onload = () => {
+            if (window.grecaptcha) {
+              window.grecaptcha.ready(() => {
+                if (mounted) {
+                  setRecaptchaReady(true);
+                  setRecaptchaLoading(false);
+                }
+                resolve();
+              });
+            } else {
+              reject(new Error('reCAPTCHA not found after script load'));
+            }
+          };
+
+          recaptchaScript.onerror = () => {
+            reject(new Error('Failed to load reCAPTCHA script'));
+          };
+        });
+
+        // Set timeout for script loading
+        timeoutId = setTimeout(() => {
+          if (mounted) {
+            setRecaptchaLoading(false);
+            setRecaptchaError('reCAPTCHA failed to load. Please refresh the page.');
+          }
+        }, 10000);
+
+        document.head.appendChild(recaptchaScript);
+        await loadPromise;
+        if (timeoutId) clearTimeout(timeoutId);
+      } catch (error) {
+        console.error('Error initializing reCAPTCHA:', error);
+        if (mounted) {
+          setRecaptchaLoading(false);
+          setRecaptchaError('Failed to initialize reCAPTCHA. Please refresh the page.');
+        }
+      }
+    };
+
+    initializeRecaptcha();
+
+    return () => {
+      mounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, []);
+
   // Page content
   return (
     <>
-      <Script
-        src={`https://www.google.com/recaptcha/api.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}`}
-        strategy="beforeInteractive"
-        onLoad={() => {
-          if (window.grecaptcha) {
-            window.grecaptcha.ready(() => {
-              setRecaptchaReady(true);
-            });
-          }
-        }}
-      />
       <div className="min-h-screen flex">
         {/* Left Side - Animated Background with Logo */}
         <div className="hidden md:flex md:w-[45%] bg-accent relative items-center justify-center">
@@ -425,7 +521,7 @@ const SignupPage: React.FC = () => {
                   type="submit"
                   fullWidth
                   variant="contained"
-                  disabled={loading}
+                  disabled={loading || recaptchaLoading}
                   sx={{
                     py: 2,
                     mt: 4,
@@ -439,7 +535,7 @@ const SignupPage: React.FC = () => {
                     }
                   }}
                 >
-                  {loading ? 'Creating account...' : 'Sign Up'}
+                  {loading ? 'Creating account...' : recaptchaLoading ? 'Loading...' : 'Sign Up'}
                 </Button>
 
                 <div className="relative">
@@ -545,9 +641,18 @@ const SignupPage: React.FC = () => {
           </ul>
         </MuiAlert>
       </Snackbar>
-      <Snackbar open={showCaptchaError} autoHideDuration={6000} onClose={() => setShowCaptchaError(false)} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
-        <MuiAlert onClose={() => setShowCaptchaError(false)} severity="error" sx={{ width: '100%' }}>
-          reCAPTCHA failed. Please try again.
+      <Snackbar 
+        open={!!recaptchaError} 
+        autoHideDuration={6000} 
+        onClose={() => setRecaptchaError(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <MuiAlert 
+          onClose={() => setRecaptchaError(null)} 
+          severity="error" 
+          sx={{ width: '100%' }}
+        >
+          {recaptchaError}
         </MuiAlert>
       </Snackbar>
       <Snackbar open={showUserExistsError} autoHideDuration={6000} onClose={() => setShowUserExistsError(false)} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
