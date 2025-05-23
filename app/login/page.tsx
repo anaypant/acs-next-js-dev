@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { CircularProgress } from "@mui/material"
+import { signIn } from "next-auth/react"
+import { goto404 } from "../utils/error"
 
 
 const LoginPage = () => {
@@ -26,22 +28,7 @@ const LoginPage = () => {
       [name]: value,
     }))
   }
-    const router = useRouter();
-    const [formData, setFormData] = useState({
-        email: '',
-        password: ''
-    });
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
 
-    // Handle form changes
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
-    };
 
     // Handle Google login
     const handleGoogleLogin = async () => {

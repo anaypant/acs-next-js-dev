@@ -41,7 +41,7 @@ const SignupPage: React.FC = () => {
   const [formData, setFormData] = useState<SignupData>({ // Email Form Data
     firstName: '',
     lastName: '',
-    email: '',
+    email: '', // Initialize as empty string
     password: '',
     provider: 'form',
   });
@@ -99,7 +99,6 @@ const SignupPage: React.FC = () => {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-
     e.preventDefault();
     setLoading(true);
     setError(null);
@@ -129,17 +128,18 @@ const SignupPage: React.FC = () => {
       return;
     }
 
-
-      const signupData = await signupResponse.json()
-
-
     // Send the data to the backend
     try {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, name, captchaToken }),
-        credentials: 'include', // Important: include credentials to handle cookies
+        body: JSON.stringify({ 
+          ...formData, 
+          firstName: firstName || '',
+          lastName: lastName || '',
+          captchaToken 
+        }),
+        credentials: 'include',
       });
 
       // Get the response from the backend
@@ -154,14 +154,13 @@ const SignupPage: React.FC = () => {
         console.log('Response Set-Cookie header:', setCookieHeader);
         
         if (setCookieHeader && setCookieHeader.includes('session_id=')) {
-          // The cookie will be automatically set by the browser since we're using credentials: 'include'
           console.log('Session cookie will be set by browser');
         }
 
         // Create NextAuth session
         const authResult = await signIn('credentials', {
           email: formData.email,
-          password: formData.password,
+          password: password || '',
           redirect: false,
         });
 
@@ -170,11 +169,8 @@ const SignupPage: React.FC = () => {
           return;
         }
 
-        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
-
+        router.push(`/verify-email?email=${encodeURIComponent(formData.email)}`);
       }
-      // Redirect to verification page with email
-      router.push(`/verify-email?email=${encodeURIComponent(formData.email)}`)
     } catch (err: any) {
       console.error("Signup Error:", err)
       setError(err.message || "An unexpected error occurred")
@@ -260,29 +256,6 @@ const SignupPage: React.FC = () => {
       if (timeoutId) clearTimeout(timeoutId);
     };
   }, []);
-
-  // Page content
-  }
-
-  // Password checklist logic
-  const passwordChecks = [
-    {
-      label: "At least 8 characters",
-      test: (pw: string) => pw.length >= 8,
-    },
-    {
-      label: "One uppercase letter",
-      test: (pw: string) => /[A-Z]/.test(pw),
-    },
-    {
-      label: "One number",
-      test: (pw: string) => /[0-9]/.test(pw),
-    },
-    {
-      label: "One symbol",
-      test: (pw: string) => /[^A-Za-z0-9\s]/.test(pw) && !/\s/.test(pw),
-    },
-  ]
 
   return (
     <>
@@ -566,11 +539,21 @@ const SignupPage: React.FC = () => {
                 <div className="mt-4">
                   <TextField
                     fullWidth
-                    name="name"
-                    placeholder="Enter your name"
-                    label="Name"
+                    name="firstName"
+                    placeholder="Enter your first name"
+                    label="First Name"
                     variant="outlined"
-                    value={formData.name}
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    className="form-input"
+                  />
+                  <TextField
+                    fullWidth
+                    name="lastName"
+                    placeholder="Enter your last name"
+                    label="Last Name"
+                    variant="outlined"
+                    value={formData.lastName}
                     onChange={handleChange}
                     className="form-input"
                   />
@@ -644,7 +627,7 @@ const SignupPage: React.FC = () => {
                     <div className="checklist-title">Password requirements:</div>
                     <ul className="checklist-items">
                       {passwordChecks.map((check) => {
-                        const passed = check.test(formData.password)
+                        const passed = check.test(formData.password || '')
                         return (
                           <li key={check.label} className={`checklist-item ${passed ? "passed" : "not-passed"}`}>
                             <span className={`check-icon ${passed ? "passed-icon" : "not-passed-icon"}`}>
@@ -686,7 +669,6 @@ const SignupPage: React.FC = () => {
 
                 <Button
                   fullWidth
-
                   variant="contained"
                   disabled={loading || recaptchaLoading}
                   sx={{
@@ -703,13 +685,6 @@ const SignupPage: React.FC = () => {
                   }}
                 >
                   {loading ? 'Creating account...' : recaptchaLoading ? 'Loading...' : 'Sign Up'}
-
-                  variant="outlined"
-                  startIcon={<Image src="/google.svg" alt="Google" width={20} height={20} />}
-                  className="social-button"
-                >
-                  Sign up with Google
-
                 </Button>
 
                 <div className="text-center">
@@ -726,8 +701,17 @@ const SignupPage: React.FC = () => {
         </div>
       </div>
 
-      <Snackbar open={showRequirements} autoHideDuration={6000} onClose={() => setShowRequirements(false)} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
-        <MuiAlert onClose={() => setShowRequirements(false)} severity="warning" sx={{ width: '100%' }}>
+      <Snackbar 
+        open={showRequirements} 
+        autoHideDuration={6000} 
+        onClose={() => setShowRequirements(false)} 
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <MuiAlert 
+          onClose={() => setShowRequirements(false)} 
+          severity="warning" 
+          sx={{ width: '100%' }}
+        >
           Please complete all fields, ensure your password meets requirements, and matches confirmation.<br />
           <ul style={{ margin: 0, paddingLeft: 20, textAlign: 'left' }}>
             <li>At least 8 characters</li>
@@ -738,6 +722,7 @@ const SignupPage: React.FC = () => {
           </ul>
         </MuiAlert>
       </Snackbar>
+
       <Snackbar 
         open={!!recaptchaError} 
         autoHideDuration={6000} 
@@ -752,14 +737,23 @@ const SignupPage: React.FC = () => {
           {recaptchaError}
         </MuiAlert>
       </Snackbar>
-      <Snackbar open={showUserExistsError} autoHideDuration={6000} onClose={() => setShowUserExistsError(false)} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
-        <MuiAlert onClose={() => setShowUserExistsError(false)} severity="error" sx={{ width: '100%' }}>
+
+      <Snackbar 
+        open={showUserExistsError} 
+        autoHideDuration={6000} 
+        onClose={() => setShowUserExistsError(false)} 
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <MuiAlert 
+          onClose={() => setShowUserExistsError(false)} 
+          severity="error" 
+          sx={{ width: '100%' }}
+        >
           An account with this email already exists. Please try logging in instead.
         </MuiAlert>
       </Snackbar>
     </>
-  )
-}
+  );
+};
 
-
-export default SignupPage
+export default SignupPage;
