@@ -396,12 +396,14 @@ const SignupPage = () => {
                     fullWidth
                     name="password"
                     type={showPassword ? "text" : "password"}
+
                     placeholder="Enter your password"
                     label="Password"
                     variant="outlined"
                     value={formData.password}
                     onChange={handleChange}
                     className="form-input password-input"
+
                     InputProps={{
                       endAdornment: (
                         <button
@@ -514,5 +516,6 @@ const SignupPage = () => {
     </>
   )
 }
+
 
 export default SignupPage

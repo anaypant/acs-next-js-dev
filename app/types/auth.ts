@@ -17,3 +17,26 @@ export interface User {
       logout: () => Promise<void>; // Function to call logout API endpoint
       // Add other context values if needed (e.g., tokens, specific roles)
   }
+
+export type SignupProvider = 'google' | 'form';
+
+export interface SignupData {
+    firstName?: string;
+    lastName?: string;
+    name?: string;
+    email: string;
+    password?: string; // Optional since Google sign-in won't provide this
+    provider: SignupProvider;
+    captchaToken?: string; // Optional since it's only required for form-based signup
+}
+
+export interface SignupResponse {
+    success: boolean;
+    message: string;
+    data?: {
+        userId: string;
+        email: string;
+        name: string;
+    };
+    error?: string;
+}

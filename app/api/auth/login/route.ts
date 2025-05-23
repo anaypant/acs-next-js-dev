@@ -1,44 +1,44 @@
 // src/app/api/auth/login/route.ts
 import { NextResponse } from 'next/server';
-import { signInUser } from '@/lib/cognito-server'; // Import the server-side function
+import { config } from '@/lib/local-api-config';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../[...nextauth]/route';
 
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { email, password } = body;
+        const {email, password, provider, name} = body;
+        console.log("api/auth/login payload:", body);
 
-        if (!email || !password) {
-            return NextResponse.json({ error: 'Missing required fields (email, password)' }, { status: 400 });
+        if (provider === 'form' && !password) {
+            return NextResponse.json({ error: 'Password is required for form-based login.' }, { status: 400 });
+        }
+        
+        console.log("name:", name);
+        // if provider is google, there needs to be a name field in the body
+        if (provider === 'google' && (!name || name.trim() === '')) {
+            console.log(name);
+            return NextResponse.json({ error: 'Name is required for google login.' }, { status: 400 });
+        }
+        
+
+        const response = await fetch(config.API_URL + `/users/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, provider, name }),
+        });
+
+        const data = await response.json();
+        console.log('Login response data:', data);
+
+        if (!response.ok) {
+            return NextResponse.json({ error: data || 'Login failed.' }, { status: response.status });
         }
 
-        // Call the server-side Cognito sign-in function
-        const result = await signInUser(email, password);
-
-        if (result.success && result.tokens) {
-            // Sign in successful, return tokens (don't send password back!)
-            // You might want to set cookies (httpOnly) here instead of returning tokens in the body
-             return NextResponse.json({
-                 success: true,
-                 message: 'Login successful!',
-                 // Return necessary tokens - client needs IdToken and AccessToken usually
-                 accessToken: result.tokens.AccessToken,
-                 idToken: result.tokens.IdToken,
-                 // refreshToken: result.tokens.RefreshToken, // Be careful about sending refresh token to client storage
-             }, { status: 200 });
-        } else if (result.challengeName) {
-             // Handle sign-in challenges (MFA, etc.) - needs more frontend logic
-             return NextResponse.json({
-                 success: false,
-                 error: result.message,
-                 challengeName: result.challengeName,
-                 session: result.session, // Needed to respond to the challenge
-             }, { status: 401 }); // 401 Unauthorized often used for challenges
-        }
-        else {
-            // Sign in failed, return the error message
-            // Use 401 for authentication failures like wrong password/user not found/not confirmed
-            return NextResponse.json({ success: false, error: result.message || 'Login failed.' }, { status: 401 });
-        }
+        return NextResponse.json({ 
+            success: true, 
+            message: 'Login successful!',
+        }, { status: 200 });
 
     } catch (error: any) {
         console.error("API Sign In Error:", error);
