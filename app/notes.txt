@@ -1,0 +1,77 @@
+Here's a comprehensive list of all the green colors and gradients used in the case studies page:
+
+## Solid Green Colors
+
+| Color Code | Description | 5-Word Usage Description
+|-----|-----|-----
+| `#0a5a2f` | Dark Green | Gradient base, darkest shade
+| `#0e6537` | Medium Green | Primary brand color, buttons
+| `#157a42` | Bright Green | Gradient end, accent color
+| `#002417` | Deep Forest Green | Headings, important text elements
+| `text-green-50` | Very Light Green | Hero section paragraph text
+| `text-green-900` | Very Dark Green | Success Stories badge text
+| `bg-[#0e6537]/5` | 5% Opacity Green | Client logo backgrounds
+| `bg-[#0e6537]/10` | 10% Opacity Green | Avatar fallback backgrounds
+| `bg-[#0e6537]/20` | 20% Opacity Green | Borders, quote icon color
+| `bg-[#0e6537]/30` | 30% Opacity Green | Hover state for borders
+| `bg-[#0e6537]/40` | 40% Opacity Green | Hover state for filter buttons
+
+
+## Green Gradients
+
+| Gradient | Description | 5-Word Usage Description
+|-----|-----|-----
+| `bg-gradient-to-b from-[#0a5a2f] via-[#0e6537] to-[#157a42]` | Vertical Dark-to-Bright Green | Hero section, CTA background
+| `bg-gradient-to-b from-[#e6f5ec] via-[#f0f9f4] to-white` | Vertical Light Green to White | Case studies section background
+| `bg-gradient-to-b from-[#f0f9f4] via-[#e6f5ec] to-white` | Vertical Very Light Green to White | Featured case study background
+| `bg-gradient-to-br from-[#0e6537] to-[#157a42]` | Bottom-Right Medium to Bright Green | Stats icons, hover effects
+| `bg-gradient-to-br from-[#e6f5ec] to-[#f0f9f4]` | Bottom-Right Very Light Green | Stats boxes in cards
+| `bg-gradient-to-br from-[#d8eee1] to-[#e6f5ec]` | Bottom-Right Pale Green | Hover state for icons
+| `bg-gradient-to-r from-[#0a5a2f] to-[#0e6537]` | Right Dark to Medium Green | Active filter badge background
+| `hover:from-[#0e6537] hover:to-[#157a42]` | Hover Medium to Bright Green | Badge hover state gradient
+
+
+## Light Green Shades (for backgrounds and accents)
+
+| Color Code | Description | 5-Word Usage Description
+|-----|-----|-----
+| `#e6f5ec` | Very Light Green | Background gradients, stat boxes
+| `#f0f9f4` | Pale Mint Green | Background gradients, stat boxes
+| `#d8eee1` | Pale Sage Green | Hover states for elements
+
+
+## Usage Contexts
+
+1. **Dark Greens** (`#0a5a2f`, `#0e6537`, `#157a42`):
+
+1. Primary brand colors
+2. Button backgrounds
+3. Section backgrounds
+4. Active states
+5. Icon backgrounds
+
+
+
+2. **Light Greens** (`#e6f5ec`, `#f0f9f4`, `#d8eee1`):
+
+1. Background gradients
+2. Stat box backgrounds
+3. Subtle accents
+4. Hover states
+5. Card elements
+
+
+
+3. **Transparent Greens** (with opacity):
+
+1. Borders
+2. Subtle backgrounds
+3. Avatar fallbacks
+4. Hover states
+5. Inactive elements
+
+
+
+
+
+The vertical gradients (top-to-bottom) create a natural flow that follows the page scroll direction, while the diagonal gradients (bottom-right) add depth to smaller UI elements like icons and stat boxes.
