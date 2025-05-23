@@ -3,6 +3,8 @@ import type { SignupData } from '@/app/types/auth';
 import { config } from '@/lib/local-api-config';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../[...nextauth]/route';
+import { sign } from 'jsonwebtoken';
+import { encode } from 'next-auth/jwt';
 
 /**
  * Handles user signup requests
@@ -72,7 +74,6 @@ export async function POST(request: Request) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                // Add any required API Gateway headers here
             },
             body: JSON.stringify({ ...signupData, name }),
         });
@@ -86,23 +87,45 @@ export async function POST(request: Request) {
             );
         }
 
-        // If signup was successful, create a NextAuth session
-        const session = await getServerSession(authOptions);
-        console.log('Session after signup:', session);
+        // Log all headers from the API response
+        console.log('API Response Headers:');
+        response.headers.forEach((value, key) => {
+            console.log(`${key}: ${value}`);
+        });
 
-        if (!session) {
-            // If we couldn't create a session, still return success but with a warning
-            console.warn('Failed to create session after successful signup');
-            return NextResponse.json({
+        // Create response with the session token
+        const nextResponse = NextResponse.json({
+            success: true,
+            data: {
                 ...data,
-                warning: 'Signup successful but session creation failed'
-            });
+                session: {
+                    user: {
+                        id: data.id,
+                        email: data.email,
+                        name: name,
+                        provider: signupData.provider,
+                        authType: 'new'
+                    }
+                }
+            }
+        });
+
+        // Handle the session_id cookie from the API response
+        const setCookieHeader = response.headers.get('set-cookie');
+        if (setCookieHeader) {
+            // Extract the session_id cookie (it's the first cookie in the response)
+            const sessionIdCookie = setCookieHeader.split(',')[0].trim();
+            // Set only the session_id cookie
+            nextResponse.headers.set('set-cookie', sessionIdCookie);
         }
 
-        return NextResponse.json({
-            ...data,
-            session
+        // Log all headers in nextResponse before returning
+        console.log('NextResponse Headers:');
+        nextResponse.headers.forEach((value, key) => {
+            console.log(`${key}: ${value}`);
         });
+
+        return nextResponse;
     } catch (error: any) {
         console.error('Signup error:', error);
         return NextResponse.json(

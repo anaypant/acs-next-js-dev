@@ -62,37 +62,81 @@ const LoginPage = () => {
         }
     };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
 
-    try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      })
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
 
-      const data = await response.json()
+        try {
+            // route to api/auth/login, pass in email, password, provider
+            const result = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: formData.email, password: formData.password, provider: 'form', name: ''})
+            });
 
-      if (!response.ok) {
-        throw new Error(data.error || "Login failed")
-      }
+            const data = await result.json();
 
-      if (data.success) {
-        // Store tokens securely
-        localStorage.setItem("accessToken", data.accessToken)
-        localStorage.setItem("idToken", data.idToken)
-        router.push("/component/dashboard")
-      }
-    } catch (err: any) {
-      console.error("Login Error:", err)
-      setError(err.message || "An unexpected error occurred")
-    } finally {
-      setLoading(false)
-    }
-  }
+            if (!result.ok) {   
+                // if error code is 401, incorrect username or password
+                if (result.status === 401) {
+                    setError('Incorrect username or password');
+                }
+                // if 404, user does not exist
+                else if (result.status === 404) {
+                    setError('User does not exist');
+                }
+                else {
+                    goto404(result.status.toString(), result.statusText, router);
+                }
+                return;
+            }
+
+            // Get the session cookie from the response headers
+            const sessionCookie = result.headers.get('set-cookie');
+            if (sessionCookie) {
+                // Extract the session_id value from the Set-Cookie string
+                const match = sessionCookie.match(/session_id=([^;]+)/);
+                if (match && match[1]) {
+                    // Set the cookie with proper attributes
+                    document.cookie = `session_id=${match[1]}; path=/; secure; samesite=none;`;
+                }
+            }
+
+            // Extract user fields from API response
+            const user = data.user || {};
+
+            // Create NextAuth session
+            const authResult = await signIn('credentials', {
+                email: user.email || formData.email,
+                password: formData.password,
+                redirect: false,
+                callbackUrl: '/dashboard',
+                provider: user.provider || 'form',
+                name: user.name || '',
+                id: user.id,
+                authType: user.authType,
+            });
+
+            if (authResult?.error) {
+                setError('Failed to create session');
+                return;
+            }
+
+            // If we have a callbackUrl, use it, otherwise default to dashboard
+            if (authResult?.url) {
+                router.push(authResult.url);
+            } else {
+                router.push('/dashboard');
+            }
+        } catch (err: any) {
+            console.error('Login Error:', err);
+            setError('An unexpected error occurred');
+        } finally {
+            setLoading(false);
+        }
+    };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] to-[#e6f5ec] flex flex-col">
@@ -154,6 +198,7 @@ const LoginPage = () => {
                     placeholder="Password"
                     className="w-full px-4 py-3 border border-[#0e6537]/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0e6537]/20 focus:border-[#0e6537] transition-all duration-200 placeholder-[#0e6537]/50 text-[#002417] bg-white hover:border-[#0e6537]/30"
                   />
+
                 </div>
               </div>
 

@@ -65,32 +65,86 @@ const SettingsPage: React.FC = () => {
   };
 
   const handleEmailVerification = async () => {
-    if (emailInput === session?.user?.email) {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch('/api/auth/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: emailInput }),
-        });
-        if (!res.ok) {
-          const data = await res.json();
-          setError(data?.error || 'Failed to delete account.');
-          setLoading(false);
-          return;
-        }
-        // Success: log out and redirect
+    if (!session) {
+      goto404('405', 'User not found', router);
+      return;
+    }
+    console.log('session:', session.user.email);
+    // if (emailInput === session?.user?.email) {
+    //   setLoading(true);
+    //   setError(null);
+    //   try {
+    //     const res = await fetch('/api/auth/delete', {
+    //       method: 'POST',
+    //       headers: { 'Content-Type': 'application/json' },
+    //       body: JSON.stringify({ email: emailInput }),
+    //       credentials: 'include', // Important: include credentials to handle cookies
+    //     });
+        
+    //     const data = await res.json();
+        
+    //     if (!res.ok) {
+    //       setError(data?.error || 'Failed to delete account.');
+    //       setLoading(false);
+    //       return;
+    //     }
 
-        // clear session_id cookie
-        document.cookie = 'session_id=; path=/; secure; samesite=none;';
-        await signOut({ callbackUrl: '/' });
-      } catch (err) {
-        setError('An unexpected error occurred.');
+    //     // Clear any stored data in localStorage/sessionStorage
+    //     localStorage.removeItem('next-auth.session-token');
+    //     sessionStorage.removeItem('next-auth.session-token');
+
+    //     // Close the dialog
+    //     setOpenDialog(false);
+
+    //     // Show success message briefly before redirect
+    //     setError(null);
+    //     setLoading(false);
+        
+    //     // Force a hard reload to clear any remaining state
+    //     window.location.href = '/';
+    //   } catch (err) {
+    //     console.error('Delete account error:', err);
+    //     setError('An unexpected error occurred.');
+    //     setLoading(false);
+    //   }
+    // } else {
+    //   setError('Email does not match your account email');
+    // }
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/auth/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailInput }),
+        credentials: 'include', // Important: include credentials to handle cookies
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        setError(data?.error || 'Failed to delete account.');
         setLoading(false);
+        return;
       }
-    } else {
-      setError('Email does not match your account email');
+
+      // Clear any stored data in localStorage/sessionStorage
+      localStorage.removeItem('next-auth.session-token');
+      sessionStorage.removeItem('next-auth.session-token');
+
+      // Close the dialog
+      setOpenDialog(false);
+
+      // Show success message briefly before redirect
+      setError(null);
+      setLoading(false);
+      
+      // Force a hard reload to clear any remaining state
+      window.location.href = '/';
+    } catch (err) {
+      console.error('Delete account error:', err);
+      setError('An unexpected error occurred.');
+      setLoading(false);
     }
   };
 

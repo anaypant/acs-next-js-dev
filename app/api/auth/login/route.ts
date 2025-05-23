@@ -9,13 +9,13 @@ export async function POST(request: Request) {
     try {
         const body = await request.json();
         const {email, password, provider, name} = body;
-        console.log("api/auth/login payload:", body);
+        console.log("Login API - Request payload:", body);
 
         if (provider === 'form' && !password) {
             return NextResponse.json({ error: 'Password is required for form-based login.' }, { status: 400 });
         }
         
-        console.log("name:", name);
+        console.log("Login API - Name:", name);
         // if provider is google, there needs to be a name field in the body
         if (provider === 'google' && (!name || name.trim() === '')) {
             console.log(name);
@@ -30,19 +30,32 @@ export async function POST(request: Request) {
         });
 
         const data = await response.json();
-        console.log('Login response data:', data);
+        console.log('Login API - Backend response data:', data);
 
         if (!response.ok) {
             return NextResponse.json({ error: data || 'Login failed.' }, { status: response.status });
         }
 
         // Get the session cookie from the API response
-        const sessionCookie = response.headers.get('set-cookie'); // lowercase is standard
-        console.log('Session cookie from API:', sessionCookie);
+        const sessionCookie = response.headers.get('set-cookie');
+        console.log('Login API - Session cookie from backend:', sessionCookie);
+
+        // Compose user fields for the frontend
+        const user = {
+            id: data.id || data._id || data.email,
+            email: data.email,
+            name: data.name,
+            authType: data.authType || 'existing',
+            provider: provider || 'form',
+            accessToken: data.accessToken
+        };
+        
+        console.log('Login API - Composed user object:', user);
 
         const nextResponse = NextResponse.json({
             success: true,
             message: 'Login successful!',
+            user,
         }, { status: 200 });
 
         if (sessionCookie) {
@@ -52,7 +65,7 @@ export async function POST(request: Request) {
         return nextResponse;
 
     } catch (error: any) {
-        console.error("API Sign In Error:", error);
+        console.error("Login API - Error:", error);
         return NextResponse.json({ error: 'An unexpected error occurred during login.' }, { status: 500 });
     }
 }

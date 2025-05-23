@@ -1,26 +1,90 @@
-"use client"
+'use client';
 
-import type React from "react"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Typography, TextField, Button, Alert, Link as MuiLink } from "@mui/material"
-import Link from "next/link"
-import Image from "next/image"
-import Visibility from "@mui/icons-material/Visibility"
-import VisibilityOff from "@mui/icons-material/VisibilityOff"
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Alert,
+  Link as MuiLink,
+  Snackbar,
+  Alert as MuiAlert,
+} from '@mui/material';
+import Link from 'next/link';
+import Image from 'next/image';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import { signIn } from 'next-auth/react';
+import { SignupData } from '../types/auth';
+import Script from 'next/script';
+import { goto404 } from '../utils/error';
 
-const SignupPage = () => {
-  const router = useRouter()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    name: "",
-  })
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [confirmPassword, setConfirmPassword] = useState("")
+// Adding recaptcha to the whole window
+declare global {
+  interface Window {
+    grecaptcha: {
+      execute(siteKey: string, options: { action: string }): Promise<string>;
+      ready(cb: () => void): void;
+    };
+  }
+}
+
+const SignupPage: React.FC = () => {
+  const router = useRouter(); // Navigation to other pages
+  const [loading, setLoading] = useState(false); // If the page is loading (not interactive)
+  const [error, setError] = useState<string | null>(null); // Showing Error Messages
+  const [recaptchaReady, setRecaptchaReady] = useState(false);
+  const [recaptchaLoading, setRecaptchaLoading] = useState(true);
+  const [recaptchaError, setRecaptchaError] = useState<string | null>(null);
+  const [formData, setFormData] = useState<SignupData>({ // Email Form Data
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    provider: 'form',
+  });
+  // Form Fields
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showRequirements, setShowRequirements] = useState(false);
+  const [showCaptchaError, setShowCaptchaError] = useState(false);
+  const [showUserExistsError, setShowUserExistsError] = useState(false);
+
+  // Password Checks
+  const passwordChecks = [
+    { label: 'At least 8 characters', test: (pw: string) => pw.length >= 8 },
+    { label: 'One uppercase letter', test: (pw: string) => /[A-Z]/.test(pw) },
+    { label: 'One number', test: (pw: string) => /\d/.test(pw) },
+    { label: 'One symbol', test: (pw: string) => /[^A-Za-z0-9\s]/.test(pw) },
+  ];
+
+  // Getting the recaptcha token
+  const getCaptchaToken = async (): Promise<string | null> => {
+    if (!recaptchaReady || !window.grecaptcha) {
+      setRecaptchaError('reCAPTCHA is not ready. Please refresh the page and try again.');
+      return null;
+    }
+
+    try {
+      const token = await window.grecaptcha.execute(
+        process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!,
+        { action: 'signup' }
+      );
+      if (!token) {
+        setRecaptchaError('Failed to get reCAPTCHA token. Please try again.');
+        return null;
+      }
+      return token;
+    } catch (error) {
+      console.error('Captcha error:', error);
+      setRecaptchaError('Failed to verify reCAPTCHA. Please try again.');
+      return null;
+    }
+  };
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -35,33 +99,79 @@ const SignupPage = () => {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    // Basic validation
-    const allFieldsFilled = formData.name && formData.email && formData.password && confirmPassword
-    const passwordsMatch = formData.password === confirmPassword
-    const allChecks = passwordChecks.every((check) => check.test(formData.password))
-    if (!allFieldsFilled || !passwordsMatch || !allChecks) {
-      setLoading(false)
-      alert("Please fill all fields, ensure password requirements are met, and passwords match.")
-      return
+
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setRecaptchaError(null);
+
+    // Checking if all fields are filled
+    const { firstName, lastName, email, password } = formData;
+    const allFilled = firstName && lastName && email && password && confirmPassword;
+    const passwordsMatch = password === confirmPassword;
+    const allValid = passwordChecks.every(c => c.test(password || ''));
+
+    if (!allFilled || !passwordsMatch || !allValid) {
+      setShowRequirements(true);
+      setLoading(false);
+      return;
     }
 
-    try {
-      // Step 1: Sign up with Cognito
-      const signupResponse = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      })
+    if (!recaptchaReady) {
+      setRecaptchaError('reCAPTCHA is not ready. Please wait or refresh the page.');
+      setLoading(false);
+      return;
+    }
+
+    const captchaToken = await getCaptchaToken();
+    if (!captchaToken) {
+      setLoading(false);
+      return;
+    }
+
 
       const signupData = await signupResponse.json()
 
-      if (!signupResponse.ok) {
-        if (signupData.error && signupData.error.includes("already exists")) {
-          throw new Error("An account with this email already exists. Please sign in instead.")
+
+    // Send the data to the backend
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...formData, name, captchaToken }),
+        credentials: 'include', // Important: include credentials to handle cookies
+      });
+
+      // Get the response from the backend
+      const payload = await res.json();
+      
+      // If the user already exists, show the error
+      if (res.status === 409) {
+        setShowUserExistsError(true);
+      } else {
+        // Handle session cookie if present
+        const setCookieHeader = res.headers.get('set-cookie');
+        console.log('Response Set-Cookie header:', setCookieHeader);
+        
+        if (setCookieHeader && setCookieHeader.includes('session_id=')) {
+          // The cookie will be automatically set by the browser since we're using credentials: 'include'
+          console.log('Session cookie will be set by browser');
         }
-        throw new Error(signupData.message || "Failed to sign up")
+
+        // Create NextAuth session
+        const authResult = await signIn('credentials', {
+          email: formData.email,
+          password: formData.password,
+          redirect: false,
+        });
+
+        if (authResult?.error) {
+          setError('Failed to create session');
+          return;
+        }
+
+        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+
       }
       // Redirect to verification page with email
       router.push(`/verify-email?email=${encodeURIComponent(formData.email)}`)
@@ -80,6 +190,76 @@ const SignupPage = () => {
     localStorage.setItem('authType', 'new');
     signIn('google', { callbackUrl: '/process-google'});
   };
+
+  // Initialize reCAPTCHA
+  useEffect(() => {
+    let mounted = true;
+    let timeoutId: NodeJS.Timeout | undefined;
+
+    const initializeRecaptcha = async () => {
+      try {
+        // Check if reCAPTCHA is already loaded
+        if (window.grecaptcha) {
+          if (mounted) {
+            setRecaptchaReady(true);
+            setRecaptchaLoading(false);
+          }
+          return;
+        }
+
+        // Load reCAPTCHA script
+        const recaptchaScript = document.createElement('script');
+        recaptchaScript.src = `https://www.google.com/recaptcha/api.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}`;
+        recaptchaScript.async = true;
+        recaptchaScript.defer = true;
+
+        const loadPromise = new Promise<void>((resolve, reject) => {
+          recaptchaScript.onload = () => {
+            if (window.grecaptcha) {
+              window.grecaptcha.ready(() => {
+                if (mounted) {
+                  setRecaptchaReady(true);
+                  setRecaptchaLoading(false);
+                }
+                resolve();
+              });
+            } else {
+              reject(new Error('reCAPTCHA not found after script load'));
+            }
+          };
+
+          recaptchaScript.onerror = () => {
+            reject(new Error('Failed to load reCAPTCHA script'));
+          };
+        });
+
+        // Set timeout for script loading
+        timeoutId = setTimeout(() => {
+          if (mounted) {
+            setRecaptchaLoading(false);
+            setRecaptchaError('reCAPTCHA failed to load. Please refresh the page.');
+          }
+        }, 10000);
+
+        document.head.appendChild(recaptchaScript);
+        await loadPromise;
+        if (timeoutId) clearTimeout(timeoutId);
+      } catch (error) {
+        console.error('Error initializing reCAPTCHA:', error);
+        if (mounted) {
+          setRecaptchaLoading(false);
+          setRecaptchaError('Failed to initialize reCAPTCHA. Please refresh the page.');
+        }
+      }
+    };
+
+    initializeRecaptcha();
+
+    return () => {
+      mounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, []);
 
   // Page content
   }
@@ -106,6 +286,7 @@ const SignupPage = () => {
 
   return (
     <>
+
       <style jsx global>{`
         /* Base font definitions */
         :root {
@@ -344,6 +525,7 @@ const SignupPage = () => {
         }
       `}</style>
 
+
       <div className="min-h-screen flex">
         {/* Left Side - Animated Background with Logo */}
         <div className="hidden md:flex md:w-[45%] bg-[#0a5a2f] relative items-center justify-center">
@@ -504,11 +686,30 @@ const SignupPage = () => {
 
                 <Button
                   fullWidth
+
+                  variant="contained"
+                  disabled={loading || recaptchaLoading}
+                  sx={{
+                    py: 2,
+                    mt: 4,
+                    bgcolor: '#0A2F1F',
+                    borderRadius: '12px',
+                    textTransform: 'none',
+                    fontSize: '1rem',
+                    fontWeight: 500,
+                    '&:hover': {
+                      bgcolor: '#0D3B26'
+                    }
+                  }}
+                >
+                  {loading ? 'Creating account...' : recaptchaLoading ? 'Loading...' : 'Sign Up'}
+
                   variant="outlined"
                   startIcon={<Image src="/google.svg" alt="Google" width={20} height={20} />}
                   className="social-button"
                 >
                   Sign up with Google
+
                 </Button>
 
                 <div className="text-center">
@@ -524,6 +725,38 @@ const SignupPage = () => {
           </div>
         </div>
       </div>
+
+      <Snackbar open={showRequirements} autoHideDuration={6000} onClose={() => setShowRequirements(false)} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+        <MuiAlert onClose={() => setShowRequirements(false)} severity="warning" sx={{ width: '100%' }}>
+          Please complete all fields, ensure your password meets requirements, and matches confirmation.<br />
+          <ul style={{ margin: 0, paddingLeft: 20, textAlign: 'left' }}>
+            <li>At least 8 characters</li>
+            <li>One uppercase letter</li>
+            <li>One number</li>
+            <li>One symbol</li>
+            <li>Passwords must match</li>
+          </ul>
+        </MuiAlert>
+      </Snackbar>
+      <Snackbar 
+        open={!!recaptchaError} 
+        autoHideDuration={6000} 
+        onClose={() => setRecaptchaError(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <MuiAlert 
+          onClose={() => setRecaptchaError(null)} 
+          severity="error" 
+          sx={{ width: '100%' }}
+        >
+          {recaptchaError}
+        </MuiAlert>
+      </Snackbar>
+      <Snackbar open={showUserExistsError} autoHideDuration={6000} onClose={() => setShowUserExistsError(false)} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+        <MuiAlert onClose={() => setShowUserExistsError(false)} severity="error" sx={{ width: '100%' }}>
+          An account with this email already exists. Please try logging in instead.
+        </MuiAlert>
+      </Snackbar>
     </>
   )
 }
