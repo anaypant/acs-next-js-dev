@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { config } from '@/lib/local-api-config';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../[...nextauth]/route';
+import { cookies } from 'next/headers';
 
 export async function POST(request: Request) {
     try {
@@ -35,10 +36,20 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: data || 'Login failed.' }, { status: response.status });
         }
 
-        return NextResponse.json({ 
-            success: true, 
+        // Get the session cookie from the API response
+        const sessionCookie = response.headers.get('set-cookie'); // lowercase is standard
+        console.log('Session cookie from API:', sessionCookie);
+
+        const nextResponse = NextResponse.json({
+            success: true,
             message: 'Login successful!',
         }, { status: 200 });
+
+        if (sessionCookie) {
+            nextResponse.headers.set('Set-Cookie', sessionCookie);
+        }
+
+        return nextResponse;
 
     } catch (error: any) {
         console.error("API Sign In Error:", error);

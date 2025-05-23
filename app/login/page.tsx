@@ -26,6 +26,41 @@ const LoginPage = () => {
       [name]: value,
     }))
   }
+    const router = useRouter();
+    const [formData, setFormData] = useState({
+        email: '',
+        password: ''
+    });
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // Handle form changes
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    // Handle Google login
+    const handleGoogleLogin = async () => {
+        try {
+            setLoading(true);
+            // Set localStorage to indicate this is an existing user
+            localStorage.setItem('authType', 'existing');
+            // Sign in with Google
+            const result = await signIn('google', {
+                callbackUrl: '/process-google',
+                redirect: true
+            });
+        } catch (err: any) {
+            console.error('Google Login Error:', err);
+            goto404(err.status.toString(), err.statusText, router);
+        } finally {
+            setLoading(false);
+        }
+    };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

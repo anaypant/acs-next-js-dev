@@ -71,6 +71,17 @@ const SignupPage = () => {
     } finally {
       setLoading(false)
     }
+  };
+
+  // When sign in with google button is clicked, do this
+  const handleGoogleSignIn = () => {
+    setLoading(true);
+    // Set localStorage to indicate this is a new user
+    localStorage.setItem('authType', 'new');
+    signIn('google', { callbackUrl: '/process-google'});
+  };
+
+  // Page content
   }
 
   // Password checklist logic
