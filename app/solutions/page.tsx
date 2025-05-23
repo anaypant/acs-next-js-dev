@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { motion, useInView, useAnimation } from "framer-motion"
 import {
-  ChevronDown,
   BarChart3,
   MessageSquare,
   TrendingUp,
@@ -24,6 +23,8 @@ import {
   BarChart,
   Percent,
 } from "lucide-react"
+import Footer from "../Footer"
+import Navbar from "../Navbar"
 
 export default function Solutions() {
   const [activeFeature, setActiveFeature] = useState<number | null>(null)
@@ -120,7 +121,7 @@ export default function Solutions() {
     {
       id: 1,
       title: "Pricing Prediction",
-      icon: <BarChart3 className="w-10 h-10 text-[#00ad6c]" />,
+      icon: <BarChart3 className="w-10 h-10 text-[#0e6537]" />,
       description:
         "Advanced AI algorithms analyze market trends, property features, and historical data to provide accurate price predictions for real estate properties.",
       stats: [
@@ -133,7 +134,7 @@ export default function Solutions() {
     {
       id: 2,
       title: "Conversation Management",
-      icon: <MessageSquare className="w-10 h-10 text-[#00ad6c]" />,
+      icon: <MessageSquare className="w-10 h-10 text-[#0e6537]" />,
       description:
         "Automatically engage leads, handle routine questions, and intelligently escalate to a realtor when the time is right— powered by AI-driven conversation flows.",
       stats: [
@@ -146,7 +147,7 @@ export default function Solutions() {
     {
       id: 3,
       title: "Marketing Optimization",
-      icon: <TrendingUp className="w-10 h-10 text-[#00ad6c]" />,
+      icon: <TrendingUp className="w-10 h-10 text-[#0e6537]" />,
       description:
         "Leverage AI to optimize your marketing campaigns, target the right audience, and maximize your property listings' visibility across multiple platforms.",
       stats: [
@@ -159,7 +160,7 @@ export default function Solutions() {
     {
       id: 4,
       title: "Automated Lead Scoring",
-      icon: <Users className="w-10 h-10 text-[#00ad6c]" />,
+      icon: <Users className="w-10 h-10 text-[#0e6537]" />,
       description:
         "Our AI system automatically evaluates and ranks leads based on their likelihood to convert, helping you focus on the most promising opportunities.",
       stats: [
@@ -176,21 +177,21 @@ export default function Solutions() {
       lead: "John Doe",
       date: "Mar 15, 2023",
       stage: "AI Engaged",
-      stageColor: "bg-[#00ad6c]",
+      stageColor: "bg-[#0e6537]",
       message: "Looking for a 3-bedroom house in the downtown area with a budget of $500,000.",
     },
     {
       lead: "Jane Smith",
       date: "Mar 14, 2023",
       stage: "Agent Hand-Off",
-      stageColor: "bg-[#f59e0b]",
+      stageColor: "bg-[#157a42]",
       message: "Need more details about the financing options for the property on 123 Main St.",
     },
     {
       lead: "Robert Brown",
       date: "Mar 13, 2023",
       stage: "AI Engaged",
-      stageColor: "bg-[#00ad6c]",
+      stageColor: "bg-[#0e6537]",
       message: "Interested in scheduling a viewing for the lakefront property this weekend.",
     },
     {
@@ -239,12 +240,12 @@ export default function Solutions() {
 
   return (
     <div className="min-h-screen">
-   
+      <Navbar/>
 
       {/* Hero Section */}
       <section className="relative px-8 py-20 md:py-32 overflow-hidden bg-white">
         <div
-          className="absolute inset-0 bg-gradient-to-r from-[#ebfbf5] to-transparent opacity-70"
+          className="absolute inset-0 bg-gradient-to-r from-[#e6f5ec] to-transparent opacity-70"
           style={{
             clipPath: `polygon(0 0, 100% 0, 100% ${100 - scrollY * 0.05}%, 0 100%)`,
           }}
@@ -257,10 +258,10 @@ export default function Solutions() {
             transition={{ duration: 0.5 }}
             className="text-center mb-16"
           >
-            <h1 className="text-4xl md:text-6xl font-bold text-[#003623] mb-4">
+            <h1 className="text-4xl md:text-6xl font-bold text-[#002417] mb-4">
               AI-Powered <span className="gradient-text italic">Solutions</span> for Realtors
             </h1>
-            <p className="text-xl text-[#005f3d] max-w-3xl mx-auto">
+            <p className="text-xl text-[#0a5a2f] max-w-3xl mx-auto">
               Discover how our suite of AI tools can transform every aspect of your real estate business
             </p>
           </motion.div>
@@ -272,7 +273,7 @@ export default function Solutions() {
                 initial={{ opacity: 0, y: 30 }}
                 animate={featuresAnimation}
                 className={`bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 ${
-                  activeFeature === feature.id ? "ring-2 ring-[#00ad6c]" : ""
+                  activeFeature === feature.id ? "ring-2 ring-[#0e6537]" : ""
                 }`}
                 onClick={() => setActiveFeature(activeFeature === feature.id ? null : feature.id)}
               >
@@ -280,9 +281,9 @@ export default function Solutions() {
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-4">
                       {feature.icon}
-                      <h3 className="text-2xl font-semibold text-[#003623]">{feature.title}</h3>
+                      <h3 className="text-2xl font-semibold text-[#002417]">{feature.title}</h3>
                     </div>
-                    <button className="text-[#00ad6c]">
+                    <button className="text-[#0e6537]">
                       <ArrowRight
                         size={20}
                         className={`transition-transform duration-300 ${
@@ -300,9 +301,9 @@ export default function Solutions() {
                     }`}
                   >
                     {feature.stats.map((stat, i) => (
-                      <div key={i} className="bg-[#ebfbf5] p-3 rounded-lg text-center">
-                        <div className="text-[#00ad6c] font-bold text-xl">{stat.value}</div>
-                        <div className="text-xs text-[#005f3d]">{stat.label}</div>
+                      <div key={i} className="bg-[#e6f5ec] p-3 rounded-lg text-center">
+                        <div className="text-[#0e6537] font-bold text-xl">{stat.value}</div>
+                        <div className="text-xs text-[#0a5a2f]">{stat.label}</div>
                       </div>
                     ))}
                   </div>
@@ -330,10 +331,10 @@ export default function Solutions() {
             className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center"
           >
             <div>
-              <div className="inline-block px-3 py-1 bg-[#ebfbf5] text-[#005f3d] rounded-full text-sm font-medium mb-4">
+              <div className="inline-block px-3 py-1 bg-[#e6f5ec] text-[#0a5a2f] rounded-full text-sm font-medium mb-4">
                 AI Pricing
               </div>
-              <h2 className="text-4xl font-bold text-[#003623] mb-6">Pricing Prediction</h2>
+              <h2 className="text-4xl font-bold text-[#002417] mb-6">Pricing Prediction</h2>
               <p className="text-gray-700 mb-8">
                 Advanced AI algorithms analyze market trends, property features, and historical data to provide accurate
                 price predictions for real estate properties.
@@ -342,32 +343,32 @@ export default function Solutions() {
               <div className="space-y-4 mb-8">
                 {pricingFeatures.map((feature, index) => (
                   <div key={index} className="flex items-center gap-3">
-                    <CheckCircle2 className="text-[#00ad6c] w-5 h-5" />
-                    <span className="text-[#003623]">{feature}</span>
+                    <CheckCircle2 className="text-[#0e6537] w-5 h-5" />
+                    <span className="text-[#002417]">{feature}</span>
                   </div>
                 ))}
               </div>
 
               <Link
                 href="#"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-[#003623] text-white rounded-md hover:bg-[#005f3d] transition-colors"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-[#002417] text-white rounded-md hover:bg-[#157a42] transition-colors"
               >
                 Learn More <ArrowRight size={16} />
               </Link>
             </div>
 
             <div className="bg-white rounded-xl shadow-xl overflow-hidden">
-              <div className="bg-[#005f3d] text-white p-4">
+              <div className="bg-[#0a5a2f] text-white p-4">
                 <h3 className="text-xl font-semibold">Property Valuation Dashboard</h3>
               </div>
               <div className="p-6">
                 <div className="mb-6">
                   <div className="flex justify-between items-center mb-2">
-                    <h4 className="font-medium text-[#003623]">Estimated Market Value</h4>
-                    <span className="text-[#00ad6c] font-bold text-xl">$875,000</span>
+                    <h4 className="font-medium text-[#002417]">Estimated Market Value</h4>
+                    <span className="text-[#0e6537] font-bold text-xl">$875,000</span>
                   </div>
                   <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div className="h-full bg-[#00ad6c] w-[85%]"></div>
+                    <div className="h-full bg-[#0e6537] w-[85%]"></div>
                   </div>
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
                     <span>$750,000</span>
@@ -376,20 +377,20 @@ export default function Solutions() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="bg-[#ebfbf5] p-4 rounded-lg">
+                  <div className="bg-[#e6f5ec] p-4 rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
-                      <LineChart size={16} className="text-[#00ad6c]" />
-                      <span className="text-sm font-medium text-[#003623]">Price Trend</span>
+                      <LineChart size={16} className="text-[#0e6537]" />
+                      <span className="text-sm font-medium text-[#002417]">Price Trend</span>
                     </div>
-                    <div className="text-[#00ad6c] font-bold">+5.2% YoY</div>
+                    <div className="text-[#0e6537] font-bold">+5.2% YoY</div>
                     <div className="text-xs text-gray-600">Above market average</div>
                   </div>
-                  <div className="bg-[#ebfbf5] p-4 rounded-lg">
+                  <div className="bg-[#e6f5ec] p-4 rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
-                      <BarChart size={16} className="text-[#00ad6c]" />
-                      <span className="text-sm font-medium text-[#003623]">Comparable Sales</span>
+                      <BarChart size={16} className="text-[#0e6537]" />
+                      <span className="text-sm font-medium text-[#002417]">Comparable Sales</span>
                     </div>
-                    <div className="text-[#00ad6c] font-bold">12 Properties</div>
+                    <div className="text-[#0e6537] font-bold">12 Properties</div>
                     <div className="text-xs text-gray-600">Within 0.5 miles</div>
                   </div>
                 </div>
@@ -397,24 +398,24 @@ export default function Solutions() {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                      <Home size={16} className="text-[#00ad6c]" />
-                      <span className="text-sm text-[#003623]">Property Features</span>
+                      <Home size={16} className="text-[#0e6537]" />
+                      <span className="text-sm text-[#002417]">Property Features</span>
                     </div>
-                    <span className="text-[#00ad6c] font-medium">+$45,000</span>
+                    <span className="text-[#0e6537] font-medium">+$45,000</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                      <Target size={16} className="text-[#00ad6c]" />
-                      <span className="text-sm text-[#003623]">Location Premium</span>
+                      <Target size={16} className="text-[#0e6537]" />
+                      <span className="text-sm text-[#002417]">Location Premium</span>
                     </div>
-                    <span className="text-[#00ad6c] font-medium">+$120,000</span>
+                    <span className="text-[#0e6537] font-medium">+$120,000</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                      <Clock size={16} className="text-[#00ad6c]" />
-                      <span className="text-sm text-[#003623]">Market Timing</span>
+                      <Clock size={16} className="text-[#0e6537]" />
+                      <span className="text-sm text-[#002417]">Market Timing</span>
                     </div>
-                    <span className="text-[#00ad6c] font-medium">+$25,000</span>
+                    <span className="text-[#0e6537] font-medium">+$25,000</span>
                   </div>
                 </div>
               </div>
@@ -433,11 +434,11 @@ export default function Solutions() {
           >
             <div className="order-2 lg:order-1">
               <div className="bg-white rounded-xl shadow-xl overflow-hidden">
-                <div className="bg-[#005f3d] text-white p-4">
+                <div className="bg-[#0a5a2f] text-white p-4">
                   <h3 className="text-xl font-semibold">Recent Conversations</h3>
                 </div>
                 <div className="p-4">
-                  <div className="grid grid-cols-4 gap-4 mb-4 text-sm font-medium text-[#003623]">
+                  <div className="grid grid-cols-4 gap-4 mb-4 text-sm font-medium text-[#002417]">
                     <div>Lead</div>
                     <div>Date</div>
                     <div>Stage</div>
@@ -449,10 +450,10 @@ export default function Solutions() {
                       <div
                         key={index}
                         className={`grid grid-cols-4 gap-4 p-3 rounded-lg text-sm ${
-                          index === currentConversation ? "bg-[#ebfbf5]" : ""
+                          index === currentConversation ? "bg-[#e6f5ec]" : ""
                         }`}
                       >
-                        <div className="font-medium text-[#003623]">{convo.lead}</div>
+                        <div className="font-medium text-[#002417]">{convo.lead}</div>
                         <div className="text-gray-600">{convo.date}</div>
                         <div>
                           <span className={`${convo.stageColor} text-white px-2 py-1 rounded-full text-xs`}>
@@ -476,7 +477,7 @@ export default function Solutions() {
                       </button>
                       <div className="w-40 bg-gray-200 h-2 rounded-full overflow-hidden">
                         <div
-                          className="bg-[#00ad6c] h-full transition-all duration-300"
+                          className="bg-[#0e6537] h-full transition-all duration-300"
                           style={{ width: `${(currentConversation + 1) * (100 / conversations.length)}%` }}
                         ></div>
                       </div>
@@ -493,10 +494,10 @@ export default function Solutions() {
             </div>
 
             <div className="order-1 lg:order-2">
-              <div className="inline-block px-3 py-1 bg-[#ebfbf5] text-[#005f3d] rounded-full text-sm font-medium mb-4">
+              <div className="inline-block px-3 py-1 bg-[#e6f5ec] text-[#0a5a2f] rounded-full text-sm font-medium mb-4">
                 AI Communication
               </div>
-              <h2 className="text-4xl font-bold text-[#003623] mb-6">Conversation Management</h2>
+              <h2 className="text-4xl font-bold text-[#002417] mb-6">Conversation Management</h2>
               <p className="text-gray-700 mb-8">
                 Automatically engage leads, handle routine questions, and intelligently escalate to a realtor when the
                 time is right— powered by AI-driven conversation flows.
@@ -505,15 +506,15 @@ export default function Solutions() {
               <div className="space-y-4 mb-8">
                 {conversationFeatures.map((feature, index) => (
                   <div key={index} className="flex items-center gap-3">
-                    <CheckCircle2 className="text-[#00ad6c] w-5 h-5" />
-                    <span className="text-[#003623]">{feature}</span>
+                    <CheckCircle2 className="text-[#0e6537] w-5 h-5" />
+                    <span className="text-[#002417]">{feature}</span>
                   </div>
                 ))}
               </div>
 
               <Link
                 href="#"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-[#003623] text-white rounded-md hover:bg-[#005f3d] transition-colors"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-[#002417] text-white rounded-md hover:bg-[#157a42] transition-colors"
               >
                 Learn More <ArrowRight size={16} />
               </Link>
@@ -531,10 +532,10 @@ export default function Solutions() {
             className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center"
           >
             <div>
-              <div className="inline-block px-3 py-1 bg-[#ebfbf5] text-[#005f3d] rounded-full text-sm font-medium mb-4">
+              <div className="inline-block px-3 py-1 bg-[#e6f5ec] text-[#0a5a2f] rounded-full text-sm font-medium mb-4">
                 AI Marketing
               </div>
-              <h2 className="text-4xl font-bold text-[#003623] mb-6">Automated Campaigns</h2>
+              <h2 className="text-4xl font-bold text-[#002417] mb-6">Automated Campaigns</h2>
               <p className="text-gray-700 mb-8">
                 Provide minimal inputs—like location, budget, and property details— and let our AI create a full
                 marketing campaign. We'll deploy it, monitor performance, and optimize continuously. All for pennies on
@@ -544,14 +545,14 @@ export default function Solutions() {
               <div className="space-y-4 mb-8">
                 {marketingFeatures.map((feature, index) => (
                   <div key={index} className="flex items-center gap-3">
-                    <CheckCircle2 className="text-[#00ad6c] w-5 h-5" />
-                    <span className="text-[#003623]">{feature}</span>
+                    <CheckCircle2 className="text-[#0e6537] w-5 h-5" />
+                    <span className="text-[#002417]">{feature}</span>
                   </div>
                 ))}
               </div>
 
               <div className="mb-8">
-                <h3 className="text-[#003623] font-medium mb-4">We integrate seamlessly with:</h3>
+                <h3 className="text-[#002417] font-medium mb-4">We integrate seamlessly with:</h3>
                 <div className="flex flex-wrap gap-4">
                   <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow">
                     <Facebook className="text-[#1877F2]" size={20} />
@@ -583,7 +584,7 @@ export default function Solutions() {
 
               <Link
                 href="#"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-[#003623] text-white rounded-md hover:bg-[#005f3d] transition-colors"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-[#002417] text-white rounded-md hover:bg-[#157a42] transition-colors"
               >
                 Get Started <ArrowRight size={16} />
               </Link>
@@ -592,15 +593,15 @@ export default function Solutions() {
             <div className="relative">
               <div className="bg-white rounded-xl shadow-xl p-6 relative z-10">
                 <div className="text-center mb-6">
-                  <h3 className="text-xl font-semibold text-[#003623]">Lead Generation Workflow</h3>
+                  <h3 className="text-xl font-semibold text-[#002417]">Lead Generation Workflow</h3>
                 </div>
 
                 <div className="relative">
                   {/* Central node */}
                   <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-white rounded-xl shadow-lg flex items-center justify-center z-20">
                     <div className="text-center">
-                      <div className="text-[#003623] font-medium text-sm">Lead Generation</div>
-                      <div className="text-[#003623] font-medium text-sm">Workflow</div>
+                      <div className="text-[#002417] font-medium text-sm">Lead Generation</div>
+                      <div className="text-[#002417] font-medium text-sm">Workflow</div>
                     </div>
                   </div>
 
@@ -696,68 +697,68 @@ export default function Solutions() {
           >
             <div className="order-2 lg:order-1">
               <div className="bg-white rounded-xl shadow-xl overflow-hidden">
-                <div className="bg-[#005f3d] text-white p-4">
+                <div className="bg-[#0a5a2f] text-white p-4">
                   <h3 className="text-xl font-semibold">Lead Scoring Dashboard</h3>
                 </div>
                 <div className="p-6">
                   <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div className="bg-[#ebfbf5] p-4 rounded-lg text-center">
-                      <div className="text-[#00ad6c] font-bold text-3xl mb-1">87</div>
-                      <div className="text-sm text-[#003623] font-medium">High-Value Leads</div>
+                    <div className="bg-[#e6f5ec] p-4 rounded-lg text-center">
+                      <div className="text-[#0e6537] font-bold text-3xl mb-1">87</div>
+                      <div className="text-sm text-[#002417] font-medium">High-Value Leads</div>
                     </div>
-                    <div className="bg-[#ebfbf5] p-4 rounded-lg text-center">
-                      <div className="text-[#00ad6c] font-bold text-3xl mb-1">64%</div>
-                      <div className="text-sm text-[#003623] font-medium">Conversion Rate</div>
+                    <div className="bg-[#e6f5ec] p-4 rounded-lg text-center">
+                      <div className="text-[#0e6537] font-bold text-3xl mb-1">64%</div>
+                      <div className="text-sm text-[#002417] font-medium">Conversion Rate</div>
                     </div>
                   </div>
 
                   <div className="space-y-4 mb-6">
                     <div>
                       <div className="flex justify-between mb-1">
-                        <span className="text-sm font-medium text-[#003623]">John Smith</span>
-                        <span className="text-sm font-medium text-[#00ad6c]">92/100</span>
+                        <span className="text-sm font-medium text-[#002417]">John Smith</span>
+                        <span className="text-sm font-medium text-[#0e6537]">92/100</span>
                       </div>
                       <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-[#00ad6c] w-[92%]"></div>
+                        <div className="h-full bg-[#0e6537] w-[92%]"></div>
                       </div>
                     </div>
                     <div>
                       <div className="flex justify-between mb-1">
-                        <span className="text-sm font-medium text-[#003623]">Maria Garcia</span>
-                        <span className="text-sm font-medium text-[#00ad6c]">87/100</span>
+                        <span className="text-sm font-medium text-[#002417]">Maria Garcia</span>
+                        <span className="text-sm font-medium text-[#0e6537]">87/100</span>
                       </div>
                       <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-[#00ad6c] w-[87%]"></div>
+                        <div className="h-full bg-[#0e6537] w-[87%]"></div>
                       </div>
                     </div>
                     <div>
                       <div className="flex justify-between mb-1">
-                        <span className="text-sm font-medium text-[#003623]">David Lee</span>
-                        <span className="text-sm font-medium text-[#00ad6c]">78/100</span>
+                        <span className="text-sm font-medium text-[#002417]">David Lee</span>
+                        <span className="text-sm font-medium text-[#0e6537]">78/100</span>
                       </div>
                       <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-[#00ad6c] w-[78%]"></div>
+                        <div className="h-full bg-[#0e6537] w-[78%]"></div>
                       </div>
                     </div>
                     <div>
                       <div className="flex justify-between mb-1">
-                        <span className="text-sm font-medium text-[#003623]">Sarah Johnson</span>
-                        <span className="text-sm font-medium text-[#f59e0b]">65/100</span>
+                        <span className="text-sm font-medium text-[#002417]">Sarah Johnson</span>
+                        <span className="text-sm font-medium text-[#157a42]">65/100</span>
                       </div>
                       <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-[#f59e0b] w-[65%]"></div>
+                        <div className="h-full bg-[#157a42] w-[65%]"></div>
                       </div>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex items-center gap-2">
-                      <PieChart size={16} className="text-[#00ad6c]" />
-                      <span className="text-sm text-[#003623]">Lead Sources</span>
+                      <PieChart size={16} className="text-[#0e6537]" />
+                      <span className="text-sm text-[#002417]">Lead Sources</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Percent size={16} className="text-[#00ad6c]" />
-                      <span className="text-sm text-[#003623]">Conversion Probability</span>
+                      <Percent size={16} className="text-[#0e6537]" />
+                      <span className="text-sm text-[#002417]">Conversion Probability</span>
                     </div>
                   </div>
                 </div>
@@ -765,10 +766,10 @@ export default function Solutions() {
             </div>
 
             <div className="order-1 lg:order-2">
-              <div className="inline-block px-3 py-1 bg-[#ebfbf5] text-[#005f3d] rounded-full text-sm font-medium mb-4">
+              <div className="inline-block px-3 py-1 bg-[#e6f5ec] text-[#0a5a2f] rounded-full text-sm font-medium mb-4">
                 AI Lead Management
               </div>
-              <h2 className="text-4xl font-bold text-[#003623] mb-6">Automated Lead Scoring</h2>
+              <h2 className="text-4xl font-bold text-[#002417] mb-6">Automated Lead Scoring</h2>
               <p className="text-gray-700 mb-8">
                 Our AI system automatically evaluates and ranks leads based on their likelihood to convert, helping you
                 focus on the most promising opportunities and maximize your closing rate.
@@ -777,15 +778,15 @@ export default function Solutions() {
               <div className="space-y-4 mb-8">
                 {leadScoringFeatures.map((feature, index) => (
                   <div key={index} className="flex items-center gap-3">
-                    <CheckCircle2 className="text-[#00ad6c] w-5 h-5" />
-                    <span className="text-[#003623]">{feature}</span>
+                    <CheckCircle2 className="text-[#0e6537] w-5 h-5" />
+                    <span className="text-[#002417]">{feature}</span>
                   </div>
                 ))}
               </div>
 
               <Link
                 href="#"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-[#003623] text-white rounded-md hover:bg-[#005f3d] transition-colors"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-[#002417] text-white rounded-md hover:bg-[#157a42] transition-colors"
               >
                 Learn More <ArrowRight size={16} />
               </Link>
@@ -795,7 +796,7 @@ export default function Solutions() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 bg-gradient-to-r from-[#003623] to-[#005f3d] [&_*]:text-white">
+      <section className="py-16 bg-gradient-to-b from-[#0a5a2f] via-[#0e6537] to-[#157a42] [&_*]:text-white">
         <div className="max-w-4xl mx-auto px-8 text-center">
           <h2 className="text-3xl md:text-4xl font-bold !text-white mb-6">
             Ready to Transform Your Real Estate Business?
@@ -806,7 +807,7 @@ export default function Solutions() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/signup"
-              className="px-8 py-3 bg-[#00ad6c] !text-white rounded-md hover:bg-[#00c67c] transition-colors text-lg font-medium"
+              className="px-8 py-3 bg-[#0e6537] !text-white rounded-md hover:from-[#0e6537] hover:to-[#157a42] transition-colors text-lg font-medium"
             >
               Get Started Free
             </Link>
@@ -819,6 +820,7 @@ export default function Solutions() {
           </div>
         </div>
       </section>
+      <Footer/>
     </div>
   )
-} 
+}
