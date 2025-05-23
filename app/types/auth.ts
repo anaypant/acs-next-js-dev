@@ -24,7 +24,7 @@ export interface SignupData {
     firstName?: string;
     lastName?: string;
     name?: string;
-    email: string;
+    email: string; // Required field
     password?: string; // Optional since Google sign-in won't provide this
     provider: SignupProvider;
     captchaToken?: string; // Optional since it's only required for form-based signup
