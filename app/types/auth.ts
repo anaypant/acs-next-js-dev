@@ -1,42 +1,72 @@
 // types/auth.ts
 
-// Example User type - adjust based on data from Cognito/useAuth hook
-export interface User {
-    id: string; // e.g., Cognito sub (subject) claim
-    email: string | null;
-    name?: string | null;
-    profileImageUrl?: string | null; // If you store avatar URLs
-    // Add other relevant user attributes from Cognito
-  }
-  
-  // You might also define the context shape here
-  export interface AuthContextType {
-      user: User | null;
-      isLoading: boolean;
-      login: () => void; // Function to initiate login redirect
-      logout: () => Promise<void>; // Function to call logout API endpoint
-      // Add other context values if needed (e.g., tokens, specific roles)
-  }
+import { DefaultSession, DefaultUser } from "next-auth"
+import { JWT as DefaultJWT } from "next-auth/jwt"
 
 export type SignupProvider = 'google' | 'form';
 
-export interface SignupData {
-    firstName?: string;
-    lastName?: string;
-    name?: string;
-    email: string; // Required field
-    password?: string; // Optional since Google sign-in won't provide this
+// Extend the built-in types with our custom fields
+declare module "next-auth" {
+  interface Session extends DefaultSession {
+    user: User
+  }
+  
+  interface User extends DefaultUser {
+    email: string;
+    name: string;
+    authType: 'new' | 'existing';
     provider: SignupProvider;
-    captchaToken?: string; // Optional since it's only required for form-based signup
+    accessToken?: string;
+  }
+}
+
+declare module "next-auth/jwt" {
+  // Instead of extending CustomJWT directly, merge the properties
+  interface JWT {
+    authType: 'new' | 'existing';
+    provider: SignupProvider;
+  }
+}
+
+export interface AuthContextType {
+    user: import("next-auth").User | null;
+    isLoading: boolean;
+    login: () => void; // Function to initiate login redirect
+    logout: () => Promise<void>; // Function to call logout API endpoint
+    // Add other context values if needed (e.g., tokens, specific roles)
+}
+
+export interface SignupData {
+    name: string;
+    email: string;
+    password?: string;
+    provider: SignupProvider;
+    captchaToken: string;
 }
 
 export interface SignupResponse {
     success: boolean;
     message: string;
-    data?: {
+    data: {
         userId: string;
         email: string;
         name: string;
     };
     error?: string;
+}
+
+// API Response types
+export interface AuthResponse {
+    success: boolean;
+    message: string;
+    user?: import("next-auth").User;
+    error?: string;
+}
+
+// Credentials type for NextAuth
+export interface Credentials {
+    email: string;
+    password: string;
+    name?: string;
+    provider: SignupProvider;
 }

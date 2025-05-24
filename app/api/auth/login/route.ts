@@ -1,14 +1,11 @@
 // src/app/api/auth/login/route.ts
 import { NextResponse } from 'next/server';
 import { config } from '@/lib/local-api-config';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '../[...nextauth]/route';
-import { cookies } from 'next/headers';
 
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const {email, password, provider, name} = body;
+        const {email, password, name, provider} = body;
         console.log("Login API - Request payload:", body);
 
         if (provider === 'form' && !password) {

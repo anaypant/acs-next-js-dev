@@ -1,6 +1,5 @@
 "use client"
 
-
 import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
@@ -8,8 +7,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { CircularProgress } from "@mui/material"
 import { signIn } from "next-auth/react"
-import { goto404 } from "../utils/error"
-
+import { handleAuthError, validateAuthForm } from "../utils/auth"
 
 const LoginPage = () => {
   const router = useRouter()
@@ -20,7 +18,6 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({
@@ -29,101 +26,62 @@ const LoginPage = () => {
     }))
   }
 
+  const handleGoogleLogin = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      localStorage.setItem('authType', 'existing');
+      
+      const result = await signIn('google', {
+        callbackUrl: '/process-google',
+        redirect: true
+      });
 
-    // Handle Google login
-    const handleGoogleLogin = async () => {
-        try {
-            setLoading(true);
-            // Set localStorage to indicate this is an existing user
-            localStorage.setItem('authType', 'existing');
-            // Sign in with Google
-            const result = await signIn('google', {
-                callbackUrl: '/process-google',
-                redirect: true
-            });
-        } catch (err: any) {
-            console.error('Google Login Error:', err);
-            goto404(err.status.toString(), err.statusText, router);
-        } finally {
-            setLoading(false);
-        }
-    };
+      if (result?.error) {
+        setError(result.error);
+      }
+    } catch (err: any) {
+      setError(handleAuthError(err));
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError(null);
+    try {
+      // Validate form data
+      const validation = validateAuthForm(formData);
+      if (!validation.isValid) {
+        setError(validation.error || 'Invalid form data');
+        return;
+      }
 
-        try {
-            // route to api/auth/login, pass in email, password, provider
-            const result = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: formData.email, password: formData.password, provider: 'form', name: ''})
-            });
+      // Create NextAuth session
+      const result = await signIn('credentials', {
+        email: formData.email,
+        password: formData.password,
+        redirect: false,
+        callbackUrl: '/dashboard'
+      });
 
-            const data = await result.json();
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
 
-            if (!result.ok) {   
-                // if error code is 401, incorrect username or password
-                if (result.status === 401) {
-                    setError('Incorrect username or password');
-                }
-                // if 404, user does not exist
-                else if (result.status === 404) {
-                    setError('User does not exist');
-                }
-                else {
-                    goto404(result.status.toString(), result.statusText, router);
-                }
-                return;
-            }
-
-            // Get the session cookie from the response headers
-            const sessionCookie = result.headers.get('set-cookie');
-            if (sessionCookie) {
-                // Extract the session_id value from the Set-Cookie string
-                const match = sessionCookie.match(/session_id=([^;]+)/);
-                if (match && match[1]) {
-                    // Set the cookie with proper attributes
-                    document.cookie = `session_id=${match[1]}; path=/; secure; samesite=none;`;
-                }
-            }
-
-            // Extract user fields from API response
-            const user = data.user || {};
-
-            // Create NextAuth session
-            const authResult = await signIn('credentials', {
-                email: user.email || formData.email,
-                password: formData.password,
-                redirect: false,
-                callbackUrl: '/dashboard',
-                provider: user.provider || 'form',
-                name: user.name || '',
-                id: user.id,
-                authType: user.authType,
-            });
-
-            if (authResult?.error) {
-                setError('Failed to create session');
-                return;
-            }
-
-            // If we have a callbackUrl, use it, otherwise default to dashboard
-            if (authResult?.url) {
-                router.push(authResult.url);
-            } else {
-                router.push('/dashboard');
-            }
-        } catch (err: any) {
-            console.error('Login Error:', err);
-            setError('An unexpected error occurred');
-        } finally {
-            setLoading(false);
-        }
-    };
+      // Redirect to dashboard or callback URL
+      router.push(result?.url || '/dashboard');
+    } catch (err: any) {
+      setError(handleAuthError(err));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] to-[#e6f5ec] flex flex-col">
@@ -229,10 +187,21 @@ const LoginPage = () => {
             <div className="mt-6">
               <button
                 type="button"
+                onClick={handleGoogleLogin}
+                disabled={loading}
                 className="w-full flex items-center justify-center py-3 px-4 border border-[#0e6537]/20 rounded-xl text-sm font-medium text-[#002417] hover:bg-[#f0f9f4] transition-all duration-200 hover:border-[#0e6537]/30 hover:scale-[1.01] active:scale-[0.99]"
               >
-                <Image src="/google.svg" alt="Google" width={18} height={18} className="mr-3" />
-                Sign in with Google
+                {loading ? (
+                  <div className="flex items-center justify-center">
+                    <CircularProgress size={20} className="text-[#0e6537] mr-2" />
+                    Signing in...
+                  </div>
+                ) : (
+                  <>
+                    <Image src="/google.svg" alt="Google" width={18} height={18} className="mr-3" />
+                    Sign in with Google
+                  </>
+                )}
               </button>
             </div>
 

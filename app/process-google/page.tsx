@@ -3,32 +3,42 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { handleSessionCookie, getAuthRedirectPath, validateSession } from '../utils/auth';
+import { goto404 } from '../utils/error';
 
 export default function ProcessGoogle() {
     const router = useRouter();
     const { data: session, status } = useSession();
 
     useEffect(() => {
-        const processAuth = () => {
-            if (status === 'authenticated' && session?.user?.authType) {
-                // Set session_id cookie if sessionCookie is present
-                const sessionCookie = (session as any).sessionCookie;
-                if (sessionCookie) {
-                    // Extract the session_id value from the Set-Cookie string
-                    const match = sessionCookie.match(/session_id=([^;]+)/);
-                    if (match && match[1]) {
-                        // Set the cookie (cannot set HttpOnly from JS)
-                        document.cookie = `session_id=${match[1]}; path=/; secure; samesite=none;`;
+        const processAuth = async () => {
+            if (status === 'authenticated' && session?.user) {
+                try {
+                    // Validate session
+                    console.log('Session:', session);
+                    if (!validateSession(session)) {
+                        throw new Error('Invalid session data');
                     }
-                }
-                // Route based on auth type from session
-                if (session.user.authType === 'existing') {
-                    router.push('/new-user');
-                } else {
-                    router.push('/new-user');
+
+                    // Handle session cookie
+                    handleSessionCookie(session);
+
+                    // Determine redirect based on auth type
+                    const user = session.user;
+                    if (user) {
+                        console.log('User:', user);
+                        const redirectPath = getAuthRedirectPath(user.authType);
+                        router.push(redirectPath);
+                    }
+                    else {
+                        goto404('405', 'User not found', router);
+                    }
+                } catch (error) {
+                    console.error('Error processing authentication:', error);
+                    router.push('/login?error=auth_processing_failed');
                 }
             } else if (status === 'unauthenticated') {
-                router.push('/login');
+                router.push('/login?error=not_authenticated');
             }
         };
 

@@ -19,7 +19,7 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { signIn } from 'next-auth/react';
 import { SignupData } from '../types/auth';
 import Script from 'next/script';
-import { goto404 } from '../utils/error';
+import { handleAuthError, validateAuthForm, clearAuthData, setAuthType } from '../utils/auth';
 
 // Adding recaptcha to the whole window
 declare global {
@@ -39,11 +39,11 @@ const SignupPage: React.FC = () => {
   const [recaptchaLoading, setRecaptchaLoading] = useState(true);
   const [recaptchaError, setRecaptchaError] = useState<string | null>(null);
   const [formData, setFormData] = useState<SignupData>({ // Email Form Data
-    firstName: '',
-    lastName: '',
+    name: '',
     email: '', // Initialize as empty string
     password: '',
     provider: 'form',
+    captchaToken: '',
   });
   // Form Fields
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -104,13 +104,24 @@ const SignupPage: React.FC = () => {
     setError(null);
     setRecaptchaError(null);
 
-    // Checking if all fields are filled
-    const { firstName, lastName, email, password } = formData;
-    const allFilled = firstName && lastName && email && password && confirmPassword;
-    const passwordsMatch = password === confirmPassword;
-    const allValid = passwordChecks.every(c => c.test(password || ''));
+    // Validate form data
+    const validation = validateAuthForm(formData);
+    if (!validation.isValid) {
+      setError(validation.error || 'Invalid form data');
+      setLoading(false);
+      return;
+    }
 
-    if (!allFilled || !passwordsMatch || !allValid) {
+    // Check password match
+    if (formData.password !== confirmPassword) {
+      setError('Passwords do not match');
+      setLoading(false);
+      return;
+    }
+
+    // Check password requirements
+    const allValid = passwordChecks.every(c => c.test(formData.password || ''));
+    if (!allValid) {
       setShowRequirements(true);
       setLoading(false);
       return;
@@ -128,63 +139,81 @@ const SignupPage: React.FC = () => {
       return;
     }
 
-    // Send the data to the backend
     try {
+      // Clear any existing auth data before signup
+      clearAuthData();
+      
+      // Set auth type for new user
+      setAuthType('new');
+
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           ...formData, 
-          firstName: firstName || '',
-          lastName: lastName || '',
           captchaToken 
         }),
         credentials: 'include',
       });
 
-      // Get the response from the backend
       const payload = await res.json();
       
-      // If the user already exists, show the error
       if (res.status === 409) {
         setShowUserExistsError(true);
-      } else {
-        // Handle session cookie if present
-        const setCookieHeader = res.headers.get('set-cookie');
-        console.log('Response Set-Cookie header:', setCookieHeader);
-        
-        if (setCookieHeader && setCookieHeader.includes('session_id=')) {
-          console.log('Session cookie will be set by browser');
-        }
-
-        // Create NextAuth session
-        const authResult = await signIn('credentials', {
-          email: formData.email,
-          password: password || '',
-          redirect: false,
-        });
-
-        if (authResult?.error) {
-          setError('Failed to create session');
-          return;
-        }
-
-        router.push(`/verify-email?email=${encodeURIComponent(formData.email)}`);
+        setLoading(false);
+        return;
       }
+
+      if (!res.ok) {
+        throw new Error(payload.error || 'Signup failed');
+      }
+
+      // Create NextAuth session
+      const authResult = await signIn('credentials', {
+        email: formData.email,
+        password: formData.password,
+        name: formData.name,
+        redirect: false,
+        callbackUrl: `/verify-email?email=${encodeURIComponent(formData.email)}`
+      });
+
+      if (authResult?.error) {
+        throw new Error(authResult.error);
+      }
+
+      // Redirect to email verification
+      router.push(`/verify-email?email=${encodeURIComponent(formData.email)}`);
     } catch (err: any) {
-      console.error("Signup Error:", err)
-      setError(err.message || "An unexpected error occurred")
+      setError(handleAuthError(err));
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   };
 
-  // When sign in with google button is clicked, do this
-  const handleGoogleSignIn = () => {
-    setLoading(true);
-    // Set localStorage to indicate this is a new user
-    localStorage.setItem('authType', 'new');
-    signIn('google', { callbackUrl: '/process-google'});
+  const handleGoogleSignIn = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Clear any existing auth data
+      clearAuthData();
+      
+      // Set auth type for new user
+      setAuthType('new');
+      
+      const result = await signIn('google', { 
+        callbackUrl: '/process-google',
+        redirect: true
+      });
+
+      if (result?.error) {
+        setError(result.error);
+      }
+    } catch (err: any) {
+      setError(handleAuthError(err));
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Initialize reCAPTCHA
@@ -536,165 +565,184 @@ const SignupPage: React.FC = () => {
 
             <form onSubmit={handleSubmit} className="space-y-12">
               <div className="flex flex-col gap-8">
-                <div className="mt-4">
-                  <TextField
-                    fullWidth
-                    name="firstName"
-                    placeholder="Enter your first name"
-                    label="First Name"
-                    variant="outlined"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    className="form-input"
-                  />
-                  <TextField
-                    fullWidth
-                    name="lastName"
-                    placeholder="Enter your last name"
-                    label="Last Name"
-                    variant="outlined"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    className="form-input"
-                  />
-                  <TextField
-                    fullWidth
-                    name="email"
-                    type="email"
-                    placeholder="Enter your email"
-                    label="Email address"
-                    variant="outlined"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="form-input"
-                  />
-                  <TextField
-                    fullWidth
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-
-                    placeholder="Enter your password"
-                    label="Password"
-                    variant="outlined"
-                    value={formData.password}
-                    onChange={handleChange}
-                    className="form-input password-input"
-
-                    InputProps={{
-                      endAdornment: (
-                        <button
-                          type="button"
-                          tabIndex={-1}
-                          onClick={() => setShowPassword((v) => !v)}
-                          className="password-toggle"
-                          aria-label={showPassword ? "Hide password" : "Show password"}
-                        >
-                          <span className="toggle-icon">
-                            {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
-                          </span>
-                        </button>
-                      ),
-                    }}
-                  />
-                  <TextField
-                    fullWidth
-                    name="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Confirm your password"
-                    label="Confirm Password"
-                    variant="outlined"
-                    value={confirmPassword}
-                    onChange={handleChange}
-                    className="form-input password-input"
-                    InputProps={{
-                      endAdornment: (
-                        <button
-                          type="button"
-                          tabIndex={-1}
-                          onClick={() => setShowConfirmPassword((v) => !v)}
-                          className="password-toggle"
-                          aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                        >
-                          <span className="toggle-icon">
-                            {showConfirmPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
-                          </span>
-                        </button>
-                      ),
-                    }}
-                  />
-                  {/* Password checklist */}
-                  <div className="password-checklist">
-                    <div className="checklist-title">Password requirements:</div>
-                    <ul className="checklist-items">
-                      {passwordChecks.map((check) => {
-                        const passed = check.test(formData.password || '')
-                        return (
-                          <li key={check.label} className={`checklist-item ${passed ? "passed" : "not-passed"}`}>
-                            <span className={`check-icon ${passed ? "passed-icon" : "not-passed-icon"}`}>
-                              {passed ? (
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  className="icon-svg"
-                                  viewBox="0 0 20 20"
-                                  fill="currentColor"
-                                >
-                                  <path
-                                    fillRule="evenodd"
-                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                    clipRule="evenodd"
-                                  />
-                                </svg>
-                              ) : (
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  className="icon-svg"
-                                  viewBox="0 0 20 20"
-                                  fill="currentColor"
-                                >
-                                  <path
-                                    fillRule="evenodd"
-                                    d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                                    clipRule="evenodd"
-                                  />
-                                </svg>
-                              )}
-                            </span>
-                            {check.label}
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  </div>
-                </div>
-
-                <Button
+                <TextField
                   fullWidth
-                  variant="contained"
-                  disabled={loading || recaptchaLoading}
-                  sx={{
-                    py: 2,
-                    mt: 4,
-                    bgcolor: '#0A2F1F',
-                    borderRadius: '12px',
-                    textTransform: 'none',
-                    fontSize: '1rem',
-                    fontWeight: 500,
-                    '&:hover': {
-                      bgcolor: '#0D3B26'
-                    }
+                  name="name"
+                  placeholder="Enter your name"
+                  label="Name"
+                  variant="outlined"
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="form-input"
+                />
+                <TextField
+                  fullWidth
+                  name="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  label="Email address"
+                  variant="outlined"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="form-input"
+                />
+                <TextField
+                  fullWidth
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  label="Password"
+                  variant="outlined"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="form-input password-input"
+                  InputProps={{
+                    endAdornment: (
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => setShowPassword((v) => !v)}
+                        className="password-toggle"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        <span className="toggle-icon">
+                          {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                        </span>
+                      </button>
+                    ),
                   }}
-                >
-                  {loading ? 'Creating account...' : recaptchaLoading ? 'Loading...' : 'Sign Up'}
-                </Button>
-
-                <div className="text-center">
-                  <Typography variant="body2" className="login-text">
-                    Have an account?{" "}
-                    <MuiLink component={Link} href="/login" className="login-link">
-                      Sign In
-                    </MuiLink>
-                  </Typography>
+                />
+                <TextField
+                  fullWidth
+                  name="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Confirm your password"
+                  label="Confirm Password"
+                  variant="outlined"
+                  value={confirmPassword}
+                  onChange={handleChange}
+                  className="form-input password-input"
+                  InputProps={{
+                    endAdornment: (
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => setShowConfirmPassword((v) => !v)}
+                        className="password-toggle"
+                        aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                      >
+                        <span className="toggle-icon">
+                          {showConfirmPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                        </span>
+                      </button>
+                    ),
+                  }}
+                />
+                {/* Password checklist */}
+                <div className="password-checklist">
+                  <div className="checklist-title">Password requirements:</div>
+                  <ul className="checklist-items">
+                    {passwordChecks.map((check) => {
+                      const passed = check.test(formData.password || '')
+                      return (
+                        <li key={check.label} className={`checklist-item ${passed ? "passed" : "not-passed"}`}>
+                          <span className={`check-icon ${passed ? "passed-icon" : "not-passed-icon"}`}>
+                            {passed ? (
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="icon-svg"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            ) : (
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="icon-svg"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            )}
+                          </span>
+                          {check.label}
+                        </li>
+                      )
+                    })}
+                  </ul>
                 </div>
+              </div>
+
+              <Button
+                fullWidth
+                type="submit"
+                variant="contained"
+                disabled={loading || recaptchaLoading}
+                sx={{
+                  py: 2,
+                  mt: 4,
+                  bgcolor: '#0A2F1F',
+                  borderRadius: '12px',
+                  textTransform: 'none',
+                  fontSize: '1rem',
+                  fontWeight: 500,
+                  '&:hover': {
+                    bgcolor: '#0D3B26'
+                  }
+                }}
+              >
+                {loading ? 'Creating account...' : recaptchaLoading ? 'Loading...' : 'Sign Up'}
+              </Button>
+
+              {/* Google Sign In Button */}
+              <Button
+                fullWidth
+                variant="outlined"
+                onClick={handleGoogleSignIn}
+                disabled={loading}
+                startIcon={
+                  <Image
+                    src="/google.svg"
+                    alt="Google"
+                    width={20}
+                    height={20}
+                  />
+                }
+                sx={{
+                  py: 2,
+                  mt: 2,
+                  borderColor: 'rgba(14, 101, 55, 0.2)',
+                  color: '#002417',
+                  borderRadius: '12px',
+                  textTransform: 'none',
+                  fontSize: '1rem',
+                  fontWeight: 500,
+                  '&:hover': {
+                    borderColor: '#0e6537',
+                    backgroundColor: '#f0f9f4'
+                  }
+                }}
+              >
+                Sign up with Google
+              </Button>
+
+              <div className="text-center mt-4">
+                <Typography variant="body2" className="login-text">
+                  Have an account?{" "}
+                  <MuiLink component={Link} href="/login" className="login-link">
+                    Sign In
+                  </MuiLink>
+                </Typography>
               </div>
             </form>
           </div>

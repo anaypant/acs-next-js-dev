@@ -1,127 +1,72 @@
-import NextAuth, { type DefaultSession, type NextAuthOptions, type User, type Account, type Profile } from "next-auth";
+import NextAuth from "next-auth/next";
+import type { NextAuthConfig } from "next-auth/next";
 import Google from "next-auth/providers/google";
-import Credentials from "next-auth/providers/credentials";
+import CredentialsProvider from "next-auth/providers/credentials";
 import { config } from '@/lib/local-api-config';
-import { cookies } from 'next/headers';
+import { Credentials as CredentialsType, SignupProvider } from "@/app/types/auth";
+import { Account } from "next-auth";
+import { User } from "next-auth";
 
-// Extend session and user types to include password
-declare module "next-auth" {
-  interface Session extends DefaultSession {
-    user: {
-      id: string;
-      password?: string;
-      authType?: string;
-      sessionCookie?: string;
-      provider?: string;
-      accessToken?: string;
-    } & DefaultSession["user"];
-  }
-
-  interface User {
-    password?: string;
-    authType?: string;
-    sessionCookie?: string | null;
-    provider?: string;
-    accessToken?: string;
-  }
-}
-
-// Generate a secure password that meets requirements for google signup
-const generateSecurePassword = () => {
-  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const numbers = '0123456789';
-  const special = '!@#$%^&*(),.?":{}|<>';
-  const all = uppercase + numbers + special;
-  let pw = uppercase[Math.floor(Math.random() * uppercase.length)];
-  pw += numbers[Math.floor(Math.random() * numbers.length)];
-  pw += special[Math.floor(Math.random() * special.length)];
-  for (let i = 0; i < 5; i++) pw += all[Math.floor(Math.random() * all.length)];
-  return pw.split('').sort(() => Math.random() - 0.5).join('');
-};
-
-export const authOptions: NextAuthOptions = {
+export const authOptions: NextAuthConfig = {
   providers: [
-    Google({
-      clientId: config.GOOGLE_CLIENT_ID!,
-      clientSecret: config.GOOGLE_CLIENT_SECRET!,
-      authorization: { params: { prompt: "consent", access_type: "offline", response_type: "code" } }
-    }),
-    Credentials({
-      name: 'Credentials',
+    CredentialsProvider({
+      name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
-        name: { label: "Name", type: "text" }
+        name: { label: "Name", type: "text" },
+        provider: { label: "Provider", type: "text" }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
+        if (!credentials?.email || !credentials?.password) return null;
 
         try {
-          console.log('Authorize - Starting form-based auth with credentials:', {
+          const creds: CredentialsType = {
             email: credentials.email,
+            password: credentials.password,
             name: credentials.name,
-            provider: 'form'
-          });
+            provider: (credentials.provider || 'form') as SignupProvider
+          };
 
-          const response = await fetch(config.API_URL + `/users/auth/login`, {
+          console.log('Authorize - Starting form-based auth with credentials:', creds);
+
+          const response = await fetch(`${config.API_URL}/users/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: credentials.email,
-              password: credentials.password,
-              provider: 'form',
-              name: credentials.name
-            }),
+            body: JSON.stringify(creds),
           });
 
           const data = await response.json();
           console.log('Authorize - API Response:', data);
 
           if (!response.ok) {
-            console.log('Authorize - API request failed:', response.status);
-            return null;
+            throw new Error(data.error || 'Authentication failed');
           }
 
-          // Extract user data from the API response
-          const userData = data.user || data;
-          console.log('Authorize - Extracted user data:', userData);
-          
-          // Extract email from the id_token if not present in userData
-          let email = userData.email;
-          if (!email && response.headers.get('set-cookie')) {
-            const idToken = response.headers.get('set-cookie')?.split('id_token=')[1]?.split(';')[0];
-            if (idToken) {
-              try {
-                const decodedToken = JSON.parse(atob(idToken.split('.')[1]));
-                email = decodedToken.email;
-              } catch (e) {
-                console.error('Failed to decode id_token:', e);
-              }
-            }
-          }
-          
           const user = {
-            id: userData.id || userData._id || userData.sub || email,
-            email: email || userData.email,
-            name: userData.name || credentials.name,
-            provider: 'form',
-            authType: userData.authType || 'existing',
-            accessToken: userData.accessToken || response.headers.get('set-cookie')?.split('access_token=')[1]?.split(';')[0],
-            sessionCookie: response.headers.get('set-cookie')
+            id: data.user?.id || data.userId || creds.email,
+            email: creds.email,
+            name: data.user?.name || data.name || creds.name || '',
+            provider: creds.provider,
+            authType: data.authType,
+            ...(creds.provider === 'google' && { accessToken: data.accessToken })
           };
-          
+
           console.log('Authorize - Returning user object:', user);
           return user;
         } catch (error) {
-          console.error('Authorize - Credentials auth error:', error);
+          console.error('Authorize - Error:', error);
           return null;
         }
       }
+    }),
+
+    Google({
+      clientId: config.GOOGLE_CLIENT_ID!,
+      clientSecret: config.GOOGLE_CLIENT_SECRET!,
     })
   ],
-  secret: config.NEXTAUTH_SECRET,
+
   callbacks: {
     async signIn({ user, account }: { user: User; account: Account | null }) {
       if (account?.provider === "google") {
@@ -134,7 +79,7 @@ export const authOptions: NextAuthOptions = {
           // call api/auth/login, pass in email, password, provider
           const loginData = {
             email: user.email,
-            password: user.password || "",
+            password: "",
             provider: 'google',
             name: user.name
           };
@@ -163,8 +108,6 @@ export const authOptions: NextAuthOptions = {
           return false;
         }
 
-        // generate a password for the new user
-        user.password = generateSecurePassword();
 
         try {
           // Split the name into firstName and lastName
@@ -175,7 +118,6 @@ export const authOptions: NextAuthOptions = {
             firstName,
             lastName,
             email: user.email,
-            password: user.password,
             provider: 'google',
             captchaToken: '' // this is empty because we don't need it for google signup
           };
@@ -208,51 +150,58 @@ export const authOptions: NextAuthOptions = {
       }
       return true;
     },
+    async jwt({ token, user, account }: { token: any; user: any; account: any }) {
+      console.log('JWT Callback - Input:', { token, user, account });
 
+      if (user) {
+        const mappedToken = {
+          ...token,
+          email: user.email,
+          name: user.name,
+          provider: user.provider || 'form',
+          authType: user.authType || 'credentials',
+          accessToken: account?.access_token || user.accessToken || undefined,
+        };
+
+        console.log('JWT Callback - Updated token:', mappedToken);
+        return mappedToken;
+      }
+
+      return token;
+    },
     async session({ session, token }: { session: any; token: any }) {
       console.log('Session Callback - Input:', { session, token });
-      
-      if (session.user) {
-        // Map all fields from token to session
-        session.user.id = token.id;
-        session.user.email = token.email;
-        session.user.name = token.name;
-        session.user.password = token.password;
-        session.user.authType = token.authType;
-        session.user.provider = token.provider;
-        session.user.accessToken = token.accessToken;
-        session.user.sessionCookie = token.sessionCookie;
-      }
-      
-      console.log('Session Callback - Updated session:', session);
-      return session;
-    },
 
-    async jwt({ token, user, account }: { token: any; user?: User; account?: Account | null }) {
-      console.log('JWT Callback - Input:', { token, user, account });
-      
-      if (user) {
-        // Initial sign in - store all user fields in the token
-        token.id = user.id;
-        token.email = user.email;
-        token.name = user.name;
-        token.password = user.password;
-        token.authType = user.authType;
-        token.provider = account?.provider || user.provider;
-        token.accessToken = user.accessToken;
-        token.sessionCookie = user.sessionCookie;
-      } else if (token) {
-        // Subsequent requests - preserve existing token data
-        const existingToken = { ...token };
-        return existingToken;
-      }
-      
-      console.log('JWT Callback - Updated token:', token);
-      return token;
+      // Map token fields to session user
+      const mappedUser = {
+        ...session.user,
+        email: token.email,
+        name: token.name ?? '',
+        provider: token.provider || 'form',
+        authType: token.authType || 'credentials',
+        accessToken: token.accessToken,
+      };
+
+      const updatedSession = {
+        ...session,
+        user: mappedUser
+      };
+
+      console.log('Session Callback - Updated session:', updatedSession);
+      return updatedSession;
     }
   },
-  pages: { signIn: '/login', error: '/login' },
-  session: { strategy: "jwt" }
+  pages: {
+    signIn: '/login',
+    signOut: '/',
+    error: '/error',
+    verifyRequest: '/verify-email',
+  },
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  secret: process.env.NEXTAUTH_SECRET,
 };
 
 const handler = NextAuth(authOptions);
