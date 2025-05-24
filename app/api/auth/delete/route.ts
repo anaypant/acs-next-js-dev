@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { config } from '@/lib/local-api-config';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../[...nextauth]/route';
+import { Session } from 'next-auth';
 
 export async function POST(request: Request) {
   try {
@@ -11,7 +12,7 @@ export async function POST(request: Request) {
     }
 
     // Get current session to verify user
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions) as Session & { user: { provider?: string; accessToken?: string } };
     if (!session || session.user.email !== email) {
       return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
     }
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
         const token = session.user.accessToken; // You'll need to store this in your session
         
         if (token) {
+          console.log("api/auth/delete token:", token);
           await fetch(googleRevokeUrl, {
             method: 'POST',
             headers: {

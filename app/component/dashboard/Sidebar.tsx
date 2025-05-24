@@ -142,13 +142,7 @@ const Sidebar = ({
                 <Settings className="h-4 w-4" />
                 Settings
               </button>
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-[#1e4d36] transition-colors"
-              >
-                <LogOut className="h-4 w-4" />
-                Log Out
-              </button>
+              
             </div>
           )}
         </div>

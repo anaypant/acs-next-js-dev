@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { SignupData } from '@/app/types/auth';
 import { config } from '@/lib/local-api-config';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '../[...nextauth]/route';
-import { sign } from 'jsonwebtoken';
-import { encode } from 'next-auth/jwt';
 
 /**
  * Handles user signup requests
@@ -31,10 +27,10 @@ export async function POST(request: Request) {
             );
         }
 
-        // For form-based signup, require firstName and lastName
-        if (signupData.provider === 'form' && (!signupData.firstName || !signupData.lastName)) {
+        // For form-based signup, require name
+        if (signupData.provider === 'form' && !signupData.name) {
             return NextResponse.json(
-                { error: 'First name and last name are required for form-based signup' },
+                { error: 'Name is required for form-based signup' },
                 { status: 400 }
             );
         }
@@ -55,11 +51,8 @@ export async function POST(request: Request) {
             );
         }
         
-        // Determine the name to use for the backend
-        let name = signupData.name;
-        if (!name && signupData.firstName && signupData.lastName) {
-            name = `${signupData.firstName} ${signupData.lastName}`;
-        }
+        // Use name for the backend
+        const name = signupData.name;
 
         // If name is not provided, return error
         if (!name) {

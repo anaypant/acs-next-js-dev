@@ -69,7 +69,10 @@ const SettingsPage: React.FC = () => {
       goto404('405', 'User not found', router);
       return;
     }
-    console.log('session:', session.user.email);
+    const user = session.user;
+    if (user) {
+      console.log('session:', user.email);
+    }
     // if (emailInput === session?.user?.email) {
     //   setLoading(true);
     //   setError(null);
@@ -152,6 +155,21 @@ const SettingsPage: React.FC = () => {
     router.push('/dashboard');
   };
 
+  const handleLogout = async () => {
+    try {
+      // Clear session_id cookie
+      document.cookie = 'session_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      
+      // Sign out from NextAuth
+      await signOut({ 
+        callbackUrl: '/',
+        redirect: true 
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-green-50 dark:bg-green-900">
       <Container maxWidth="md" sx={{ py: 8 }}>
@@ -190,7 +208,88 @@ const SettingsPage: React.FC = () => {
             Account Settings
           </Typography>
 
+          {/* Session User Information */}
+          <Box
+            sx={{
+              p: { xs: 2, sm: 4 },
+              borderRadius: 2,
+              bgcolor: isDark ? muiTheme.palette.grey[800] : muiTheme.palette.grey[100],
+              border: `1px solid ${isDark ? muiTheme.palette.grey[700] : muiTheme.palette.grey[300]}`,
+              mb: 4
+            }}
+          >
+            <Typography 
+              variant="h6" 
+              sx={{ color: isDark ? '#fff' : '#0A2F1F', mb: 2 }}
+            >
+              Session Information
+            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {session?.user && Object.entries(session.user).map(([key, value]) => (
+                <Box key={key} sx={{ display: 'flex', gap: 2 }}>
+                  <Typography 
+                    variant="body2" 
+                    sx={{ 
+                      color: isDark ? muiTheme.palette.grey[400] : muiTheme.palette.grey[700],
+                      fontWeight: 600,
+                      minWidth: '120px'
+                    }}
+                  >
+                    {key}:
+                  </Typography>
+                  <Typography 
+                    variant="body2" 
+                    sx={{ color: isDark ? '#fff' : '#0A2F1F' }}
+                  >
+                    {String(value)}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+
           <Box display="flex" flexDirection="column" gap={4}>
+            {/* Logout Section */}
+            <Box
+              sx={{
+                p: { xs: 2, sm: 4 },
+                borderRadius: 2,
+                bgcolor: isDark ? muiTheme.palette.grey[800] : muiTheme.palette.grey[100],
+                border: `1px solid ${isDark ? muiTheme.palette.grey[700] : muiTheme.palette.grey[300]}`,
+              }}
+            >
+              <Typography 
+                variant="h6" 
+                sx={{ color: isDark ? '#fff' : '#0A2F1F', mb: 2 }}
+              >
+                Session Management
+              </Typography>
+              <Typography 
+                variant="body1" 
+                sx={{ color: isDark ? muiTheme.palette.grey[400] : muiTheme.palette.grey[700], mb: 3 }}
+              >
+                Sign out of your account on this device.
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={handleLogout}
+                sx={{
+                  bgcolor: isDark ? muiTheme.palette.primary.dark : muiTheme.palette.primary.main,
+                  color: '#fff',
+                  fontWeight: 600,
+                  px: 3,
+                  py: 1.5,
+                  boxShadow: 'none',
+                  borderRadius: 2,
+                  '&:hover': {
+                    bgcolor: isDark ? muiTheme.palette.primary.main : muiTheme.palette.primary.dark,
+                  },
+                }}
+              >
+                Sign Out
+              </Button>
+            </Box>
+
             <Box
               sx={{
                 p: { xs: 2, sm: 4 },
