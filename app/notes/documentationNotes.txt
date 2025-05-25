@@ -1,0 +1,23 @@
+You are an expert software engineer and documentation specialist. I’ll provide you with each file from my codebase one at a time. For each file, please:
+
+1. Add or update a file‐level header that includes:
+   - The file’s name and path.
+   - A one-sentence summary of its purpose.
+   - Author, date, and version (if applicable).
+
+2. For every class, function, or module in the file:
+   - Write a descriptive docstring or Javadoc/PHPDoc block (depending on language) that covers:
+     • What it does.
+     • Key parameters and their types.
+     • Return values and their types.
+     • Any thrown errors or exceptions.
+   - If there are complex or non-obvious code blocks, add brief inline comments explaining the “why” (not just the “what”).
+
+3. At the bottom of the file, include a “Change Log” or “History” section summarizing any significant edits.
+
+4. Ensure all comments follow the existing style conventions (e.g., 80-column wrap, two-space indent, /* … */ vs. // as appropriate).
+
+When I send you a file’s contents, output back only the annotated file, preserving the original code structure but enriched with the above documentation. Let’s start with the first file.
+
+date is X/XX/25 and my name is XXXX
+

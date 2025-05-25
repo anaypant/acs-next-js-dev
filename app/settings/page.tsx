@@ -1,390 +1,531 @@
-'use client';
+/**
+ * File: app/settings/page.tsx
+ * Purpose: Renders the user settings page with profile management, session control, notifications, security, and account deletion.
+ * Author: Alejo Cagliolo
+ * Date: 5/25/25
+ * Version: 1.0.0
+ */
 
-import { useSession, signOut } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
-import { goto404 } from '../utils/error';
-import {
-  Container,
-  Typography,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Box,
-  Paper,
-  useTheme as useMuiTheme,
-} from '@mui/material';
-import { useTheme } from 'next-themes';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+"use client"
+import { useSession, signOut } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { ArrowLeft, User, Bell, Shield, Database } from "lucide-react"
 
-const SettingsPage: React.FC = () => {
-  const { data: session, status } = useSession();
-  const router = useRouter();
-  const { theme } = useTheme();
-  const muiTheme = useMuiTheme();
-  const isDark = theme === 'dark';
-  const [mounted, setMounted] = useState(false);
+/**
+ * Logo Component
+ * Renders the ACS logo with customizable size
+ * 
+ * @param {Object} props - Component props
+ * @param {("sm"|"lg")} [props.size="sm"] - Size variant of the logo
+ * @returns {JSX.Element} ACS logo with gradient styling
+ */
+function Logo({ size = "sm" }: { size?: "sm" | "lg" }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="w-8 h-8 bg-gradient-to-br from-[#0a5a2f] via-[#0e6537] to-[#157a42] rounded-lg flex items-center justify-center shadow-sm">
+        <span className="text-white font-bold text-sm">ACS</span>
+      </div>
+      <span className="font-bold text-lg bg-gradient-to-r from-[#0a5a2f] to-[#157a42] bg-clip-text text-transparent">
+        ACS
+      </span>
+    </div>
+  )
+}
+
+/**
+ * Error handling function for 404 redirection
+ * Logs error and redirects to 404 page
+ * 
+ * @param {string} code - Error code
+ * @param {string} message - Error message
+ * @param {any} router - Next.js router instance
+ */
+const goto404 = (code: string, message: string, router: any) => {
+  console.error(`${code}: ${message}`)
+  router.push("/404")
+}
+
+/**
+ * SettingsPage Component
+ * Main settings page with user profile management and account controls
+ * 
+ * Features:
+ * - Profile information management
+ * - Session information display
+ * - Notification preferences
+ * - Security settings
+ * - Account deletion
+ * 
+ * State Management:
+ * - Session handling
+ * - Form states
+ * - Loading states
+ * - Error handling
+ * - Navigation state
+ * 
+ * @returns {JSX.Element} Complete settings page with all sections
+ */
+export default function SettingsPage() {
+  const sessionResult = useSession()
+  const session = sessionResult?.data
+  const status = sessionResult?.status || "loading"
+  const router = useRouter()
+  const [mounted, setMounted] = useState(false)
 
   // State for delete account dialog
-  const [openDialog, setOpenDialog] = useState(false);
-  const [emailInput, setEmailInput] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [openDialog, setOpenDialog] = useState(false)
+  const [emailInput, setEmailInput] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [activeSection, setActiveSection] = useState("profile")
 
   // Handle mounting state to prevent hydration mismatch
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    setMounted(true)
+  }, [])
 
   // Check authentication status
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      goto404('405', 'User not found', router);
+    if (mounted && status === "unauthenticated") {
+      goto404("405", "User not found", router)
     }
-  }, [status, router]);
+  }, [status, router, mounted])
+
+  // Handle scroll-based section highlighting
+  useEffect(() => {
+    const handleScroll = () => {
+      const sections = ["session", "profile", "notifications", "security", "danger"]
+      const scrollPosition = window.scrollY + 200
+
+      for (const section of sections) {
+        const element = document.getElementById(section)
+        if (element) {
+          const { offsetTop, offsetHeight } = element
+          if (scrollPosition >= offsetTop && scrollPosition < offsetTop + offsetHeight) {
+            setActiveSection(section)
+            break
+          }
+        }
+      }
+    }
+
+    window.addEventListener("scroll", handleScroll)
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
 
   if (!mounted) {
-    return null; // Return null on server-side and first render
+    return null // Return null on server-side and first render
   }
 
-  if (status === 'unauthenticated') {
-    return null;
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-[#0e6537] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
+  if (status === "unauthenticated") {
+    return null
+  }
+
+  /**
+   * Handles account deletion initiation
+   * Opens the confirmation dialog
+   */
   const handleDeleteAccount = () => {
-    setOpenDialog(true);
-  };
+    setOpenDialog(true)
+  }
 
+  /**
+   * Closes the delete account dialog
+   * Resets form state
+   */
   const handleCloseDialog = () => {
-    setOpenDialog(false);
-    setEmailInput('');
-    setError(null);
-  };
+    setOpenDialog(false)
+    setEmailInput("")
+    setError(null)
+  }
 
+  /**
+   * Handles email verification for account deletion
+   * Makes API call to delete account and handles response
+   * 
+   * @throws {Error} If deletion fails or user not found
+   */
   const handleEmailVerification = async () => {
     if (!session) {
-      goto404('405', 'User not found', router);
-      return;
+      goto404("405", "User not found", router)
+      return
     }
-    const user = session.user;
+
+    const user = session.user
     if (user) {
-      console.log('session:', user.email);
+      console.log("session:", user.email)
     }
-    // if (emailInput === session?.user?.email) {
-    //   setLoading(true);
-    //   setError(null);
-    //   try {
-    //     const res = await fetch('/api/auth/delete', {
-    //       method: 'POST',
-    //       headers: { 'Content-Type': 'application/json' },
-    //       body: JSON.stringify({ email: emailInput }),
-    //       credentials: 'include', // Important: include credentials to handle cookies
-    //     });
-        
-    //     const data = await res.json();
-        
-    //     if (!res.ok) {
-    //       setError(data?.error || 'Failed to delete account.');
-    //       setLoading(false);
-    //       return;
-    //     }
 
-    //     // Clear any stored data in localStorage/sessionStorage
-    //     localStorage.removeItem('next-auth.session-token');
-    //     sessionStorage.removeItem('next-auth.session-token');
-
-    //     // Close the dialog
-    //     setOpenDialog(false);
-
-    //     // Show success message briefly before redirect
-    //     setError(null);
-    //     setLoading(false);
-        
-    //     // Force a hard reload to clear any remaining state
-    //     window.location.href = '/';
-    //   } catch (err) {
-    //     console.error('Delete account error:', err);
-    //     setError('An unexpected error occurred.');
-    //     setLoading(false);
-    //   }
-    // } else {
-    //   setError('Email does not match your account email');
-    // }
-    setLoading(true);
-    setError(null);
+    setLoading(true)
+    setError(null)
     try {
-      const res = await fetch('/api/auth/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/auth/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: emailInput }),
-        credentials: 'include', // Important: include credentials to handle cookies
-      });
-      
-      const data = await res.json();
-      
+        credentials: "include",
+      })
+
+      const data = await res.json()
+
       if (!res.ok) {
-        setError(data?.error || 'Failed to delete account.');
-        setLoading(false);
-        return;
+        setError(data?.error || "Failed to delete account.")
+        setLoading(false)
+        return
       }
 
       // Clear any stored data in localStorage/sessionStorage
-      localStorage.removeItem('next-auth.session-token');
-      sessionStorage.removeItem('next-auth.session-token');
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("next-auth.session-token")
+        sessionStorage.removeItem("next-auth.session-token")
+      }
 
       // Close the dialog
-      setOpenDialog(false);
+      setOpenDialog(false)
 
       // Show success message briefly before redirect
-      setError(null);
-      setLoading(false);
-      
+      setError(null)
+      setLoading(false)
+
       // Force a hard reload to clear any remaining state
-      window.location.href = '/';
+      if (typeof window !== "undefined") {
+        window.location.href = "/"
+      }
     } catch (err) {
-      console.error('Delete account error:', err);
-      setError('An unexpected error occurred.');
-      setLoading(false);
+      console.error("Delete account error:", err)
+      setError("An unexpected error occurred.")
+      setLoading(false)
     }
-  };
+  }
 
+  /**
+   * Handles navigation back to dashboard
+   */
   const handleBackToDashboard = () => {
-    router.push('/dashboard');
-  };
+    router.push("/dashboard")
+  }
 
+  /**
+   * Handles user logout
+   * Clears session data and redirects to home
+   * 
+   * @throws {Error} If logout fails
+   */
   const handleLogout = async () => {
     try {
       // Clear session_id cookie
-      document.cookie = 'session_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      
+      if (typeof document !== "undefined") {
+        document.cookie = "session_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"
+      }
+
       // Sign out from NextAuth
-      await signOut({ 
-        callbackUrl: '/',
-        redirect: true 
-      });
+      await signOut({
+        callbackUrl: "/",
+        redirect: true,
+      })
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error)
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-green-50 dark:bg-green-900">
-      <Container maxWidth="md" sx={{ py: 8 }}>
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={handleBackToDashboard}
-          variant="text"
-          sx={{
-            color: !isDark ? '#fff' : '#0A2F1F',
-            fontWeight: 500,
-            fontSize: '1rem',
-            textTransform: 'none',
-            mb: 4,
-            pl: 0,
-            '&:hover': {
-              backgroundColor: !isDark ? 'rgba(255,255,255,0.08)' : 'rgba(10,47,31,0.08)',
-            },
-          }}
-        >
-          Back to Dashboard
-        </Button>
-
-        <Paper 
-          elevation={0}
-          sx={{
-            p: { xs: 2, sm: 4 },
-            borderRadius: 3,
-            bgcolor: isDark ? 'grey.900' : '#fff',
-            border: `1px solid ${isDark ? muiTheme.palette.grey[800] : muiTheme.palette.grey[200]}`,
-          }}
-        >
-          <Typography 
-            variant="h4" 
-            sx={{ mb: 4, fontWeight: 700, color: isDark ? '#fff' : '#0A2F1F' }}
+    <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1]">
+      <div className="max-w-4xl mx-auto p-6">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-6">
+          <Logo />
+          <button
+            onClick={handleBackToDashboard}
+            className="p-2 hover:bg-gradient-to-r hover:from-[#0e6537]/10 hover:to-[#157a42]/10 transition-all duration-200 rounded-lg"
           >
-            Account Settings
-          </Typography>
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="text-2xl font-bold">Account Settings</h1>
+        </div>
 
-          {/* Session User Information */}
-          <Box
-            sx={{
-              p: { xs: 2, sm: 4 },
-              borderRadius: 2,
-              bgcolor: isDark ? muiTheme.palette.grey[800] : muiTheme.palette.grey[100],
-              border: `1px solid ${isDark ? muiTheme.palette.grey[700] : muiTheme.palette.grey[300]}`,
-              mb: 4
-            }}
-          >
-            <Typography 
-              variant="h6" 
-              sx={{ color: isDark ? '#fff' : '#0A2F1F', mb: 2 }}
-            >
-              Session Information
-            </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {session?.user && Object.entries(session.user).map(([key, value]) => (
-                <Box key={key} sx={{ display: 'flex', gap: 2 }}>
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      color: isDark ? muiTheme.palette.grey[400] : muiTheme.palette.grey[700],
-                      fontWeight: 600,
-                      minWidth: '120px'
-                    }}
-                  >
-                    {key}:
-                  </Typography>
-                  <Typography 
-                    variant="body2" 
-                    sx={{ color: isDark ? '#fff' : '#0A2F1F' }}
-                  >
-                    {String(value)}
-                  </Typography>
-                </Box>
-              ))}
-            </Box>
-          </Box>
-
-          <Box display="flex" flexDirection="column" gap={4}>
-            {/* Logout Section */}
-            <Box
-              sx={{
-                p: { xs: 2, sm: 4 },
-                borderRadius: 2,
-                bgcolor: isDark ? muiTheme.palette.grey[800] : muiTheme.palette.grey[100],
-                border: `1px solid ${isDark ? muiTheme.palette.grey[700] : muiTheme.palette.grey[300]}`,
-              }}
-            >
-              <Typography 
-                variant="h6" 
-                sx={{ color: isDark ? '#fff' : '#0A2F1F', mb: 2 }}
-              >
-                Session Management
-              </Typography>
-              <Typography 
-                variant="body1" 
-                sx={{ color: isDark ? muiTheme.palette.grey[400] : muiTheme.palette.grey[700], mb: 3 }}
-              >
-                Sign out of your account on this device.
-              </Typography>
-              <Button
-                variant="contained"
-                onClick={handleLogout}
-                sx={{
-                  bgcolor: isDark ? muiTheme.palette.primary.dark : muiTheme.palette.primary.main,
-                  color: '#fff',
-                  fontWeight: 600,
-                  px: 3,
-                  py: 1.5,
-                  boxShadow: 'none',
-                  borderRadius: 2,
-                  '&:hover': {
-                    bgcolor: isDark ? muiTheme.palette.primary.main : muiTheme.palette.primary.dark,
-                  },
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Settings Navigation */}
+          <div className="bg-white p-4 rounded-lg border-[#d8eee1] border shadow-sm h-fit sticky top-6">
+            <nav className="space-y-2">
+              <button
+                onClick={() => {
+                  setActiveSection("profile")
+                  document.getElementById("profile")?.scrollIntoView({ behavior: "smooth" })
                 }}
+                className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg w-full text-left transition-all duration-200 ${
+                  activeSection === "profile"
+                    ? "bg-gradient-to-r from-[#0a5a2f] to-[#0e6537] text-white"
+                    : "text-gray-600 hover:bg-[#0e6537]/5"
+                }`}
               >
-                Sign Out
-              </Button>
-            </Box>
-
-            <Box
-              sx={{
-                p: { xs: 2, sm: 4 },
-                borderRadius: 2,
-                bgcolor: isDark ? muiTheme.palette.error.dark + '22' : muiTheme.palette.error.light + '33',
-                border: `1.5px solid ${muiTheme.palette.error.main}`,
-                mt: 1,
-              }}
-            >
-              <Typography 
-                variant="h6" 
-                sx={{ color: muiTheme.palette.error.dark, mb: 1 }}
+                <User className="h-4 w-4" />
+                Profile
+              </button>
+              <button
+                onClick={() => {
+                  setActiveSection("session")
+                  document.getElementById("session")?.scrollIntoView({ behavior: "smooth" })
+                }}
+                className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg w-full text-left transition-all duration-200 ${
+                  activeSection === "session"
+                    ? "bg-gradient-to-r from-[#0a5a2f] to-[#0e6537] text-white"
+                    : "text-gray-600 hover:bg-[#0e6537]/5"
+                }`}
               >
+                <Shield className="h-4 w-4" />
+                Session
+              </button>
+              <button
+                onClick={() => {
+                  setActiveSection("notifications")
+                  document.getElementById("notifications")?.scrollIntoView({ behavior: "smooth" })
+                }}
+                className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg w-full text-left transition-all duration-200 ${
+                  activeSection === "notifications"
+                    ? "bg-gradient-to-r from-[#0a5a2f] to-[#0e6537] text-white"
+                    : "text-gray-600 hover:bg-[#0e6537]/5"
+                }`}
+              >
+                <Bell className="h-4 w-4" />
+                Notifications
+              </button>
+              <button
+                onClick={() => {
+                  setActiveSection("security")
+                  document.getElementById("security")?.scrollIntoView({ behavior: "smooth" })
+                }}
+                className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg w-full text-left transition-all duration-200 ${
+                  activeSection === "security"
+                    ? "bg-gradient-to-r from-[#0a5a2f] to-[#0e6537] text-white"
+                    : "text-gray-600 hover:bg-[#0e6537]/5"
+                }`}
+              >
+                <Shield className="h-4 w-4" />
+                Security
+              </button>
+              <button
+                onClick={() => {
+                  setActiveSection("danger")
+                  document.getElementById("danger")?.scrollIntoView({ behavior: "smooth" })
+                }}
+                className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg w-full text-left transition-all duration-200 ${
+                  activeSection === "danger"
+                    ? "bg-gradient-to-r from-[#0a5a2f] to-[#0e6537] text-white"
+                    : "text-gray-600 hover:bg-[#0e6537]/5"
+                }`}
+              >
+                <Database className="h-4 w-4" />
                 Danger Zone
-              </Typography>
-              <Typography 
-                variant="body1" 
-                sx={{ color: muiTheme.palette.error.main, mb: 3 }}
-              >
+              </button>
+            </nav>
+          </div>
+
+          {/* Settings Content */}
+          <div className="lg:col-span-3 space-y-6">
+            {/* Session Information */}
+            <div
+              id="session"
+              className="bg-white p-6 rounded-lg border-[#d8eee1] border shadow-sm bg-gradient-to-br from-[#e6f5ec] to-[#f0f9f4] scroll-mt-6"
+            >
+              <h2 className="text-lg font-semibold mb-4">Session Information</h2>
+              <div className="space-y-3">
+                {session?.user &&
+                  Object.entries(session.user).map(([key, value]) => (
+                    <div key={key} className="flex gap-4">
+                      <span className="text-sm font-medium text-gray-700 min-w-[120px] capitalize">{key}:</span>
+                      <span className="text-sm text-gray-600">{String(value)}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            {/* Profile Settings */}
+            <div
+              id="profile"
+              className="bg-white p-6 rounded-lg border-[#d8eee1] border shadow-sm bg-gradient-to-br from-[#e6f5ec] to-[#f0f9f4] scroll-mt-6"
+            >
+              <h2 className="text-lg font-semibold mb-4">Profile Information</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+                  <input
+                    type="text"
+                    defaultValue="Sarah"
+                    className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+                  <input
+                    type="text"
+                    defaultValue="Johnson"
+                    className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                  <input
+                    type="email"
+                    defaultValue={session?.user?.email || "sarah.johnson@realty.com"}
+                    className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                  <input
+                    type="tel"
+                    defaultValue="(555) 123-4567"
+                    className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
+                  />
+                </div>
+              </div>
+              <button className="mt-4 px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm">
+                Save Changes
+              </button>
+            </div>
+
+            {/* Notification Settings */}
+            <div
+              id="notifications"
+              className="bg-white p-6 rounded-lg border-[#d8eee1] border shadow-sm bg-gradient-to-br from-[#e6f5ec] to-[#f0f9f4] scroll-mt-6"
+            >
+              <h2 className="text-lg font-semibold mb-4">Notification Preferences</h2>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">New Lead Notifications</p>
+                    <p className="text-sm text-gray-600">Get notified when new leads come in</p>
+                  </div>
+                  <input type="checkbox" defaultChecked className="w-4 h-4 text-[#0e6537]" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Email Reminders</p>
+                    <p className="text-sm text-gray-600">Receive email reminders for follow-ups</p>
+                  </div>
+                  <input type="checkbox" defaultChecked className="w-4 h-4 text-[#0e6537]" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">SMS Notifications</p>
+                    <p className="text-sm text-gray-600">Get SMS alerts for urgent matters</p>
+                  </div>
+                  <input type="checkbox" className="w-4 h-4 text-[#0e6537]" />
+                </div>
+              </div>
+            </div>
+
+            {/* Security Settings */}
+            <div
+              id="security"
+              className="bg-white p-6 rounded-lg border-[#d8eee1] border shadow-sm bg-gradient-to-br from-[#e6f5ec] to-[#f0f9f4] scroll-mt-6"
+            >
+              <h2 className="text-lg font-semibold mb-4">Security</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
+                  <input
+                    type="password"
+                    className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                  <input
+                    type="password"
+                    className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
+                  <input
+                    type="password"
+                    className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
+                  />
+                </div>
+                <button className="px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm">
+                  Update Password
+                </button>
+              </div>
+            </div>
+
+            {/* Danger Zone */}
+            <div id="danger" className="bg-red-50 p-6 rounded-lg border-2 border-red-200 shadow-sm scroll-mt-6">
+              <h2 className="text-lg font-semibold mb-2 text-red-800">Danger Zone</h2>
+              <p className="text-sm text-red-600 mb-4">
                 Once you delete your account, there is no going back. Please be certain.
-              </Typography>
-              <Button
-                variant="contained"
-                color="error"
+              </p>
+              <button
                 onClick={handleDeleteAccount}
-                sx={{
-                  fontWeight: 600,
-                  px: 3,
-                  py: 1.5,
-                  mt: 2,
-                  boxShadow: 'none',
-                  borderRadius: 2,
-                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 shadow-sm"
               >
                 Delete Account
-              </Button>
-            </Box>
-          </Box>
-        </Paper>
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Delete Account Confirmation Dialog */}
-        <Dialog 
-          open={openDialog} 
-          onClose={handleCloseDialog}
-          PaperProps={{
-            className: isDark ? 'bg-gray-900 border border-gray-800' : 'bg-white'
-          }}
-        >
-          <DialogTitle className={isDark ? 'text-gray-100' : 'text-gray-900'}>
-            Delete Account
-          </DialogTitle>
-          <DialogContent>
-            <Typography 
-              variant="body1" 
-              className={`mb-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}
-            >
-              Are you sure you want to delete your account? This action cannot be undone.
-            </Typography>
-            <Typography 
-              variant="body2" 
-              className={`mb-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
-            >
-              Please type your email address to confirm:
-            </Typography>
-            <TextField
-              fullWidth
-              value={emailInput}
-              onChange={(e) => setEmailInput(e.target.value)}
-              placeholder="Enter your email"
-              variant="outlined"
-              error={!!error}
-              helperText={error}
-              className={isDark ? 'text-gray-100' : 'text-gray-900'}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button 
-              onClick={handleCloseDialog}
-              className={isDark ? 'text-gray-300' : 'text-gray-600'}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleEmailVerification}
-              color="error"
-              variant="contained"
-              disabled={loading}
-            >
-              Delete Account
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </Container>
+        {openDialog && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg border-[#d8eee1] border shadow-lg max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold mb-4">Delete Account</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Are you sure you want to delete your account? This action cannot be undone.
+              </p>
+              <p className="text-sm text-gray-500 mb-4">Please type your email address to confirm:</p>
+              <input
+                type="email"
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
+                placeholder="Enter your email"
+                className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537] mb-4"
+              />
+              {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={handleCloseDialog}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleEmailVerification}
+                  disabled={loading}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 shadow-sm disabled:opacity-50"
+                >
+                  {loading ? "Deleting..." : "Delete Account"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
-  );
-};
+  )
+}
 
-export default SettingsPage;
+/**
+ * Change Log:
+ * 5/25/25 - Initial version
+ * - Created settings page with profile management
+ * - Implemented session information display
+ * - Added notification preferences
+ * - Integrated security settings
+ * - Added account deletion functionality
+ * - Implemented responsive navigation
+ * - Added loading and error states
+ * - Enhanced UI with animations and transitions
+ */

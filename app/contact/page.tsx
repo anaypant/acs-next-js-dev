@@ -1,3 +1,11 @@
+/**
+ * File: app/contact/page.tsx
+ * Purpose: Renders the contact page with a contact form, team section, and testimonials.
+ * Author: Alejo Cagliolo
+ * Date: 5/25/25
+ * Version: 1.0.0
+ */
+
 "use client"
 
 import React, { useState } from "react"
@@ -5,7 +13,16 @@ import { motion } from "framer-motion"
 import Navbar from "../Navbar"
 import Footer from "../Footer"
 
-// Self-contained form components
+/**
+ * Input Component
+ * A reusable input field component with error handling and styling
+ * 
+ * @param {Object} props - Component props
+ * @param {string} props.className - Additional CSS classes
+ * @param {string} props.error - Error message to display
+ * @param {React.Ref<HTMLInputElement>} ref - Forwarded ref
+ * @returns {JSX.Element} Input field with error handling
+ */
 const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement> & { error?: string }>(
   ({ className, error, ...props }, ref) => {
     return (
@@ -22,6 +39,16 @@ const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLI
 )
 Input.displayName = "Input"
 
+/**
+ * Textarea Component
+ * A reusable textarea component with error handling and styling
+ * 
+ * @param {Object} props - Component props
+ * @param {string} props.className - Additional CSS classes
+ * @param {string} props.error - Error message to display
+ * @param {React.Ref<HTMLTextAreaElement>} ref - Forwarded ref
+ * @returns {JSX.Element} Textarea with error handling
+ */
 const Textarea = React.forwardRef<
   HTMLTextAreaElement,
   React.TextareaHTMLAttributes<HTMLTextAreaElement> & { error?: string }
@@ -39,6 +66,17 @@ const Textarea = React.forwardRef<
 })
 Textarea.displayName = "Textarea"
 
+/**
+ * Button Component
+ * A reusable button component with variants and sizes
+ * 
+ * @param {Object} props - Component props
+ * @param {string} props.className - Additional CSS classes
+ * @param {"default" | "outline"} props.variant - Button style variant
+ * @param {"default" | "sm" | "lg"} props.size - Button size
+ * @param {React.Ref<HTMLButtonElement>} ref - Forwarded ref
+ * @returns {JSX.Element} Styled button
+ */
 const Button = React.forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -64,7 +102,11 @@ const Button = React.forwardRef<
 })
 Button.displayName = "Button"
 
-// Icons
+/**
+ * Icons Collection
+ * A collection of SVG icons used throughout the contact page
+ * Each icon is a React component that accepts standard SVG props
+ */
 const Icons = {
   MapPin: (props: React.SVGProps<SVGSVGElement>) => (
     <svg
@@ -239,7 +281,12 @@ const Icons = {
   ),
 }
 
-// Team section component
+/**
+ * TeamSection Component
+ * Displays team members with their roles and co-founder status
+ * 
+ * @returns {JSX.Element} Team section with member cards
+ */
 function TeamSection() {
   const teamMembers = [
     {
@@ -356,7 +403,12 @@ function TeamSection() {
   )
 }
 
-// Testimonials section component
+/**
+ * TestimonialsSection Component
+ * Displays client testimonials with ratings and quotes
+ * 
+ * @returns {JSX.Element} Testimonials section with client feedback
+ */
 function TestimonialsSection() {
   const testimonials = [
     {
@@ -444,7 +496,12 @@ function TestimonialsSection() {
   )
 }
 
-// Main contact page component
+/**
+ * ContactPage Component
+ * Main contact page component with form handling and validation
+ * 
+ * @returns {JSX.Element} Complete contact page with form, team, and testimonials
+ */
 export default function ContactPage() {
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [formData, setFormData] = useState({
@@ -897,3 +954,13 @@ export default function ContactPage() {
     </div>
   )
 }
+
+/**
+ * Change Log:
+ * 5/25/25 - Initial version
+ * - Created contact page with form validation
+ * - Added team section with member cards
+ * - Implemented testimonials section
+ * - Added reusable form components (Input, Textarea, Button)
+ * - Integrated SVG icons collection
+ */

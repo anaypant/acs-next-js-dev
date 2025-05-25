@@ -1,3 +1,53 @@
+/**
+ * @file app/api/auth/[...nextauth]/route.ts
+ * @description NextAuth.js configuration and route handler for authentication, supporting both credentials and Google OAuth providers.
+ * @author Anay Pant
+ * @date 2025-05-25
+ * @version 1.0.0
+ */
+
+import NextAuth from "next-auth/next";
+import type { NextAuthConfig } from "next-auth/next";
+import Google from "next-auth/providers/google";
+import CredentialsProvider from "next-auth/providers/credentials";
+import { config } from '@/lib/local-api-config';
+import { Credentials as CredentialsType, SignupProvider } from "@/app/types/auth";
+import { Account } from "next-auth";
+import { User } from "next-auth";
+
+/**
+ * NextAuth Configuration Options
+ * 
+ * Defines the authentication configuration including providers, callbacks,
+ * session settings, and custom pages.
+ * 
+ * @type {NextAuthConfig}
+ */
+export const authOptions: NextAuthConfig = {
+  providers: [
+    /**
+     * Credentials Provider Configuration
+     * Handles form-based authentication using email and password
+     */
+    CredentialsProvider({
+      name: "Credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+        name: { label: "Name", type: "text" },
+        provider: { label: "Provider", type: "text" }
+      },
+      /**
+       * Authorizes user credentials against the backend API
+       * 
+       * @param {Object} credentials - User credentials
+       * @param {string} credentials.email - User's email
+       * @param {string} credentials.password - User's password
+       * @param {string} [credentials.name] - User's name
+       * @param {string} [credentials.provider] - Authentication provider
+       * @returns {Promise<Object|null>} User object if authorized, null otherwise
+       */
+      async authorize(credentials) {
 import NextAuth from "next-auth/next";
 import type { NextAuthConfig } from "next-auth/next";
 import Google from "next-auth/providers/google";
