@@ -44,11 +44,11 @@ export const authOptions: NextAuthConfig = {
           }
 
           const user = {
-            id: data.user?.id || data.userId || creds.email,
+            id: data.user?.id || data.id || undefined,
             email: creds.email,
             name: data.user?.name || data.name || creds.name || '',
             provider: creds.provider,
-            authType: data.authType,
+            authType: 'existing',
             ...(creds.provider === 'google' && { accessToken: data.accessToken })
           };
 
@@ -103,6 +103,7 @@ export const authOptions: NextAuthConfig = {
           if (loginResponseData.success) {
             // Set authType in the token
             user.authType = 'existing';
+            user.id = loginResponseData.user.id;
             return true;
           }
           return false;
@@ -151,11 +152,12 @@ export const authOptions: NextAuthConfig = {
       return true;
     },
     async jwt({ token, user, account }: { token: any; user: any; account: any }) {
-      console.log('JWT Callback - Input:', { token, user, account });
+      // console.log('JWT Callback - Input:', { token, user, account });
 
       if (user) {
         const mappedToken = {
           ...token,
+          id: user.id,
           email: user.email,
           name: user.name,
           provider: user.provider || 'form',
@@ -163,18 +165,19 @@ export const authOptions: NextAuthConfig = {
           accessToken: account?.access_token || user.accessToken || undefined,
         };
 
-        console.log('JWT Callback - Updated token:', mappedToken);
+        // console.log('JWT Callback - Updated token:', mappedToken);
         return mappedToken;
       }
 
       return token;
     },
     async session({ session, token }: { session: any; token: any }) {
-      console.log('Session Callback - Input:', { session, token });
+      // console.log('Session Callback - Input:', { session, token });
 
       // Map token fields to session user
       const mappedUser = {
         ...session.user,
+        id: token.id,
         email: token.email,
         name: token.name ?? '',
         provider: token.provider || 'form',
@@ -187,7 +190,7 @@ export const authOptions: NextAuthConfig = {
         user: mappedUser
       };
 
-      console.log('Session Callback - Updated session:', updatedSession);
+      // console.log('Session Callback - Updated session:', updatedSession);
       return updatedSession;
     }
   },

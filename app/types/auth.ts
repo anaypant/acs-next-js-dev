@@ -12,6 +12,7 @@ declare module "next-auth" {
   }
   
   interface User extends DefaultUser {
+    id: string;
     email: string;
     name: string;
     authType: 'new' | 'existing';
@@ -48,7 +49,7 @@ export interface SignupResponse {
     success: boolean;
     message: string;
     data: {
-        userId: string;
+        id: string;
         email: string;
         name: string;
     };
