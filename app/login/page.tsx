@@ -1,3 +1,11 @@
+/**
+ * File: app/login/page.tsx
+ * Purpose: Renders the login page with email/password and Google authentication options.
+ * Author: Anay Pant
+ * Date: 5/25/25
+ * Version: 1.0.0
+ */
+
 "use client"
 
 import type React from "react"
@@ -9,6 +17,22 @@ import { CircularProgress } from "@mui/material"
 import { signIn } from "next-auth/react"
 import { handleAuthError, validateAuthForm } from "../utils/auth"
 
+/**
+ * LoginPage Component
+ * Client-side login page with email/password and Google authentication
+ * 
+ * Features:
+ * - Email/password authentication
+ * - Google OAuth integration
+ * - Form validation
+ * - Error handling
+ * - Loading states
+ * - Remember me functionality
+ * - Password recovery link
+ * - Sign up redirection
+ * 
+ * @returns {JSX.Element} Complete login page with authentication options
+ */
 const LoginPage = () => {
   const router = useRouter()
   const [formData, setFormData] = useState({
@@ -18,6 +42,10 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  /**
+   * Handles input field changes
+   * @param {React.ChangeEvent<HTMLInputElement>} e - Input change event
+   */
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({
@@ -26,6 +54,11 @@ const LoginPage = () => {
     }))
   }
 
+  /**
+   * Handles Google OAuth login
+   * Sets auth type and redirects to Google authentication
+   * @throws {Error} If authentication fails
+   */
   const handleGoogleLogin = async () => {
     try {
       setLoading(true);
@@ -48,6 +81,12 @@ const LoginPage = () => {
     }
   };
 
+  /**
+   * Handles form submission for email/password login
+   * Validates form data and creates NextAuth session
+   * @param {React.FormEvent} e - Form submission event
+   * @throws {Error} If validation or authentication fails
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -225,3 +264,15 @@ const LoginPage = () => {
 }
 
 export default LoginPage
+
+/**
+ * Change Log:
+ * 5/25/25 - Initial version
+ * - Created login page with email/password authentication
+ * - Implemented Google OAuth integration
+ * - Added form validation and error handling
+ * - Integrated loading states and animations
+ * - Added remember me functionality
+ * - Implemented password recovery link
+ * - Added sign up redirection
+ */

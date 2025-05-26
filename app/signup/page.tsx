@@ -1,3 +1,11 @@
+/**
+ * File: app/signup/page.tsx
+ * Purpose: Renders the signup page with email/password and Google authentication, including reCAPTCHA verification and password validation.
+ * Author: Anay Pant
+ * Date: 5/25/25
+ * Version: 1.0.0
+ */
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -21,7 +29,10 @@ import { SignupData } from '../types/auth';
 import Script from 'next/script';
 import { handleAuthError, validateAuthForm, clearAuthData, setAuthType } from '../utils/auth';
 
-// Adding recaptcha to the whole window
+/**
+ * Global type declaration for reCAPTCHA
+ * Extends Window interface to include reCAPTCHA functionality
+ */
 declare global {
   interface Window {
     grecaptcha: {
@@ -31,21 +42,44 @@ declare global {
   }
 }
 
+/**
+ * SignupPage Component
+ * Client-side signup page with email/password and Google authentication
+ * 
+ * Features:
+ * - Email/password registration
+ * - Google OAuth integration
+ * - reCAPTCHA verification
+ * - Password strength validation
+ * - Form validation
+ * - Error handling
+ * - Loading states
+ * - Responsive design
+ * 
+ * State Management:
+ * - Form data
+ * - Loading states
+ * - Error states
+ * - reCAPTCHA states
+ * - Password visibility
+ * - Validation states
+ * 
+ * @returns {JSX.Element} Complete signup page with authentication options
+ */
 const SignupPage: React.FC = () => {
-  const router = useRouter(); // Navigation to other pages
-  const [loading, setLoading] = useState(false); // If the page is loading (not interactive)
-  const [error, setError] = useState<string | null>(null); // Showing Error Messages
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [recaptchaReady, setRecaptchaReady] = useState(false);
   const [recaptchaLoading, setRecaptchaLoading] = useState(true);
   const [recaptchaError, setRecaptchaError] = useState<string | null>(null);
-  const [formData, setFormData] = useState<SignupData>({ // Email Form Data
+  const [formData, setFormData] = useState<SignupData>({
     name: '',
-    email: '', // Initialize as empty string
+    email: '',
     password: '',
     provider: 'form',
     captchaToken: '',
   });
-  // Form Fields
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -53,7 +87,10 @@ const SignupPage: React.FC = () => {
   const [showCaptchaError, setShowCaptchaError] = useState(false);
   const [showUserExistsError, setShowUserExistsError] = useState(false);
 
-  // Password Checks
+  /**
+   * Password validation rules
+   * Array of checks for password strength requirements
+   */
   const passwordChecks = [
     { label: 'At least 8 characters', test: (pw: string) => pw.length >= 8 },
     { label: 'One uppercase letter', test: (pw: string) => /[A-Z]/.test(pw) },
@@ -61,7 +98,11 @@ const SignupPage: React.FC = () => {
     { label: 'One symbol', test: (pw: string) => /[^A-Za-z0-9\s]/.test(pw) },
   ];
 
-  // Getting the recaptcha token
+  /**
+   * Retrieves reCAPTCHA token for form submission
+   * @returns {Promise<string|null>} reCAPTCHA token or null if failed
+   * @throws {Error} If reCAPTCHA is not ready or fails to execute
+   */
   const getCaptchaToken = async (): Promise<string | null> => {
     if (!recaptchaReady || !window.grecaptcha) {
       setRecaptchaError('reCAPTCHA is not ready. Please refresh the page and try again.');
@@ -85,7 +126,12 @@ const SignupPage: React.FC = () => {
     }
   };
 
-
+  /**
+   * Handles form input changes
+   * Updates form state based on input field changes
+   * 
+   * @param {React.ChangeEvent<HTMLInputElement>} e - Input change event
+   */
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     if (name === "confirmPassword") {
@@ -98,6 +144,13 @@ const SignupPage: React.FC = () => {
     }
   }
 
+  /**
+   * Handles form submission
+   * Validates form data, checks password requirements, and creates account
+   * 
+   * @param {React.FormEvent} e - Form submission event
+   * @throws {Error} If validation fails or account creation fails
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -190,6 +243,12 @@ const SignupPage: React.FC = () => {
     }
   };
 
+  /**
+   * Handles Google OAuth signup
+   * Initiates Google authentication flow
+   * 
+   * @throws {Error} If Google authentication fails
+   */
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
@@ -216,7 +275,10 @@ const SignupPage: React.FC = () => {
     }
   };
 
-  // Initialize reCAPTCHA
+  /**
+   * Initializes reCAPTCHA
+   * Loads reCAPTCHA script and sets up ready state
+   */
   useEffect(() => {
     let mounted = true;
     let timeoutId: NodeJS.Timeout | undefined;
@@ -288,7 +350,7 @@ const SignupPage: React.FC = () => {
 
   return (
     <>
-
+      {/* Global styles for the signup page */}
       <style jsx global>{`
         /* Base font definitions */
         :root {
@@ -526,7 +588,6 @@ const SignupPage: React.FC = () => {
           background-color: #ffebee !important;
         }
       `}</style>
-
 
       <div className="min-h-screen flex">
         {/* Left Side - Animated Background with Logo */}
@@ -805,3 +866,16 @@ const SignupPage: React.FC = () => {
 };
 
 export default SignupPage;
+
+/**
+ * Change Log:
+ * 5/25/25 - Initial version
+ * - Created signup page with email/password registration
+ * - Implemented Google OAuth integration
+ * - Added reCAPTCHA verification
+ * - Integrated password strength validation
+ * - Added form validation and error handling
+ * - Implemented loading states and animations
+ * - Enhanced UI with responsive design
+ * - Added user feedback and notifications
+ */

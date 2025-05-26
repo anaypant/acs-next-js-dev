@@ -1,16 +1,34 @@
+/**
+ * File: app/case-studies/page.tsx
+ * Purpose: Renders the case studies page showcasing real estate success stories and AI-powered solutions.
+ * Author: Alejo Cagliolo
+ * Date: 5/25/25
+ * Version: 1.0.0
+ */
+
 "use client"
 
 import type React from "react"
 import Image from "next/image"
 import { Star, TrendingUp, BarChart2, MessageSquare, Users, ArrowUpRight, CheckCircle } from "lucide-react"
-//import Navbar from "../Navbar"
-//import Footer from "../Footer"
 import { useEffect, useState } from "react"
 import "aos/dist/aos.css"
 import AOS from "aos"
 import Navbar from "../Navbar"
 import Footer from "../Footer"
 
+/**
+ * CaseStudiesPage Component
+ * 
+ * A comprehensive landing page showcasing real estate case studies and AI solutions.
+ * Features include:
+ * - Interactive case study filtering
+ * - Animated statistics and testimonials
+ * - Featured success stories
+ * - AI tools showcase
+ * 
+ * @returns {JSX.Element} The rendered case studies page
+ */
 export default function CaseStudiesPage() {
   const [activeFilter, setActiveFilter] = useState("All")
 
@@ -54,11 +72,22 @@ export default function CaseStudiesPage() {
     },
   ]
 
-  // Filter case studies based on active filter
+  /**
+   * Filters case studies based on the selected category
+   * @type {Array} Array of filtered case study objects
+   */
   const filteredCaseStudies =
     activeFilter === "All" ? caseStudies : caseStudies.filter((study) => study.category === activeFilter)
 
-  // Custom components
+  /**
+   * Card Component
+   * A reusable card container with consistent styling
+   * 
+   * @param {Object} props - Component props
+   * @param {string} props.className - Additional CSS classes
+   * @param {React.ReactNode} props.children - Child elements
+   * @returns {JSX.Element} Card container
+   */
   const Card = ({ className = "", children, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
     return (
       <div className={`bg-white rounded-lg border border-gray-100 ${className}`} {...props}>
@@ -67,6 +96,15 @@ export default function CaseStudiesPage() {
     )
   }
 
+  /**
+   * CardContent Component
+   * Container for card content with consistent padding
+   * 
+   * @param {Object} props - Component props
+   * @param {string} props.className - Additional CSS classes
+   * @param {React.ReactNode} props.children - Child elements
+   * @returns {JSX.Element} Card content container
+   */
   const CardContent = ({ className = "", children, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
     return (
       <div className={`p-6 ${className}`} {...props}>
@@ -75,6 +113,15 @@ export default function CaseStudiesPage() {
     )
   }
 
+  /**
+   * Avatar Component
+   * Circular container for user avatars
+   * 
+   * @param {Object} props - Component props
+   * @param {string} props.className - Additional CSS classes
+   * @param {React.ReactNode} props.children - Child elements
+   * @returns {JSX.Element} Avatar container
+   */
   const Avatar = ({ className = "", children, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
     return (
       <div className={`relative inline-block rounded-full overflow-hidden ${className}`} {...props}>
@@ -83,6 +130,16 @@ export default function CaseStudiesPage() {
     )
   }
 
+  /**
+   * AvatarImage Component
+   * Image component for avatars with fallback support
+   * 
+   * @param {Object} props - Component props
+   * @param {string} props.src - Image source URL
+   * @param {string} props.alt - Image alt text
+   * @param {string} props.className - Additional CSS classes
+   * @returns {JSX.Element} Avatar image
+   */
   const AvatarImage = ({ src, alt, className = "", ...props }: { src: string; alt: string; className?: string }) => {
     return (
       <Image
@@ -96,6 +153,15 @@ export default function CaseStudiesPage() {
     )
   }
 
+  /**
+   * AvatarFallback Component
+   * Fallback display for avatars when image fails to load
+   * 
+   * @param {Object} props - Component props
+   * @param {string} props.className - Additional CSS classes
+   * @param {React.ReactNode} props.children - Child elements
+   * @returns {JSX.Element} Avatar fallback display
+   */
   const AvatarFallback = ({ className = "", children, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
     return (
       <div
@@ -107,6 +173,15 @@ export default function CaseStudiesPage() {
     )
   }
 
+  /**
+   * Badge Component
+   * Small label component for categories and tags
+   * 
+   * @param {Object} props - Component props
+   * @param {string} props.className - Additional CSS classes
+   * @param {React.ReactNode} props.children - Child elements
+   * @returns {JSX.Element} Badge element
+   */
   const Badge = ({ className = "", children, ...props }: React.HTMLAttributes<HTMLSpanElement>) => {
     return (
       <span
@@ -118,6 +193,15 @@ export default function CaseStudiesPage() {
     )
   }
 
+  /**
+   * Button Component
+   * Reusable button with consistent styling
+   * 
+   * @param {Object} props - Component props
+   * @param {string} props.className - Additional CSS classes
+   * @param {React.ReactNode} props.children - Child elements
+   * @returns {JSX.Element} Button element
+   */
   const Button = ({ className = "", children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => {
     return (
       <button
@@ -129,6 +213,7 @@ export default function CaseStudiesPage() {
     )
   }
 
+  // Initialize AOS (Animate On Scroll) library
   useEffect(() => {
     AOS.init({
       duration: 800,
@@ -655,3 +740,13 @@ export default function CaseStudiesPage() {
     </div>
   )
 }
+
+/**
+ * Change Log:
+ * 5/25/25 - Initial version
+ * - Created case studies page with interactive filtering
+ * - Added animated statistics and testimonials
+ * - Implemented featured success stories section
+ * - Added AI tools showcase
+ * - Integrated AOS for scroll animations
+ */

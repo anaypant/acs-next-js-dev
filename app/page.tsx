@@ -1,7 +1,9 @@
 /**
- * @author Alejo Cagliolo
- * @date 2025-05-19
- * @description Main Home page component serving as the root layout with Navbar, HomePage content, and Footer components using Next.js client-side rendering.
+ * File: app/page.tsx
+ * Purpose: Serves as the root layout component that integrates Navbar, HomePage content, and Footer with session management.
+ * Author: Alejo Cagliolo
+ * Date: 5/25/25
+ * Version: 1.0.0
  */
 
 'use client';
@@ -11,12 +13,27 @@ import Navbar from './Navbar';
 import Footer from './Footer';
 import { useSession } from 'next-auth/react';
 
-// Import Layout Components
-
-
+/**
+ * Home Component
+ * Root layout component that manages the application's main structure and session state
+ * 
+ * Features:
+ * - Session management and monitoring
+ * - Layout composition (Navbar, HomePage, Footer)
+ * - Client-side rendering
+ * - Session debugging and logging
+ * 
+ * State Management:
+ * - Tracks authentication session
+ * - Monitors session status
+ * 
+ * @returns {JSX.Element} Complete application layout with session-aware components
+ */
 export default function Home() {
+    // Get session data and status from NextAuth
     const { data: session, status } = useSession();
 
+    // Debug logging for session information
     useEffect(() => {
         console.log('Homepage Session Information:');
         console.log('-------------------');
@@ -43,6 +60,16 @@ export default function Home() {
         </div>
     );
 }
+
+/**
+ * Change Log:
+ * 5/25/25 - Initial version
+ * - Created root layout component
+ * - Implemented session management
+ * - Added component composition
+ * - Integrated debugging logs
+ * - Set up client-side rendering
+ */
 
 
 
