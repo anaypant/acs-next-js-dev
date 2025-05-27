@@ -40,8 +40,8 @@ export async function POST(request: Request) {
         // Compose user fields for the frontend
         const user = {
             id: data.id || data._id || data.email,
-            email: data.email,
-            name: data.name,
+            email: email,
+            name: name,
             authType: data.authType || 'existing',
             provider: provider || 'form',
             accessToken: data.accessToken

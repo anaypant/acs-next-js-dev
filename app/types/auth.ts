@@ -1,17 +1,25 @@
 // types/auth.ts
 
-import { DefaultSession, DefaultUser } from "next-auth"
-import { JWT as DefaultJWT } from "next-auth/jwt"
+import "next-auth"
+import type { JWT } from "next-auth/jwt"
 
 export type SignupProvider = 'google' | 'form';
 
 // Extend the built-in types with our custom fields
 declare module "next-auth" {
-  interface Session extends DefaultSession {
-    user: User
+  interface Session {
+    user: {
+      id: string;
+      email: string;
+      name: string;
+      authType: 'new' | 'existing';
+      provider: SignupProvider;
+      accessToken?: string;
+    }
   }
-  
-  interface User extends DefaultUser {
+
+  interface User {
+    id: string;
     email: string;
     name: string;
     authType: 'new' | 'existing';
@@ -21,10 +29,27 @@ declare module "next-auth" {
 }
 
 declare module "next-auth/jwt" {
-  // Instead of extending CustomJWT directly, merge the properties
   interface JWT {
+    id: string;
+    email: string;
+    name: string;
     authType: 'new' | 'existing';
     provider: SignupProvider;
+    accessToken?: string;
+  }
+}
+
+// This is the key part - we're extending the default session type
+declare module "next-auth/react" {
+  interface Session {
+    user: {
+      id: string;
+      email: string;
+      name: string;
+      authType: 'new' | 'existing';
+      provider: SignupProvider;
+      accessToken?: string;
+    }
   }
 }
 
@@ -48,7 +73,7 @@ export interface SignupResponse {
     success: boolean;
     message: string;
     data: {
-        userId: string;
+        id: string;
         email: string;
         name: string;
     };

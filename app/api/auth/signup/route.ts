@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { SignupData } from '@/app/types/auth';
 import { config } from '@/lib/local-api-config';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Handles user signup requests
@@ -62,13 +63,16 @@ export async function POST(request: Request) {
             );
         }
         
+        // generate a uuid for the user
+        const id = uuidv4();
+        
         // Forward the request to AWS API Gateway
         const response = await fetch(config.API_URL + '/users/auth/create', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ ...signupData, name }),
+            body: JSON.stringify({ ...signupData, name, id }),
         });
 
         const data = await response.json();
@@ -93,7 +97,7 @@ export async function POST(request: Request) {
                 ...data,
                 session: {
                     user: {
-                        id: data.id,
+                        id: id,
                         email: data.email,
                         name: name,
                         provider: signupData.provider,

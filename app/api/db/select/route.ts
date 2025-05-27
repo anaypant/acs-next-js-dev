@@ -4,10 +4,10 @@ import { config } from '@/lib/local-api-config';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { table_name, key_name, key_value } = body;
+    const { table_name, index_name, key_name, key_value } = body;
 
     // Validate required parameters
-    if (!table_name || !key_name || !key_value) {
+    if (!table_name || !index_name || !key_name || !key_value) {
       return NextResponse.json(
         { error: 'Missing required parameters' },
         { status: 400 }
@@ -25,6 +25,7 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         table_name,
+        index_name,
         key_name,
         key_value,
       }),
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error in db/select route:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error from db/select route' },
       { status: 500 }
     );
   }

@@ -10,7 +10,12 @@
 import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, PanelLeft } from "lucide-react"
 import type React from "react"
 import { SidebarProvider, AppSidebar, SidebarTrigger, SidebarInset } from "./Sidebar"
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { goto404 } from "../utils/error"
 
+// Extend the default session user type
 /**
  * Page Component
  * Main dashboard component that displays the lead conversion pipeline and analytics
@@ -25,6 +30,56 @@ import { SidebarProvider, AppSidebar, SidebarTrigger, SidebarInset } from "./Sid
  * @returns {JSX.Element} Complete dashboard view with sidebar integration
  */
 export default function Page() {
+  const { data: session, status } = useSession() 
+  const router = useRouter()
+  const [mounted, setMounted] = useState(false) 
+
+  // Handle mounting state to prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Fetch threads when session is available
+  useEffect(() => {
+    const fetchThreads = async () => {
+      if (!mounted || !session?.user?.id) return;
+
+      try {
+        const response = await fetch('/api/lcp/get_all_threads', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: session.user.id
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch threads');
+        }
+
+        const data = await response.json();
+        console.log('Threads data:', data);
+
+        // Log id
+        console.log('Session user ID:', session?.user?.id);
+      } catch (error) {
+        console.error('Error fetching threads:', error);
+      }
+    };
+
+    fetchThreads();
+  }, [session, mounted]);
+
+  // Check authentication status
+  useEffect(() => {
+    if (!mounted) return;
+    if (status === "unauthenticated") {
+      goto404("401", "No active session found", router)
+    }
+  }, [status, session, router, mounted])
+
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -41,7 +96,7 @@ export default function Page() {
         <div className="flex flex-1 flex-col gap-6 p-6 bg-gradient-to-b from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1] min-h-screen">
           {/* Welcome section with personalized greeting */}
           <div className="bg-gradient-to-b from-[#0a5a2f] via-[#0e6537] to-[#157a42] p-8 rounded-lg">
-            <h1 style={{ color: 'white' }} className="text-3xl font-bold mb-2">Welcome, Sarah Johnson</h1>
+            <h1 style={{ color: 'white' }} className="text-3xl font-bold mb-2">Welcome, {session?.user?.name || 'User'}</h1>
             <p style={{ color: 'white' }}>Ready to convert more leads today? You have 12 active conversations waiting.</p>
           </div>
 

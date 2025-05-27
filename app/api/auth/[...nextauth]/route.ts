@@ -1,13 +1,11 @@
 import NextAuth from "next-auth/next";
-import type { NextAuthConfig } from "next-auth/next";
 import Google from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { config } from '@/lib/local-api-config';
 import { Credentials as CredentialsType, SignupProvider } from "@/app/types/auth";
-import { Account } from "next-auth";
 import { User } from "next-auth";
 
-export const authOptions: NextAuthConfig = {
+export const authOptions = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -44,11 +42,11 @@ export const authOptions: NextAuthConfig = {
           }
 
           const user = {
-            id: data.user?.id || data.userId || creds.email,
+            id: data.user?.id || data.id || undefined,
             email: creds.email,
             name: data.user?.name || data.name || creds.name || '',
             provider: creds.provider,
-            authType: data.authType,
+            authType: 'existing',
             ...(creds.provider === 'google' && { accessToken: data.accessToken })
           };
 
@@ -68,7 +66,7 @@ export const authOptions: NextAuthConfig = {
   ],
 
   callbacks: {
-    async signIn({ user, account }: { user: User; account: Account | null }) {
+    async signIn({ user, account }: { user: User; account: any}) {
       if (account?.provider === "google") {
         // Store the access token
         user.accessToken = account.access_token;
@@ -103,6 +101,7 @@ export const authOptions: NextAuthConfig = {
           if (loginResponseData.success) {
             // Set authType in the token
             user.authType = 'existing';
+            user.id = loginResponseData.user.id;
             return true;
           }
           return false;
@@ -151,11 +150,12 @@ export const authOptions: NextAuthConfig = {
       return true;
     },
     async jwt({ token, user, account }: { token: any; user: any; account: any }) {
-      console.log('JWT Callback - Input:', { token, user, account });
+      // console.log('JWT Callback - Input:', { token, user, account });
 
       if (user) {
         const mappedToken = {
           ...token,
+          id: user.id,
           email: user.email,
           name: user.name,
           provider: user.provider || 'form',
@@ -163,18 +163,19 @@ export const authOptions: NextAuthConfig = {
           accessToken: account?.access_token || user.accessToken || undefined,
         };
 
-        console.log('JWT Callback - Updated token:', mappedToken);
+        // console.log('JWT Callback - Updated token:', mappedToken);
         return mappedToken;
       }
 
       return token;
     },
     async session({ session, token }: { session: any; token: any }) {
-      console.log('Session Callback - Input:', { session, token });
+      // console.log('Session Callback - Input:', { session, token });
 
       // Map token fields to session user
       const mappedUser = {
         ...session.user,
+        id: token.id,
         email: token.email,
         name: token.name ?? '',
         provider: token.provider || 'form',
@@ -187,7 +188,7 @@ export const authOptions: NextAuthConfig = {
         user: mappedUser
       };
 
-      console.log('Session Callback - Updated session:', updatedSession);
+      // console.log('Session Callback - Updated session:', updatedSession);
       return updatedSession;
     }
   },
@@ -204,5 +205,5 @@ export const authOptions: NextAuthConfig = {
   secret: process.env.NEXTAUTH_SECRET,
 };
 
-const handler = NextAuth(authOptions);
+const handler = NextAuth(authOptions as any);
 export { handler as GET, handler as POST };
