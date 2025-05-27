@@ -47,7 +47,7 @@
     "@tailwindcss/postcss": "^4",
     "@types/aos": "^3.0.7",
     "@types/jwk-to-pem": "^2.0.3",
-    "@types/next-auth": "^3.15.0",
+    "@types/next-auth": "^4.24.11",
     "@types/node": "^20",
     "@types/openid-client": "^3.7.0",
     "@types/react": "^19",

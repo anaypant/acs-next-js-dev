@@ -1,13 +1,11 @@
 import NextAuth from "next-auth/next";
-import type { NextAuthConfig } from "next-auth/next";
 import Google from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { config } from '@/lib/local-api-config';
 import { Credentials as CredentialsType, SignupProvider } from "@/app/types/auth";
-import { Account } from "next-auth";
 import { User } from "next-auth";
 
-export const authOptions: NextAuthConfig = {
+export const authOptions = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -68,7 +66,7 @@ export const authOptions: NextAuthConfig = {
   ],
 
   callbacks: {
-    async signIn({ user, account }: { user: User; account: Account | null }) {
+    async signIn({ user, account }: { user: User; account: any}) {
       if (account?.provider === "google") {
         // Store the access token
         user.accessToken = account.access_token;
@@ -207,5 +205,5 @@ export const authOptions: NextAuthConfig = {
   secret: process.env.NEXTAUTH_SECRET,
 };
 
-const handler = NextAuth(authOptions);
+const handler = NextAuth(authOptions as any);
 export { handler as GET, handler as POST };
