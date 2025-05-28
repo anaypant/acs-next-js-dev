@@ -33,6 +33,8 @@ export default function Page() {
   const { data: session, status } = useSession() 
   const router = useRouter()
   const [mounted, setMounted] = useState(false) 
+  const [conversations, setConversations] = useState<any[]>([])
+  const [loadingConversations, setLoadingConversations] = useState(true)
 
   // Handle mounting state to prevent hydration mismatch
   useEffect(() => {
@@ -71,6 +73,25 @@ export default function Page() {
 
     fetchThreads();
   }, [session, mounted]);
+
+  // Fetch conversations for the user
+  useEffect(() => {
+    if (!mounted) return;
+    const fetchConversations = async () => {
+      setLoadingConversations(true)
+      try {
+        const response = await fetch('/api/conversations')
+        if (!response.ok) throw new Error('Failed to fetch conversations')
+        const data = await response.json()
+        setConversations(Array.isArray(data) ? data : [])
+      } catch (err) {
+        setConversations([])
+      } finally {
+        setLoadingConversations(false)
+      }
+    }
+    fetchConversations()
+  }, [mounted])
 
   // Check authentication status
   useEffect(() => {
@@ -170,82 +191,41 @@ export default function Page() {
                   Load All Conversations
                 </button>
               </div>
-
-              {/* Conversation list with AI scoring */}
               <div className="space-y-4">
-                {[
-                  {
-                    name: "Michael Rodriguez",
-                    aiScore: 85,
-                    summary: "Interested in 3BR homes in downtown area, budget $450K-500K",
-                    time: "2 hours ago",
-                    status: "hot",
-                  },
-                  {
-                    name: "Jennifer Chen",
-                    aiScore: 72,
-                    summary: "First-time buyer, looking for condos under $300K",
-                    time: "4 hours ago",
-                    status: "warm",
-                  },
-                  {
-                    name: "David Thompson",
-                    aiScore: 91,
-                    summary: "Ready to buy, pre-approved for $600K, wants modern homes",
-                    time: "6 hours ago",
-                    status: "hot",
-                  },
-                  {
-                    name: "Lisa Park",
-                    aiScore: 58,
-                    summary: "Exploring options, interested in suburban family homes",
-                    time: "1 day ago",
-                    status: "cold",
-                  },
-                  {
-                    name: "Robert Wilson",
-                    aiScore: 79,
-                    summary: "Investment property seeker, looking for rental potential",
-                    time: "1 day ago",
-                    status: "warm",
-                  },
-                ].map((conversation, index) => (
-                  <div
-                    key={index}
-                    className="flex items-start gap-4 p-4 border border-[#0e6537]/20 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                    onClick={() => (window.location.href = `/dashboard/conversations/${index + 1}`)}
-                  >
-                    {/* Avatar with initials */}
-                    <div className="w-10 h-10 bg-[#0e6537]/10 rounded-full flex items-center justify-center">
-                      <span className="text-sm font-semibold text-[#0e6537]">
-                        {conversation.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </span>
-                    </div>
-                    {/* Conversation details */}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-medium text-sm">{conversation.name}</p>
-                        {/* AI score badge with conditional styling */}
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            conversation.aiScore >= 80
-                              ? "bg-[#e6f5ec] text-[#002417]"
-                              : conversation.aiScore >= 60
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          AI Score: {conversation.aiScore}
+                {loadingConversations ? (
+                  <div>Loading conversations...</div>
+                ) : conversations.length === 0 ? (
+                  <div>No conversations found.</div>
+                ) : (
+                  conversations.map((conv, idx) => (
+                    <div
+                      key={conv.conversation_id || idx}
+                      className="flex items-start gap-4 p-4 border border-[#0e6537]/20 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                      onClick={() => (window.location.href = `/dashboard/conversations/${conv.conversation_id}`)}
+                    >
+                      {/* Avatar with initials */}
+                      <div className="w-10 h-10 bg-[#0e6537]/10 rounded-full flex items-center justify-center">
+                        <span className="text-sm font-semibold text-[#0e6537]">
+                          {(conv.sender || conv.receiver || 'C').split(' ').map((n: string) => n[0]).join('')}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-600 mb-1">{conversation.summary}</p>
-                      <p className="text-xs text-gray-400">{conversation.time}</p>
+                      {/* Conversation details */}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-medium text-sm">{conv.sender || conv.receiver || 'Unknown'}</p>
+                          {/* AI score badge placeholder */}
+                          {conv.ev_score && (
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-[#e6f5ec] text-[#002417]">
+                              EV: {conv.ev_score}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-600 mb-1">{conv.subject || 'No subject'}</p>
+                        <p className="text-xs text-gray-400">{conv.timestamp ? new Date(conv.timestamp).toLocaleString() : ''}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
 
