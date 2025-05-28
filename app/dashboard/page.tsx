@@ -74,25 +74,6 @@ export default function Page() {
     fetchThreads();
   }, [session, mounted]);
 
-  // Fetch conversations for the user
-  useEffect(() => {
-    if (!mounted) return;
-    const fetchConversations = async () => {
-      setLoadingConversations(true)
-      try {
-        const response = await fetch('/api/conversations')
-        if (!response.ok) throw new Error('Failed to fetch conversations')
-        const data = await response.json()
-        setConversations(Array.isArray(data) ? data : [])
-      } catch (err) {
-        setConversations([])
-      } finally {
-        setLoadingConversations(false)
-      }
-    }
-    fetchConversations()
-  }, [mounted])
-
   // Check authentication status
   useEffect(() => {
     if (!mounted) return;
