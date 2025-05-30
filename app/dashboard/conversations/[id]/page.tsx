@@ -43,6 +43,76 @@ function getEvColor(score: number) {
 }
 
 /**
+ * LoadingSkeleton Component
+ * Displays an animated loading state for the conversation detail page
+ */
+function LoadingSkeleton() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1]">
+      <div className="max-w-6xl mx-auto p-6">
+        {/* Header skeleton */}
+        <div className="flex items-center gap-4 mb-6">
+          <Logo />
+          <div className="h-8 w-8 bg-white/50 rounded-lg animate-pulse" />
+          <div className="h-8 w-64 bg-white/50 rounded-lg animate-pulse" />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Messages section skeleton */}
+          <div className="lg:col-span-2 bg-white rounded-lg border shadow-sm flex flex-col relative h-[50rem]">
+            <div className="p-4 border-b">
+              <div className="h-6 w-24 bg-gray-200 rounded animate-pulse" />
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-4 p-4">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex justify-start">
+                  <div className="flex items-center gap-2">
+                    <div className="h-16 w-64 bg-gray-100 rounded-lg animate-pulse" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Sidebar skeleton */}
+          <div className="space-y-6">
+            {/* Client info skeleton */}
+            <div className="bg-white p-6 rounded-lg border shadow-sm">
+              <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-4" />
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse" />
+                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+                </div>
+                <div className="h-4 w-40 bg-gray-200 rounded animate-pulse" />
+                <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+              </div>
+            </div>
+
+            {/* AI Summary skeleton */}
+            <div className="bg-white p-6 rounded-lg border shadow-sm">
+              <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-4" />
+              <div className="space-y-2">
+                <div className="h-4 w-full bg-gray-200 rounded animate-pulse" />
+                <div className="h-4 w-3/4 bg-gray-200 rounded animate-pulse" />
+                <div className="h-4 w-2/3 bg-gray-200 rounded animate-pulse" />
+              </div>
+            </div>
+
+            {/* EV Score Threshold skeleton */}
+            <div className="bg-white p-6 rounded-lg border shadow-sm">
+              <div className="h-6 w-40 bg-gray-200 rounded animate-pulse mb-4" />
+              <div className="h-4 w-full bg-gray-200 rounded animate-pulse mb-4" />
+              <div className="h-8 w-32 bg-gray-200 rounded animate-pulse" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
  * ConversationDetailPage Component
  * Main conversation detail component displaying message history and client information
  * 
@@ -95,6 +165,10 @@ export default function ConversationDetailPage() {
   // Sort messages by timestamp ascending
   const sortedMessages = [...messages].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
+  if (loading) {
+    return <LoadingSkeleton />
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1]">
       <div className="max-w-6xl mx-auto p-6">
@@ -118,7 +192,15 @@ export default function ConversationDetailPage() {
             </div>
             <div className="flex-1 overflow-y-auto space-y-4 p-4 pb-20">
               {loading ? (
-                <div>Loading...</div>
+                <div className="space-y-4">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="flex justify-start">
+                      <div className="flex items-center gap-2">
+                        <div className="h-16 w-64 bg-gray-100 rounded-lg animate-pulse" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : sortedMessages.length === 0 ? (
                 <div>No messages found.</div>
               ) : (
