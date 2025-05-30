@@ -83,6 +83,9 @@ dependencies:
   react:
     specifier: ^19.0.0
     version: 19.1.0
+  react-circular-progressbar:
+    specifier: ^2.2.0
+    version: 2.2.0(react@19.1.0)
   react-dom:
     specifier: ^19.0.0
     version: 19.1.0(react@19.1.0)
@@ -6018,6 +6021,14 @@ packages:
     dependencies:
       hoist-non-react-statics: 3.3.2
       prop-types: 15.8.1
+      react: 19.1.0
+    dev: false
+
+  /react-circular-progressbar@2.2.0(react@19.1.0):
+    resolution: {integrity: sha512-cgyqEHOzB0nWMZjKfWN3MfSa1LV3OatcDjPz68lchXQUEiBD5O1WsAtoVK4/DSL0B4USR//cTdok4zCBkq8X5g==}
+    peerDependencies:
+      react: '>=0.14.0'
+    dependencies:
       react: 19.1.0
     dev: false
 

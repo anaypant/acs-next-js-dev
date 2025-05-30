@@ -7,8 +7,12 @@
  */
 
 "use client"
-import { ArrowLeft, Phone, Mail, Calendar, MapPin } from "lucide-react"
+import { ArrowLeft, Phone, Mail, Calendar, MapPin, Flag } from "lucide-react"
 import { useParams } from "next/navigation"
+import { useEffect, useState } from "react"
+import type { Thread } from "@/app/types/lcp"
+import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
+import 'react-circular-progressbar/dist/styles.css';
 
 /**
  * Logo Component
@@ -31,6 +35,13 @@ function Logo({ size = "sm" }: { size?: "sm" | "lg" }) {
   )
 }
 
+// Utility to get a color for the EV score (red-yellow-green gradient)
+function getEvColor(score: number) {
+  if (score <= 39) return '#ef4444'; // red-500
+  if (score <= 69) return '#facc15'; // yellow-400
+  return '#22c55e'; // green-500
+}
+
 /**
  * ConversationDetailPage Component
  * Main conversation detail component displaying message history and client information
@@ -44,62 +55,45 @@ function Logo({ size = "sm" }: { size?: "sm" | "lg" }) {
  * @returns {JSX.Element} Complete conversation detail view
  */
 export default function ConversationDetailPage() {
-  // Get conversation ID from URL parameters
   const params = useParams()
-  const conversationId = params.id
+  const conversationId = params.id as string
+  const [thread, setThread] = useState<Thread | null>(null)
+  const [messages, setMessages] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [threshold, setThreshold] = useState<number | null>(null)
+  const [updatingThreshold, setUpdatingThreshold] = useState(false)
 
-  // Mock conversation data structure
-  const conversation = {
-    id: conversationId,
-    name: "Michael Rodriguez",
-    email: "michael.rodriguez@email.com",
-    phone: "(555) 123-4567",
-    aiScore: 85,
-    summary: "Interested in 3BR homes in downtown area, budget $450K-500K",
-    preferredTypes: ["Condo", "Townhouse"],
-    budget: "$450K-500K",
-    location: "Downtown Area",
-    timeline: "Ready to buy within 3 months",
-    messages: [
-      {
-        id: 1,
-        sender: "client",
-        message: "Hi! I'm looking for a 3-bedroom home in the downtown area. My budget is around $450K to $500K.",
-        timestamp: "2024-01-15 09:00 AM",
-        date: "Today",
-      },
-      {
-        id: 2,
-        sender: "agent",
-        message:
-          "Hello Michael! I'd be happy to help you find the perfect home. Based on your criteria, I have several great options in the downtown area. Are you interested in condos, townhouses, or single-family homes?",
-        timestamp: "2024-01-15 09:15 AM",
-        date: "Today",
-      },
-      {
-        id: 3,
-        sender: "client",
-        message: "I'm open to both condos and townhouses. Modern finishes would be a plus!",
-        timestamp: "2024-01-15 09:30 AM",
-        date: "Today",
-      },
-      {
-        id: 4,
-        sender: "agent",
-        message:
-          "Perfect! I have 3 properties that match your criteria perfectly. I'll send you the listings shortly. Would you be available for viewings this weekend?",
-        timestamp: "2024-01-15 10:00 AM",
-        date: "Today",
-      },
-      {
-        id: 5,
-        sender: "client",
-        message: "Thanks for the listings! Can we schedule a viewing for the downtown condo?",
-        timestamp: "2024-01-15 02:00 PM",
-        date: "Today",
-      },
-    ],
-  }
+  useEffect(() => {
+    const fetchThread = async () => {
+      setLoading(true)
+      const res = await fetch("/api/lcp/getThreadById", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation_id: conversationId }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setThread(data.data.thread)
+        setMessages(data.data.messages)
+        setThreshold(typeof data.data.thread.lcp_flag_threshold === 'number' ? data.data.thread.lcp_flag_threshold : Number(data.data.thread.lcp_flag_threshold) || 0)
+        console.log('thread', data.data.thread)
+        console.log('messages', data.data.messages)
+      }
+      setLoading(false)
+    }
+    fetchThread()
+  }, [conversationId])
+
+  // Find client email from the first inbound message or thread
+  const clientEmail =
+    messages.find((msg) => msg.type === "inbound-email")?.sender ||
+    thread?.associated_account ||
+    "Client"
+
+  const leadName = thread?.source_name || clientEmail;
+
+  // Sort messages by timestamp ascending
+  const sortedMessages = [...messages].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1]">
@@ -113,49 +107,91 @@ export default function ConversationDetailPage() {
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <h1 className="text-2xl font-bold">Conversation with {conversation.name}</h1>
+          <h1 className="text-2xl font-bold">Conversation with {leadName}</h1>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Messages section with chat interface */}
-          <div className="lg:col-span-2 bg-white rounded-lg border shadow-sm">
+          <div className="lg:col-span-2 bg-white rounded-lg border shadow-sm flex flex-col relative h-[50rem]">
             <div className="p-4 border-b">
               <h2 className="text-lg font-semibold">Messages</h2>
             </div>
-            {/* Message history display */}
-            <div className="p-4 h-96 overflow-y-auto space-y-4">
-              {conversation.messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.sender === "agent" ? "justify-end" : "justify-start"}`}
-                >
+            <div className="flex-1 overflow-y-auto space-y-4 p-4 pb-20">
+              {loading ? (
+                <div>Loading...</div>
+              ) : sortedMessages.length === 0 ? (
+                <div>No messages found.</div>
+              ) : (
+                sortedMessages.map((msg) => (
                   <div
-                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                      message.sender === "agent"
-                        ? "bg-gradient-to-br from-[#0e6537] to-[#157a42] text-white"
-                        : "bg-gray-100 text-gray-800"
+                    key={msg.response_id}
+                    className={`flex ${
+                      msg.type === "outbound-email"
+                        ? "justify-end"
+                        : "justify-start"
                     }`}
                   >
-                    <p className="text-sm">{message.message}</p>
-                    <p className={`text-xs mt-1 ${message.sender === "agent" ? "text-green-50" : "text-gray-500"}`}>
-                      {message.timestamp}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                          msg.type === "outbound-email"
+                            ? "bg-gradient-to-br from-[#0e6537] to-[#157a42] text-white"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {/* Only show subject if you want, otherwise just body */}
+                        {/* {msg.subject && <div className="text-xs font-bold mb-1">{msg.subject}</div>} */}
+                        <p className="text-sm whitespace-pre-line">{msg.body}</p>
+                        <p
+                          className={`text-xs ${
+                            msg.type === "outbound-email"
+                              ? "mt-4 text-green-50"
+                              : "mt-1 text-gray-500"
+                          }`}
+                        >
+                          {msg.type === "inbound-email"
+                            ? clientEmail
+                            : "You"}
+                          <span className="ml-2 text-gray-400">
+                            {msg.timestamp
+                              ? new Date(msg.timestamp).toLocaleString()
+                              : ""}
+                          </span>
+                        </p>
+                      </div>
+                      {/* EV Score Circular Progress for inbound-email */}
+                      {msg.type === "inbound-email" && typeof msg.ev_score === 'string' && Number(msg.ev_score) >= 0 && Number(msg.ev_score) <= 100 && (
+                        <div className="ml-2 flex items-center" style={{ width: 32, height: 32 }} title={`EV Score: ${msg.ev_score}`}>
+                          <CircularProgressbar
+                            value={Number(msg.ev_score)}
+                            maxValue={100}
+                            text={`${msg.ev_score}`}
+                            strokeWidth={10}
+                            styles={buildStyles({
+                              pathColor: getEvColor(Number(msg.ev_score)),
+                              trailColor: '#e5e7eb',
+                              textColor: getEvColor(Number(msg.ev_score)),
+                              textSize: '28px',
+                              pathTransitionDuration: 0.5,
+                            })}
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
-            {/* Message input section */}
-            <div className="p-4 border-t">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Type your message..."
-                  className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0e6537]"
-                />
-                <button className="px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm">
-                  Send
-                </button>
-              </div>
+            {/* Floating Message input section, now only under left column */}
+            <div className="absolute left-0 right-0 bottom-0 z-20 bg-white border-t border-gray-200 p-4 flex gap-2 " style={{boxShadow: '0 -2px 8px rgba(0,0,0,0.03)'}}>
+              <input
+                type="text"
+                placeholder="Type your message..."
+                className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0e6537]"
+              />
+              <button className="px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm">
+                Send
+              </button>
             </div>
           </div>
 
@@ -170,79 +206,119 @@ export default function ConversationDetailPage() {
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-[#0e6537]/10 rounded-full flex items-center justify-center">
                     <span className="text-sm font-semibold text-[#0e6537]">
-                      {conversation.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
+                      {leadName[0]?.toUpperCase()}
                     </span>
                   </div>
                   <div>
-                    <p className="font-medium">{conversation.name}</p>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        conversation.aiScore >= 80
-                          ? "bg-[#0e6537]/20 text-[#002417]"
-                          : conversation.aiScore >= 60
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      AI Score: {conversation.aiScore}
-                    </span>
+                    <p className="font-medium">{leadName}</p>
                   </div>
                 </div>
 
                 {/* Contact details */}
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <Mail className="h-4 w-4" />
-                  {conversation.email}
+                  {clientEmail}
                 </div>
 
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Phone className="h-4 w-4" />
-                  {conversation.phone}
-                </div>
-
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <MapPin className="h-4 w-4" />
-                  {conversation.location}
-                </div>
-              </div>
-            </div>
-
-            {/* AI Summary panel */}
-            <div className="bg-white p-6 rounded-lg border shadow-sm">
-              <h3 className="text-lg font-semibold mb-4">AI Summary</h3>
-              <p className="text-sm text-gray-600 mb-4">{conversation.summary}</p>
-
-              <div className="space-y-3">
-                {/* Budget information */}
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Budget Range</p>
-                  <p className="text-sm text-gray-600">{conversation.budget}</p>
-                </div>
-
-                {/* Property preferences */}
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Preferred Property Types</p>
-                  <div className="flex gap-1 mt-1">
-                    {conversation.preferredTypes.map((type, index) => (
-                      <span key={index} className="px-2 py-1 bg-[#e6f5ec] text-[#002417] text-xs rounded">
-                        {type}
-                      </span>
-                    ))}
+                {thread?.phone && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Phone className="h-4 w-4" />
+                    {thread.phone}
                   </div>
-                </div>
+                )}
 
-                {/* Timeline information */}
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Timeline</p>
-                  <p className="text-sm text-gray-600">{conversation.timeline}</p>
-                </div>
+                {thread?.location && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <MapPin className="h-4 w-4" />
+                    {thread.location}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Quick Actions panel */}
+            {/* Thread AI Summary from thread attributes */}
+            {thread && (
+              (() => {
+                const aiSummary = thread.ai_summary?.trim();
+                const budgetRange = thread.budget_range?.trim();
+                const propertyTypes = thread.preferred_property_types?.trim();
+                const timeline = thread.timeline?.trim();
+                const isEmpty = [aiSummary, budgetRange, propertyTypes, timeline].every(
+                  (val) => !val || val === 'UNKNOWN'
+                );
+                if (isEmpty) return null;
+                return (
+                  <div className="bg-white p-6 rounded-lg border shadow-sm">
+                    <h3 className="text-lg font-semibold mb-2">Thread AI Summary</h3>
+                    {aiSummary && aiSummary !== 'UNKNOWN' && (
+                      <div className="mb-2 text-gray-700"><span className="font-medium">AI Summary:</span> {aiSummary}</div>
+                    )}
+                    {budgetRange && budgetRange !== 'UNKNOWN' && (
+                      <div className="mb-2 text-gray-700"><span className="font-medium">Budget Range:</span> {budgetRange}</div>
+                    )}
+                    {propertyTypes && propertyTypes !== 'UNKNOWN' && (
+                      <div className="mb-2 text-gray-700"><span className="font-medium">Preferred Property Types:</span> {propertyTypes}</div>
+                    )}
+                    {timeline && timeline !== 'UNKNOWN' && (
+                      <div className="mb-2 text-gray-700"><span className="font-medium">Timeline:</span> {timeline}</div>
+                    )}
+                  </div>
+                );
+              })()
+            )}
+
+            {/* EV Score Threshold Widget */}
+            <div className="bg-white p-6 rounded-lg border shadow-sm mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Flag className="w-5 h-5 text-red-600" />
+                <span className="font-semibold text-gray-700">EV Score Threshold</span>
+              </div>
+              <p className="text-sm text-gray-600 mb-2">
+                This number is the threshold to <span className="font-semibold text-red-600">flag</span> a thread as ready for review. If a conversation's EV score exceeds this value, it will be flagged for your attention.
+              </p>
+              <div className="flex items-center gap-4 mb-2">
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={threshold ?? 0}
+                  onChange={e => setThreshold(Number(e.target.value))}
+                  className="w-40 accent-red-600"
+                  disabled={updatingThreshold}
+                />
+                <span className="font-mono text-lg text-red-700">{threshold}</span>
+              </div>
+              <button
+                className="px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm disabled:opacity-50"
+                disabled={updatingThreshold || threshold === thread?.lcp_flag_threshold}
+                onClick={async () => {
+                  if (!thread) return;
+                  setUpdatingThreshold(true);
+                  try {
+                    const res = await fetch('/api/db/update', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        table_name: 'Threads',
+                        key_name: 'conversation_id',
+                        key_value: thread.conversation_id,
+                        update_data: { lcp_flag_threshold: String(threshold) }
+                      })
+                    });
+                    if (res.ok) {
+                      // Update thread in state
+                      setThread((prev: any) => ({ ...prev, lcp_flag_threshold: threshold }));
+                    }
+                  } finally {
+                    setUpdatingThreshold(false);
+                  }
+                }}
+              >
+                {updatingThreshold ? 'Applying...' : 'Apply'}
+              </button>
+            </div>
+
+            {/* Quick Actions panel
             <div className="bg-white p-6 rounded-lg border shadow-sm">
               <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
               <div className="space-y-2">
@@ -259,7 +335,7 @@ export default function ConversationDetailPage() {
                   Call Client
                 </button>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

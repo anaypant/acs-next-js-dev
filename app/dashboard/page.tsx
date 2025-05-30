@@ -7,13 +7,15 @@
  */
 
 "use client"
-import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, PanelLeft } from "lucide-react"
+import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, PanelLeft, Bell, CheckCircle, XCircle, Flag } from "lucide-react"
 import type React from "react"
 import { SidebarProvider, AppSidebar, SidebarTrigger, SidebarInset } from "./Sidebar"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { goto404 } from "../utils/error"
+import type { Thread, Message } from "../types/lcp"
+import type { Session } from "next-auth"
 
 // Extend the default session user type
 /**
@@ -30,16 +32,103 @@ import { goto404 } from "../utils/error"
  * @returns {JSX.Element} Complete dashboard view with sidebar integration
  */
 export default function Page() {
-  const { data: session, status } = useSession() 
+  const { data: session, status } = useSession() as { data: Session | null, status: string }
   const router = useRouter()
   const [mounted, setMounted] = useState(false) 
-  const [conversations, setConversations] = useState<any[]>([])
+  const [conversations, setConversations] = useState<Thread[]>([])
+  const [rawThreads, setRawThreads] = useState<any[]>([])
   const [loadingConversations, setLoadingConversations] = useState(true)
+  const [updatingLcp, setUpdatingLcp] = useState<string | null>(null)
+  const [updatingRead, setUpdatingRead] = useState<string | null>(null)
 
   // Handle mounting state to prevent hydration mismatch
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Function to handle marking thread as read
+  const handleMarkAsRead = async (conversationId: string) => {
+    if (!session?.user?.id) return;
+    
+    try {
+      setUpdatingRead(conversationId);
+      
+      const response = await fetch('/api/db/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          table_name: 'Threads',
+          key_name: 'conversation_id',
+          key_value: conversationId,
+          update_data: {
+            read: true
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to mark thread as read');
+      }
+
+      // Update local state after successful API call
+      setConversations(prev => prev.map(conv => 
+        conv.conversation_id === conversationId 
+          ? { ...conv, read: true }
+          : conv
+      ));
+
+      // Navigate to the conversation
+      window.location.href = `/dashboard/conversations/${conversationId}`;
+    } catch (error) {
+      console.error('Error marking thread as read:', error);
+      // Navigate anyway even if the update fails
+      window.location.href = `/dashboard/conversations/${conversationId}`;
+    } finally {
+      setUpdatingRead(null);
+    }
+  };
+
+  // Function to handle LCP toggle
+  const handleLcpToggle = async (conversationId: string, currentStatus: boolean) => {
+    if (!session?.user?.id) return;
+    
+    try {
+      setUpdatingLcp(conversationId);
+      
+      const response = await fetch('/api/db/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          table_name: 'Threads',
+          key_name: 'conversation_id',
+          key_value: conversationId,
+          update_data: {
+            lcp_enabled: !currentStatus
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update LCP status');
+      }
+
+      // Update local state after successful API call
+      setConversations(prev => prev.map(conv => 
+        conv.conversation_id === conversationId 
+          ? { ...conv, lcp_enabled: !currentStatus }
+          : conv
+      ));
+    } catch (error) {
+      console.error('Error updating LCP status:', error);
+      // Optionally show an error message to the user
+    } finally {
+      setUpdatingLcp(null);
+    }
+  };
 
   // Fetch threads when session is available
   useEffect(() => {
@@ -64,10 +153,35 @@ export default function Page() {
         const data = await response.json();
         console.log('Threads data:', data);
 
+        // Map threads to Thread type and set as conversations
+        if (Array.isArray(data.data)) {
+          setConversations(
+            data.data.map((item: any) => ({
+              conversation_id: item.thread?.conversation_id || '',
+              associated_account: item.thread?.associated_account || '',
+              lcp_enabled: item.thread?.lcp_enabled === true || item.thread?.lcp_enabled === 'true',
+              read: item.thread?.read === true || item.thread?.read === 'true',
+              source: item.thread?.source || '',
+              source_name: item.thread?.source_name || '',
+              lcp_flag_threshold: typeof item.thread?.lcp_flag_threshold === 'number' ? item.thread.lcp_flag_threshold : Number(item.thread?.lcp_flag_threshold) || 0,
+              ai_summary: item.thread?.ai_summary || '',
+              budget_range: item.thread?.budget_range || '',
+              preferred_property_types: item.thread?.preferred_property_types || '',
+              timeline: item.thread?.timeline || '',
+            }))
+          )
+          setRawThreads(data.data)
+        } else {
+          setConversations([])
+          setRawThreads([])
+        }
+
         // Log id
         console.log('Session user ID:', session?.user?.id);
       } catch (error) {
         console.error('Error fetching threads:', error);
+      } finally {
+        setLoadingConversations(false);
       }
     };
 
@@ -178,34 +292,89 @@ export default function Page() {
                 ) : conversations.length === 0 ? (
                   <div>No conversations found.</div>
                 ) : (
-                  conversations.map((conv, idx) => (
-                    <div
-                      key={conv.conversation_id || idx}
-                      className="flex items-start gap-4 p-4 border border-[#0e6537]/20 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                      onClick={() => (window.location.href = `/dashboard/conversations/${conv.conversation_id}`)}
-                    >
-                      {/* Avatar with initials */}
-                      <div className="w-10 h-10 bg-[#0e6537]/10 rounded-full flex items-center justify-center">
-                        <span className="text-sm font-semibold text-[#0e6537]">
-                          {(conv.sender || conv.receiver || 'C').split(' ').map((n: string) => n[0]).join('')}
-                        </span>
-                      </div>
-                      {/* Conversation details */}
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-medium text-sm">{conv.sender || conv.receiver || 'Unknown'}</p>
-                          {/* AI score badge placeholder */}
-                          {conv.ev_score && (
-                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-[#e6f5ec] text-[#002417]">
-                              EV: {conv.ev_score}
-                            </span>
-                          )}
+                  conversations.map((conv, idx) => {
+                    // All messages for this thread
+                    const messages: Message[] = rawThreads?.[idx]?.messages || [];
+                    // Find the most recent message with a valid ev_score (0-100)
+                    const evMessage = messages
+                      .filter(msg => {
+                        const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
+                        return typeof score === 'number' && !isNaN(score) && score >= 0 && score <= 100;
+                      })
+                      .reduce((latest, msg) => {
+                        if (!latest) return msg;
+                        return new Date(msg.timestamp) > new Date(latest.timestamp) ? msg : latest;
+                      }, undefined as Message | undefined);
+                    const ev_score = evMessage && typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage?.ev_score ?? -1;
+                    // Find the latest message for display (if available)
+                    const latestMessage: Message | undefined = messages[0] || undefined;
+                    // Determine badge color
+                    let evColor = 'bg-gray-200 text-gray-700';
+                    if (ev_score >= 0 && ev_score <= 39) evColor = 'bg-red-100 text-red-800';
+                    else if (ev_score >= 40 && ev_score <= 69) evColor = 'bg-yellow-100 text-yellow-800';
+                    else if (ev_score >= 70 && ev_score <= 100) evColor = 'bg-green-100 text-green-800';
+                    return (
+                      <div
+                        key={conv.conversation_id || idx}
+                        className="flex items-start gap-4 p-4 border border-[#0e6537]/20 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors relative"
+                        onClick={() => handleMarkAsRead(conv.conversation_id)}
+                      >
+                        {/* Unread alert badge */}
+                        {!conv.read && !updatingRead && (
+                          <span className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full font-semibold shadow-md z-10">
+                            <Bell className="w-4 h-4" /> Unread
+                          </span>
+                        )}
+                        {/* Avatar with initials */}
+                        <div className="w-10 h-10 bg-[#0e6537]/10 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-semibold text-[#0e6537]">
+                            {(latestMessage?.sender || latestMessage?.receiver || 'C').split(' ').map((n: string) => n[0]).join('')}
+                          </span>
                         </div>
-                        <p className="text-xs text-gray-600 mb-1">{conv.subject || 'No subject'}</p>
-                        <p className="text-xs text-gray-400">{conv.timestamp ? new Date(conv.timestamp).toLocaleString() : ''}</p>
+                        {/* Conversation details */}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium text-sm">{conv.source_name || latestMessage?.sender || latestMessage?.receiver || 'Unknown'}</p>
+                            {/* EV score badge */}
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${evColor}`} title="Engagement Value (0=bad, 100=good)">
+                              EV: {ev_score >= 0 ? ev_score : 'N/A'}
+                            </span>
+                            {/* Flag indicator if EV score > threshold */}
+                            {ev_score > conv.lcp_flag_threshold && (
+                              <span className="ml-2 flex items-center gap-1 text-red-600 font-bold" title="Flagged for review">
+                                <Flag className="w-4 h-4" /> Flagged
+                              </span>
+                            )}
+                            {/* LCP toggle button */}
+                            <button
+                              className={`ml-2 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition-colors duration-200 shadow-sm
+                                ${conv.lcp_enabled ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}
+                                ${updatingLcp === conv.conversation_id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              onClick={e => { 
+                                e.stopPropagation(); 
+                                handleLcpToggle(conv.conversation_id, conv.lcp_enabled);
+                              }}
+                              disabled={updatingLcp === conv.conversation_id}
+                              title={conv.lcp_enabled ? 'Disable LCP' : 'Enable LCP'}
+                            >
+                              {updatingLcp === conv.conversation_id ? (
+                                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                              ) : conv.lcp_enabled ? (
+                                <CheckCircle className="w-4 h-4" />
+                              ) : (
+                                <XCircle className="w-4 h-4" />
+                              )}
+                              {conv.lcp_enabled ? 'LCP On' : 'LCP Off'}
+                            </button>
+                          </div>
+                          <p className="text-xs text-gray-600 mb-1">{latestMessage?.subject || 'No subject'}</p>
+                          {/* Placeholder for summary */}
+                          <p className="text-xs text-gray-500 italic mb-1">Summary: <span className="not-italic text-gray-700">{conv.ai_summary}</span></p>
+                          <p className="text-xs text-gray-400">{latestMessage?.timestamp ? new Date(latestMessage.timestamp).toLocaleString() : ''}</p>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    )
+                  })
                 )}
               </div>
             </div>
