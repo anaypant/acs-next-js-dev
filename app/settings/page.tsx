@@ -10,7 +10,9 @@
 import { useSession, signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
-import { ArrowLeft, User, Bell, Shield, Database } from "lucide-react"
+import { ArrowLeft, User, Bell, Shield, Database, Mail } from "lucide-react"
+import type { Session } from "next-auth"
+import type { SignupProvider } from "@/app/types/auth"
 
 /**
  * Logo Component
@@ -68,7 +70,16 @@ const goto404 = (code: string, message: string, router: any) => {
  */
 export default function SettingsPage() {
   const sessionResult = useSession()
-  const session = sessionResult?.data
+  const session = sessionResult?.data as (Session & {
+    user: {
+      id: string
+      email: string
+      name: string
+      authType: 'new' | 'existing'
+      provider: SignupProvider
+      accessToken?: string
+    }
+  }) | null
   const status = sessionResult?.status || "loading"
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
@@ -79,6 +90,234 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [activeSection, setActiveSection] = useState("profile")
+
+  // Profile form state
+  const [profileForm, setProfileForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: ""
+  })
+  const [profileLoading, setProfileLoading] = useState(false)
+  const [profileError, setProfileError] = useState<string | null>(null)
+  const [profileSuccess, setProfileSuccess] = useState(false)
+
+  // Email signature state
+  const [signatureForm, setSignatureForm] = useState({
+    email_signature: ""
+  })
+  const [signatureLoading, setSignatureLoading] = useState(false)
+  const [signatureError, setSignatureError] = useState<string | null>(null)
+  const [signatureSuccess, setSignatureSuccess] = useState(false)
+
+  // Debug log for signature form state changes
+  useEffect(() => {
+    console.log('Signature form state updated:', signatureForm);
+  }, [signatureForm]);
+
+  // Initialize profile form with session data
+  useEffect(() => {
+    if (session?.user) {
+      const nameParts = session.user.name?.split(' ') || ['', '']
+      setProfileForm({
+        firstName: nameParts[0] || '',
+        lastName: nameParts.slice(1).join(' ') || '',
+        email: session.user.email || '',
+        phone: '' // Phone will need to be fetched from database if needed
+      })
+    }
+  }, [session])
+
+  // Initialize signature form with session data
+  useEffect(() => {
+    const fetchSignature = async () => {
+      // Wait for session to be loaded and authenticated
+      if (status === "loading" || !session?.user?.id) {
+        return;
+      }
+
+      try {
+        setSignatureLoading(true);
+        const requestBody = {
+          table_name: 'Users',
+          index_name: 'id-index',
+          key_name: 'id',
+          key_value: session.user.id,
+        };
+
+        const response = await fetch('/api/db/select', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+          credentials: 'include',
+        });
+
+        const responseText = await response.text();
+        if (!response.ok) {
+          throw new Error(`Failed to fetch signature: ${response.status} ${responseText}`);
+        }
+
+        let data;
+        try {
+          data = JSON.parse(responseText);
+        } catch (parseError) {
+          throw new Error('Invalid response format from API');
+        }
+
+        // Check if data.items is an array and has items
+        if (Array.isArray(data.items) && data.items.length > 0) {
+          const signature = data.items[0].email_signature;
+          setSignatureForm({ email_signature: signature || '' });
+        } else {
+          setSignatureForm({ email_signature: '' });
+        }
+      } catch (err) {
+        setSignatureError(err instanceof Error ? err.message : 'Failed to fetch signature');
+      } finally {
+        setSignatureLoading(false);
+      }
+    };
+
+    fetchSignature();
+  }, [session?.user?.id, status]);
+
+  // Handle profile form changes
+  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setProfileForm(prev => ({
+      ...prev,
+      [name]: value
+    }))
+    setProfileError(null)
+    setProfileSuccess(false)
+  }
+
+  // Handle profile update
+  const handleProfileUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!session?.user?.id) return
+
+    setProfileLoading(true)
+    setProfileError(null)
+    setProfileSuccess(false)
+
+    try {
+      // First update the database
+      const response = await fetch('/api/db/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          table_name: 'Users',
+          key_name: 'id',
+          key_value: session.user.id,
+          update_data: {
+            name: `${profileForm.firstName} ${profileForm.lastName}`.trim(),
+            email: profileForm.email,
+            phone: profileForm.phone || null,
+            updated_at: new Date().toISOString()
+          }
+        }),
+        credentials: 'include',
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update profile')
+      }
+
+      // If database update was successful, update the NextAuth session
+      const result = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user: {
+            ...session.user,
+            name: `${profileForm.firstName} ${profileForm.lastName}`.trim(),
+            email: profileForm.email
+          }
+        })
+      })
+
+      if (!result.ok) {
+        throw new Error('Failed to update session')
+      }
+
+      // Update the session in the client
+      await sessionResult.update({
+        ...session,
+        user: {
+          ...session.user,
+          name: `${profileForm.firstName} ${profileForm.lastName}`.trim(),
+          email: profileForm.email
+        }
+      })
+
+      setProfileSuccess(true)
+    } catch (err: any) {
+      setProfileError(err.message || 'An error occurred while updating your profile')
+    } finally {
+      setProfileLoading(false)
+    }
+  }
+
+  // Handle signature form changes
+  const handleSignatureChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const { value } = e.target;
+    setSignatureForm(prev => ({
+      ...prev,
+      email_signature: value
+    }));
+    setSignatureError(null);
+    setSignatureSuccess(false);
+  }
+
+  // Handle signature update
+  const handleSignatureUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!session?.user?.id) return
+
+    setSignatureLoading(true)
+    setSignatureError(null)
+    setSignatureSuccess(false)
+
+    try {
+      const response = await fetch('/api/db/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          table_name: 'Users',
+          key_name: 'id',
+          key_value: session.user.id,
+          update_data: {
+            email_signature: signatureForm.email_signature,
+            updated_at: new Date().toISOString()
+          }
+        }),
+        credentials: 'include',
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update signature')
+      }
+
+      setSignatureSuccess(true)
+    } catch (err: any) {
+      setSignatureError(err.message || 'An error occurred while updating your signature')
+    } finally {
+      setSignatureLoading(false)
+    }
+  }
 
   // Handle mounting state to prevent hydration mismatch
   useEffect(() => {
@@ -317,6 +556,20 @@ export default function SettingsPage() {
               </button>
               <button
                 onClick={() => {
+                  setActiveSection("customize")
+                  document.getElementById("customize")?.scrollIntoView({ behavior: "smooth" })
+                }}
+                className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg w-full text-left transition-all duration-200 ${
+                  activeSection === "customize"
+                    ? "bg-gradient-to-r from-[#0a5a2f] to-[#0e6537] text-white"
+                    : "text-gray-600 hover:bg-[#0e6537]/5"
+                }`}
+              >
+                <Mail className="h-4 w-4" />
+                Customize
+              </button>
+              <button
+                onClick={() => {
                   setActiveSection("danger")
                   document.getElementById("danger")?.scrollIntoView({ behavior: "smooth" })
                 }}
@@ -334,7 +587,7 @@ export default function SettingsPage() {
 
           {/* Settings Content */}
           <div className="lg:col-span-3 space-y-6">
-            {/* Session Information */}
+            {/* Session Information
             <div
               id="session"
               className="bg-white p-6 rounded-lg border-[#d8eee1] border shadow-sm bg-gradient-to-br from-[#e6f5ec] to-[#f0f9f4] scroll-mt-6"
@@ -349,7 +602,7 @@ export default function SettingsPage() {
                     </div>
                   ))}
               </div>
-            </div>
+            </div> */}
 
             {/* Profile Settings */}
             <div
@@ -357,47 +610,117 @@ export default function SettingsPage() {
               className="bg-white p-6 rounded-lg border-[#d8eee1] border shadow-sm bg-gradient-to-br from-[#e6f5ec] to-[#f0f9f4] scroll-mt-6"
             >
               <h2 className="text-lg font-semibold mb-4">Profile Information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
-                  <input
-                    type="text"
-                    defaultValue="Sarah"
-                    className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
-                  />
+              <form onSubmit={handleProfileUpdate} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+                    <input
+                      type="text"
+                      name="firstName"
+                      value={profileForm.firstName}
+                      onChange={handleProfileChange}
+                      className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+                    <input
+                      type="text"
+                      name="lastName"
+                      value={profileForm.lastName}
+                      onChange={handleProfileChange}
+                      className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={profileForm.email}
+                      onChange={handleProfileChange}
+                      className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={profileForm.phone}
+                      onChange={handleProfileChange}
+                      className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
-                  <input
-                    type="text"
-                    defaultValue="Johnson"
-                    className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                  <input
-                    type="email"
-                    defaultValue={session?.user?.email || "sarah.johnson@realty.com"}
-                    className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
-                  <input
-                    type="tel"
-                    defaultValue="(555) 123-4567"
-                    className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
-                  />
-                </div>
-              </div>
-              <button className="mt-4 px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm">
-                Save Changes
-              </button>
+                {profileError && (
+                  <p className="text-sm text-red-600 mt-2">{profileError}</p>
+                )}
+                {profileSuccess && (
+                  <p className="text-sm text-green-600 mt-2">Profile updated successfully!</p>
+                )}
+                <button
+                  type="submit"
+                  disabled={profileLoading}
+                  className="mt-4 px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm disabled:opacity-50"
+                >
+                  {profileLoading ? 'Saving...' : 'Save Changes'}
+                </button>
+              </form>
             </div>
 
-            {/* Notification Settings */}
+            {/* Customize Settings */}
             <div
+              id="customize"
+              className="bg-white p-6 rounded-lg border-[#d8eee1] border shadow-sm bg-gradient-to-br from-[#e6f5ec] to-[#f0f9f4] scroll-mt-6"
+            >
+              <h2 className="text-lg font-semibold mb-4">Email Signature</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                This is your default email signature, automatically created by ACS. It will be used on all your automated emails sent through the platform. You can customize it below.
+              </p>
+              <form onSubmit={handleSignatureUpdate} className="space-y-4">
+                <div className="relative">
+                  <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-gray-50 to-transparent pointer-events-none rounded-t-lg"></div>
+                  <textarea
+                    name="email_signature"
+                    value={signatureForm.email_signature}
+                    onChange={handleSignatureChange}
+                    className="w-full h-64 px-4 py-8 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537] font-mono text-sm whitespace-pre-wrap"
+                    placeholder="Enter your email signature here..."
+                    style={{ 
+                      fontFamily: 'monospace',
+                      lineHeight: '1.5',
+                      tabSize: 2
+                    }}
+                  />
+                  
+                  <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-gray-50 to-transparent pointer-events-none rounded-b-lg"></div>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <span className="inline-block w-2 h-2 bg-gray-300 rounded-full"></span>
+                  <span>Preserves whitespace and formatting</span>
+                </div>
+                {signatureError && (
+                  <p className="text-sm text-red-600 mt-2">{signatureError}</p>
+                )}
+                {signatureSuccess && (
+                  <p className="text-sm text-green-600 mt-2">Signature updated successfully!</p>
+                )}
+                <button
+                  type="submit"
+                  disabled={signatureLoading}
+                  className="mt-4 px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm disabled:opacity-50"
+                >
+                  {signatureLoading ? 'Saving...' : 'Save Signature'}
+                </button>
+              </form>
+            </div>
+
+            {/* Notification Settings @TODO: Implement */}
+            {/* <div
               id="notifications"
               className="bg-white p-6 rounded-lg border-[#d8eee1] border shadow-sm bg-gradient-to-br from-[#e6f5ec] to-[#f0f9f4] scroll-mt-6"
             >
@@ -425,7 +748,7 @@ export default function SettingsPage() {
                   <input type="checkbox" className="w-4 h-4 text-[#0e6537]" />
                 </div>
               </div>
-            </div>
+            </div> */}
 
             {/* Security Settings */}
             <div

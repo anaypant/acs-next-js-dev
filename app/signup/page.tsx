@@ -277,79 +277,67 @@ const SignupPage: React.FC = () => {
 
   /**
    * Initializes reCAPTCHA
-   * Loads reCAPTCHA script and sets up ready state
+   * Sets up ready state when reCAPTCHA is loaded
    */
   useEffect(() => {
-    let mounted = true;
-    let timeoutId: NodeJS.Timeout | undefined;
-
-    const initializeRecaptcha = async () => {
-      try {
-        // Check if reCAPTCHA is already loaded
-        if (window.grecaptcha) {
-          if (mounted) {
-            setRecaptchaReady(true);
-            setRecaptchaLoading(false);
-          }
-          return;
-        }
-
-        // Load reCAPTCHA script
-        const recaptchaScript = document.createElement('script');
-        recaptchaScript.src = `https://www.google.com/recaptcha/api.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}`;
-        recaptchaScript.async = true;
-        recaptchaScript.defer = true;
-
-        const loadPromise = new Promise<void>((resolve, reject) => {
-          recaptchaScript.onload = () => {
-            if (window.grecaptcha) {
-              window.grecaptcha.ready(() => {
-                if (mounted) {
-                  setRecaptchaReady(true);
-                  setRecaptchaLoading(false);
-                }
-                resolve();
-              });
-            } else {
-              reject(new Error('reCAPTCHA not found after script load'));
-            }
-          };
-
-          recaptchaScript.onerror = () => {
-            reject(new Error('Failed to load reCAPTCHA script'));
-          };
-        });
-
-        // Set timeout for script loading
-        timeoutId = setTimeout(() => {
-          if (mounted) {
-            setRecaptchaLoading(false);
-            setRecaptchaError('reCAPTCHA failed to load. Please refresh the page.');
-          }
-        }, 10000);
-
-        document.head.appendChild(recaptchaScript);
-        await loadPromise;
-        if (timeoutId) clearTimeout(timeoutId);
-      } catch (error) {
-        console.error('Error initializing reCAPTCHA:', error);
-        if (mounted) {
+    const initializeRecaptcha = () => {
+      if (window.grecaptcha) {
+        window.grecaptcha.ready(() => {
+          setRecaptchaReady(true);
           setRecaptchaLoading(false);
-          setRecaptchaError('Failed to initialize reCAPTCHA. Please refresh the page.');
-        }
+        });
       }
     };
 
-    initializeRecaptcha();
+    let checkInterval: NodeJS.Timeout;
+
+    // Check if reCAPTCHA is already loaded
+    if (window.grecaptcha) {
+      initializeRecaptcha();
+    } else {
+      // Wait for reCAPTCHA to be loaded by the Script component
+      checkInterval = setInterval(() => {
+        if (window.grecaptcha) {
+          initializeRecaptcha();
+          clearInterval(checkInterval);
+        }
+      }, 100);
+
+      // Clear interval after 10 seconds if reCAPTCHA doesn't load
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        if (!window.grecaptcha) {
+          setRecaptchaLoading(false);
+          setRecaptchaError('reCAPTCHA failed to load. Please refresh the page.');
+        }
+      }, 10000);
+    }
 
     return () => {
-      mounted = false;
-      if (timeoutId) clearTimeout(timeoutId);
+      if (checkInterval) {
+        clearInterval(checkInterval);
+      }
     };
   }, []);
 
   return (
     <>
+      <Script
+        src={`https://www.google.com/recaptcha/api.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}`}
+        strategy="afterInteractive"
+        onLoad={() => {
+          if (window.grecaptcha) {
+            window.grecaptcha.ready(() => {
+              setRecaptchaReady(true);
+              setRecaptchaLoading(false);
+            });
+          }
+        }}
+        onError={() => {
+          setRecaptchaLoading(false);
+          setRecaptchaError('Failed to load reCAPTCHA. Please refresh the page.');
+        }}
+      />
       {/* Global styles for the signup page */}
       <style jsx global>{`
         /* Base font definitions */
