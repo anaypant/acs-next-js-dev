@@ -68,12 +68,12 @@ const hasPendingReply = (messages: any[]) => {
 };
 
 // Improved GradientText using CSS mask-image for smooth fade and whitespace preservation
-const GradientText = ({ text, isPending }: { text: string, isPending: boolean }) => {
+const GradientText = ({ text, isPending, messageType }: { text: string, isPending: boolean, messageType?: string }) => {
   if (!text) return null;
   // Replace newlines with spaces
   const singleLineText = text.replace(/\n/g, ' ');
-  // Add prefix based on pending status
-  const prefix = isPending ? 'Lead: ' : 'You: ';
+  // Add prefix based on message type
+  const prefix = messageType === 'inbound-email' ? 'Lead: ' : 'You: ';
   // Limit to 95 characters (including prefix)
   const limitedText = (prefix + singleLineText).slice(0, 95) + '...';
   return (
@@ -559,8 +559,16 @@ export default function Page() {
                     conversations.map((conv, idx) => {
                       // All messages for this thread
                       const messages: Message[] = rawThreads?.[idx]?.messages || [];
-                      // Find the most recent message with a valid ev_score (0-100)
-                      const evMessage = messages
+                      // Sort messages by timestamp descending (newest first)
+                      const sortedMessages = [...messages].sort((a, b) => 
+                        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+                      );
+                      
+                      // Get the latest message (first in sorted array) for gradient text
+                      const latestMessage = sortedMessages[0];
+
+                      // Find the most recent message with a valid ev_score (0-100) - only for EV score display
+                      const evMessage = sortedMessages
                         .filter(msg => {
                           const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
                           return typeof score === 'number' && !isNaN(score) && score >= 0 && score <= 100;
@@ -569,9 +577,9 @@ export default function Page() {
                           if (!latest) return msg;
                           return new Date(msg.timestamp) > new Date(latest.timestamp) ? msg : latest;
                         }, undefined as Message | undefined);
-                      const ev_score = evMessage && typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage?.ev_score ?? -1;
-                      // Find the latest message for display (if available)
-                      const latestMessage: Message | undefined = messages[messages.length - 1] || undefined;
+                      
+                      // Calculate EV score - only for display purposes
+                      const ev_score = evMessage ? (typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score) : -1;
                       // Determine badge color
                       let evColor = 'bg-gray-200 text-gray-700';
                       if (ev_score >= 0 && ev_score <= 39) evColor = 'bg-red-100 text-red-800';
@@ -673,7 +681,11 @@ export default function Page() {
 
                           {/* Body: center third */}
                           <div className="flex-[1.2] flex items-center justify-center min-w-0">
-                            <GradientText text={latestMessage?.body || ''} isPending={isPendingReply} />
+                            <GradientText 
+                              text={latestMessage?.body || ''} 
+                              isPending={isPendingReply} 
+                              messageType={latestMessage?.type}
+                            />
                           </div>
 
                           {/* View Thread: right third, always visible and vertically centered */}

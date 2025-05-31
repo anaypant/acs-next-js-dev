@@ -7,7 +7,7 @@
  */
 
 "use client"
-import { ArrowLeft, Phone, Mail, Calendar, MapPin, Flag } from "lucide-react"
+import { ArrowLeft, Phone, Mail, Calendar, MapPin, Flag, RefreshCw, Sparkles, X, Info } from "lucide-react"
 import { useParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import type { Thread } from "@/app/types/lcp"
@@ -112,6 +112,131 @@ function LoadingSkeleton() {
   )
 }
 
+// Update the Modal component
+function ResponseModal({ 
+  isOpen, 
+  onClose, 
+  response, 
+  onResponseChange,
+  onSend,
+  isSending
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  response: string;
+  onResponseChange: (newResponse: string) => void;
+  onSend: () => void;
+  isSending: boolean;
+}) {
+  // Add state for animation
+  const [isVisible, setIsVisible] = useState(false);
+
+  // Handle animation timing
+  useEffect(() => {
+    if (isOpen) {
+      // Small delay to ensure the modal is mounted before animation
+      requestAnimationFrame(() => setIsVisible(true));
+    } else {
+      setIsVisible(false);
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      className={`fixed inset-0 bg-black/50 flex items-center justify-center z-50 transition-opacity duration-300 ${
+        isVisible ? 'opacity-100' : 'opacity-0'
+      }`}
+      onClick={(e) => {
+        // Close modal when clicking outside
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div 
+        className={`bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 transform transition-all duration-300 ${
+          isVisible 
+            ? 'translate-y-0 opacity-100 scale-100' 
+            : 'translate-y-4 opacity-0 scale-95'
+        }`}
+      >
+        <div className="flex items-center justify-between p-4 border-b">
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold">Review AI-Generated Response</h3>
+            <div className="group relative">
+              <Info className="h-5 w-5 text-gray-400 cursor-help" />
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                The email subject and your signature will be automatically added when sending.
+              </div>
+            </div>
+          </div>
+          <button 
+            onClick={onClose}
+            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <X className="h-5 w-5 text-gray-500" />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          {/* Info banner */}
+          <div className="bg-[#0e6537]/5 border border-[#0e6537]/20 rounded-lg p-3 flex items-start gap-2">
+            <Info className="h-5 w-5 text-[#0e6537] mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-[#0e6537]">
+              <p className="font-medium mb-1">Email Details</p>
+              <ul className="list-disc list-inside space-y-1 text-[#0e6537]/80">
+                <li>Subject will be automatically generated based on the conversation</li>
+                <li>Your email signature will be appended to the message</li>
+                <li>You can edit the response before sending</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Response textarea */}
+          <div className="relative">
+            <textarea
+              value={response}
+              onChange={(e) => onResponseChange(e.target.value)}
+              className="w-full h-48 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0e6537] resize-none transition-shadow duration-200"
+              placeholder="Edit the AI-generated response..."
+            />
+            <div className="absolute bottom-2 right-2 text-xs text-gray-400">
+              {response.length} characters
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 border-t flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            disabled={isSending}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onSend}
+            disabled={isSending}
+            className="px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm flex items-center gap-2 disabled:opacity-50"
+          >
+            {isSending ? (
+              <>
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              <>
+                <Mail className="h-4 w-4" />
+                Send Response
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * ConversationDetailPage Component
  * Main conversation detail component displaying message history and client information
@@ -132,27 +257,40 @@ export default function ConversationDetailPage() {
   const [loading, setLoading] = useState(true)
   const [threshold, setThreshold] = useState<number | null>(null)
   const [updatingThreshold, setUpdatingThreshold] = useState(false)
+  const [generatingResponse, setGeneratingResponse] = useState(false)
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [messageInput, setMessageInput] = useState("")
+  const [showResponseModal, setShowResponseModal] = useState(false)
+  const [editedResponse, setEditedResponse] = useState("")
 
-  useEffect(() => {
-    const fetchThread = async () => {
-      setLoading(true)
+  // Add reloadConversation function
+  const reloadConversation = async () => {
+    setLoading(true);
+    try {
       const res = await fetch("/api/lcp/getThreadById", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ conversation_id: conversationId }),
-      })
-      const data = await res.json()
+      });
+      const data = await res.json();
       if (data.success) {
-        setThread(data.data.thread)
-        setMessages(data.data.messages)
-        setThreshold(typeof data.data.thread.lcp_flag_threshold === 'number' ? data.data.thread.lcp_flag_threshold : Number(data.data.thread.lcp_flag_threshold) || 0)
-        console.log('thread', data.data.thread)
-        console.log('messages', data.data.messages)
+        setThread(data.data.thread);
+        setMessages(data.data.messages);
+        setThreshold(typeof data.data.thread.lcp_flag_threshold === 'number' 
+          ? data.data.thread.lcp_flag_threshold 
+          : Number(data.data.thread.lcp_flag_threshold) || 0
+        );
       }
-      setLoading(false)
+    } catch (error) {
+      console.error('Error reloading conversation:', error);
+    } finally {
+      setLoading(false);
     }
-    fetchThread()
-  }, [conversationId])
+  };
+
+  useEffect(() => {
+    reloadConversation();
+  }, [conversationId]);
 
   // Find client email from the first inbound message or thread
   const clientEmail =
@@ -165,12 +303,104 @@ export default function ConversationDetailPage() {
   // Sort messages by timestamp ascending
   const sortedMessages = [...messages].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
+  // Get the last message to determine if we can generate a response
+  const lastMessage = sortedMessages[sortedMessages.length - 1]
+  const canGenerateResponse = lastMessage?.type === "inbound-email"
+
+  // Function to generate AI response
+  const generateAIResponse = async () => {
+    if (!canGenerateResponse || !thread) return
+
+    try {
+      setGeneratingResponse(true)
+      const response = await fetch('/api/lcp/get_llm_response', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          conversation_id: conversationId,
+          account_id: thread.associated_account,
+          is_first_email: messages.length === 1
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate AI response')
+      }
+
+      const data = await response.json()
+      if (data.success) {
+        // Set the response in state and show modal
+        setEditedResponse(data.data.response || '')
+        setShowResponseModal(true)
+      } else {
+        throw new Error(data.error || 'Failed to generate response')
+      }
+    } catch (error) {
+      console.error('Error generating AI response:', error)
+      // You might want to show an error toast here
+    } finally {
+      setGeneratingResponse(false)
+    }
+  }
+
+  // Update handleSendResponse to use reloadConversation
+  const handleSendResponse = async () => {
+    if (!thread || !editedResponse.trim()) return;
+
+    try {
+      setSendingEmail(true);
+      const response = await fetch('/api/lcp/send_email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          conversation_id: conversationId,
+          response_body: editedResponse
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send email');
+      }
+
+      if (data.success) {
+        // Close the modal and clear states
+        setShowResponseModal(false);
+        setMessageInput('');
+        setEditedResponse('');
+        // Reload all conversation data
+        await reloadConversation();
+      } else {
+        throw new Error(data.error || 'Failed to send email');
+      }
+    } catch (error) {
+      console.error('Error sending email:', error);
+      alert('Failed to send email. Please try again.');
+    } finally {
+      setSendingEmail(false);
+    }
+  }
+
   if (loading) {
     return <LoadingSkeleton />
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1]">
+      <ResponseModal
+        isOpen={showResponseModal}
+        onClose={() => setShowResponseModal(false)}
+        response={editedResponse}
+        onResponseChange={setEditedResponse}
+        onSend={handleSendResponse}
+        isSending={sendingEmail}
+      />
+      
       <div className="max-w-6xl mx-auto p-6">
         {/* Header section with navigation */}
         <div className="flex items-center gap-4 mb-6">
@@ -265,15 +495,48 @@ export default function ConversationDetailPage() {
               )}
             </div>
             {/* Floating Message input section, now only under left column */}
-            <div className="absolute left-0 right-0 bottom-0 z-20 bg-white border-t border-gray-200 p-4 flex gap-2 " style={{boxShadow: '0 -2px 8px rgba(0,0,0,0.03)'}}>
-              <input
-                type="text"
-                placeholder="Type your message..."
-                className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0e6537]"
-              />
-              <button className="px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm">
-                Send
-              </button>
+            <div className="absolute left-0 right-0 bottom-0 z-20 bg-white border-t border-gray-200 p-4 flex flex-col gap-2" style={{boxShadow: '0 -2px 8px rgba(0,0,0,0.03)'}}>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Type your message..."
+                  className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0e6537]"
+                  value={messageInput}
+                  onChange={(e) => setMessageInput(e.target.value)}
+                />
+                <button 
+                  className="px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!messageInput.trim()}
+                >
+                  Send
+                </button>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  onClick={generateAIResponse}
+                  disabled={!canGenerateResponse || generatingResponse}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all duration-200 ${
+                    canGenerateResponse 
+                      ? 'bg-[#0e6537]/10 text-[#0e6537] hover:bg-[#0e6537]/20' 
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  }`}
+                  title={canGenerateResponse 
+                    ? "Generate an AI response to the last message" 
+                    : "Can only generate responses to user messages"}
+                >
+                  {generatingResponse ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      AI-Generate Response
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
 
