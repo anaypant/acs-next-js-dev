@@ -394,25 +394,26 @@ export default function Page() {
       const messages = threadData.messages || [];
       const thread = threadData.thread;
 
+      // Sort messages by timestamp descending (newest first)
+      const sortedMessages = [...messages].sort((a, b) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      const latestMessage = sortedMessages[0];
+
       // Calculate unopened leads
       if (!thread?.read) {
         metrics.unopenedLeads++;
       }
 
-      // Calculate pending replies
-      if (messages.length > 0) {
-        const lastMessage = messages[messages.length - 1]; // Messages are ordered newest first
-        if (lastMessage.type === 'inbound-email') {
-          metrics.pendingReplies++;
-        }
+      // Calculate pending replies (latest message is inbound-email)
+      if (latestMessage && latestMessage.type === 'inbound-email') {
+        metrics.pendingReplies++;
       }
 
-      // Calculate new leads today
-      if (messages.length > 0) {
-        const firstMessage = messages[messages.length - 1]; // Get the first message
-        const messageDate = new Date(firstMessage.timestamp);
+      // Calculate new leads today (latest message is from today)
+      if (latestMessage) {
+        const messageDate = new Date(latestMessage.timestamp);
         messageDate.setHours(0, 0, 0, 0);
-        
         if (messageDate.getTime() === today.getTime()) {
           metrics.newLeadsToday++;
         }
@@ -586,7 +587,8 @@ export default function Page() {
                       else if (ev_score >= 40 && ev_score <= 69) evColor = 'bg-yellow-100 text-yellow-800';
                       else if (ev_score >= 70 && ev_score <= 100) evColor = 'bg-green-100 text-green-800';
 
-                      const isPendingReply = hasPendingReply(messages);
+                      // Mark as pending if the latest message is inbound-email
+                      const isPendingReply = latestMessage?.type === 'inbound-email';
 
                       return (
                         <div

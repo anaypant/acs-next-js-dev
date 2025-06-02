@@ -13,7 +13,9 @@ export async function POST(request: Request) {
     }
 
     // First, delete all conversations with the given conversation_id
-    const conversationsResponse = await fetch(`${config.API_URL}/db/delete`, {
+    const url = `${config.API_URL}/db/delete`;
+    console.log(url);
+    const conversationsResponse = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -21,17 +23,22 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         table_name: 'Conversations',
         key_name: 'conversation_id',
-        key_value: conversation_id
+        key_value: conversation_id,
+        index_name: 'conversation_id-index'
       }),
       credentials: 'include',
     });
 
     if (!conversationsResponse.ok) {
+      console.log(conversationsResponse.statusText);
+      console.log(conversationsResponse.status);
+      console.log(conversationsResponse.body);
+      
       throw new Error(`Failed to delete conversations: ${conversationsResponse.statusText}`);
     }
 
     // Then, delete the thread with the given conversation_id
-    const threadResponse = await fetch(`${config.API_URL}/db/delete`, {
+    const threadResponse = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -39,7 +46,8 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         table_name: 'Threads',
         key_name: 'conversation_id',
-        key_value: conversation_id
+        key_value: conversation_id,
+        index_name: 'conversation_id-index'
       }),
       credentials: 'include',
     });
