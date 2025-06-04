@@ -16,6 +16,9 @@ import { useEffect, useState } from "react"
 import { goto404 } from "../utils/error"
 import type { Thread, Message } from "../types/lcp"
 import type { Session } from "next-auth"
+import LeadFunnel from '../components/dashboard/LeadFunnel'
+import LeadReport from '../components/dashboard/LeadReport'
+import ConversationProgression from '../components/dashboard/ConversationProgression'
 
 // Add Modal component at the top level
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, conversationName }: { 
@@ -169,6 +172,12 @@ export default function Page() {
   const [deletingThread, setDeletingThread] = useState<string | null>(null)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [threadToDelete, setThreadToDelete] = useState<{ id: string; name: string } | null>(null)
+  const [showFunnel, setShowFunnel] = useState(true)
+  const [showProgression, setShowProgression] = useState(false)
+
+  // New state for lead performance data
+  const [leadPerformanceData, setLeadPerformanceData] = useState<any[]>([])
+  const [loadingLeadPerformance, setLoadingLeadPerformance] = useState(false)
 
   // Handle mounting state to prevent hydration mismatch
   useEffect(() => {
@@ -199,7 +208,7 @@ export default function Page() {
       console.log('Threads data:', data);
 
       // Map threads to Thread type and set as conversations
-      if (Array.isArray(data.data)) {
+      if (data.success && Array.isArray(data.data)) {
         // Sort threads by most recent message timestamp
         const sortedData = data.data.sort((a: any, b: any) => {
           const aMessages = a.messages || [];
@@ -227,23 +236,31 @@ export default function Page() {
           }))
         )
         setRawThreads(sortedData)
+         // Also update lead performance data
+        setLeadPerformanceData(data.data);
       } else {
         setConversations([])
         setRawThreads([])
+        setLeadPerformanceData([]);
       }
 
       // Log id
       console.log('Session user ID:', session?.user?.id);
     } catch (error) {
       console.error('Error fetching threads:', error);
+      setConversations([])
+      setRawThreads([])
+       setLeadPerformanceData([]);
     } finally {
       setLoadingConversations(false);
+       setLoadingLeadPerformance(false); // Set loading to false here as well
     }
   };
 
-  // Fetch threads when session is available
+  // Fetch threads and lead performance data when session is available
   useEffect(() => {
     if (mounted && session?.user?.id) {
+      setLoadingLeadPerformance(true); // Set loading true before fetching
       fetchThreads();
     }
   }, [session, mounted]);
@@ -716,133 +733,57 @@ export default function Page() {
 
               {/* Lead performance metrics section */}
               <div className="lg:col-span-2 bg-white p-6 rounded-lg border border-[#0e6537]/20 shadow-sm">
-                <h3 className="text-xl font-semibold mb-2">Lead Performance</h3>
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-xl font-semibold">Lead Performance</h3>
+                   <button
+                      className="px-3 py-1 text-sm bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm flex items-center gap-1"
+                      onClick={fetchThreads}
+                      disabled={loadingLeadPerformance}
+                    >
+                      <RefreshCw className={`w-3 h-3 ${loadingLeadPerformance ? 'animate-spin' : ''}`} />
+                      Refresh
+                    </button>
+                </div>
                 <p className="text-sm text-gray-600 mb-8">Your conversion metrics for this month</p>
 
-                {/* Performance metrics grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-                  {/* Conversion rate with circular progress */}
-                  <div className="text-center">
-                    <div className="relative w-20 h-20 mx-auto mb-3">
-                      <svg className="w-20 h-20 transform -rotate-90">
-                        <circle cx="40" cy="40" r="32" stroke="#e5e7eb" strokeWidth="4" fill="none" />
-                        <circle
-                          cx="40"
-                          cy="40"
-                          r="32"
-                          stroke="#10b981"
-                          strokeWidth="4"
-                          fill="none"
-                          strokeDasharray={`${23.5 * 2.01} 201`}
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-lg font-bold">23.5%</span>
-                        <span className="text-xs text-green-600">+2.1%</span>
-                      </div>
-                    </div>
-                    <p className="text-sm font-medium text-gray-700 mb-2">Conversion Rate</p>
-                    {/* Trend visualization */}
-                    <div className="flex items-center justify-center gap-1">
-                      <div className="w-16 h-4 bg-green-100 rounded flex items-end gap-px p-px">
-                        <div className="w-1 bg-green-300 h-1"></div>
-                        <div className="w-1 bg-green-400 h-2"></div>
-                        <div className="w-1 bg-green-500 h-3"></div>
-                        <div className="w-1 bg-green-600 h-4"></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Response time with area chart */}
-                  <div className="text-center">
-                    <div className="relative w-20 h-20 mx-auto mb-3">
-                      <div className="w-full h-12 bg-[#0e6537]/10 rounded-lg flex items-end justify-center overflow-hidden">
-                        <svg className="w-full h-full" viewBox="0 0 80 48">
-                          <path d="M0,48 L0,35 Q20,25 40,30 T80,20 L80,48 Z" fill="#3b82f6" opacity="0.7" />
-                          <path d="M0,35 Q20,25 40,30 T80,20" stroke="#1d4ed8" strokeWidth="2" fill="none" />
-                        </svg>
-                      </div>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-lg font-bold">12 min</span>
-                        <span className="text-xs text-[#0e6537]">-3 min</span>
-                      </div>
-                    </div>
-                    <p className="text-sm font-medium text-gray-700 mb-2">Response Time</p>
-                    {/* Trend visualization */}
-                    <div className="flex items-center justify-center gap-1">
-                      <div className="w-16 h-4 bg-[#0e6537]/10 rounded flex items-end gap-px p-px">
-                        <div className="w-1 bg-[#0e6537] h-4"></div>
-                        <div className="w-1 bg-[#0e6537] h-3"></div>
-                        <div className="w-1 bg-[#0e6537] h-2"></div>
-                        <div className="w-1 bg-[#0e6537] h-1"></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Active leads with bar chart */}
-                  <div className="text-center">
-                    <div className="flex items-end justify-center gap-1 h-16 mb-3">
-                      <div className="w-3 bg-[#0e6537]/20 h-6 rounded-sm"></div>
-                      <div className="w-3 bg-[#0e6537]/30 h-8 rounded-sm"></div>
-                      <div className="w-3 bg-[#0e6537]/40 h-10 rounded-sm"></div>
-                      <div className="w-3 bg-[#0e6537]/50 h-14 rounded-sm"></div>
-                      <div className="w-3 bg-[#0e6537]/60 h-16 rounded-sm"></div>
-                    </div>
-                    <div className="text-center">
-                      <span className="text-lg font-bold">47</span>
-                      <span className="text-xs text-[#0e6537] block">+12 this week</span>
-                    </div>
-                    <p className="text-sm font-medium text-gray-700 mb-2">Active Leads</p>
-                  </div>
-                </div>
-
-                {/* Monthly trend chart */}
-                <div className="mb-6">
-                  <h4 className="font-semibold mb-3 text-gray-700">Monthly Performance Trend</h4>
-                  <div className="h-24 flex items-end justify-between gap-2 bg-gray-50 rounded-lg p-4">
-                    {[
-                      { month: "Jan", conversion: 18, leads: 32 },
-                      { month: "Feb", conversion: 20, leads: 38 },
-                      { month: "Mar", conversion: 22, leads: 41 },
-                      { month: "Apr", conversion: 23.5, leads: 47 },
-                    ].map((data, index) => (
-                      <div key={index} className="flex flex-col items-center gap-1 flex-1">
-                        <div className="flex gap-1">
-                          <div
-                            className="w-2 bg-[#0e6537] rounded-sm"
-                            style={{ height: `${data.conversion * 2}px` }}
-                          ></div>
-                          <div className="w-2 bg-[#0e6537]/40 rounded-sm" style={{ height: `${data.leads}px` }}></div>
-                        </div>
-                        <span className="text-xs text-gray-600">{data.month}</span>
-                      </div>
-                    ))}
-                  </div>
-                  {/* Chart legend */}
-                  <div className="flex justify-center gap-4 mt-2">
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 bg-[#0e6537] rounded"></div>
-                      <span className="text-xs text-gray-600">Conversion %</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 bg-[#0e6537]/40 rounded"></div>
-                      <span className="text-xs text-gray-600">Active Leads</span>
-                    </div>
-                  </div>
-                </div>
+                {/* Conditionally render Funnel or Report */}
+                {showFunnel ? (
+                  <LeadFunnel userId={session?.user?.id} leadData={leadPerformanceData} loading={loadingLeadPerformance} />
+                ) : showProgression ? (
+                  <ConversationProgression leadData={leadPerformanceData} loading={loadingLeadPerformance} />
+                ) : (
+                  <LeadReport userId={session?.user?.id} leadData={leadPerformanceData} loading={loadingLeadPerformance} />
+                )}
 
                 {/* Quick actions section */}
                 <div>
                   <h4 className="font-semibold mb-3">Quick Actions</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <button className="px-3 py-2 text-sm bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm">
-                      Send Follow-ups
+                    <button
+                      className="px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm"
+                      onClick={() => {
+                        setShowFunnel(true);
+                        setShowProgression(false);
+                      }}
+                    >
+                      Track Lead Journey
                     </button>
-                    <button className="px-3 py-2 text-sm bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm">
-                      Schedule Showings
+                    <button
+                      className="px-3 py-2 text-sm bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm"
+                      onClick={() => {
+                        setShowFunnel(false);
+                        setShowProgression(true);
+                      }}
+                    >
+                      Conversation Progression
                     </button>
-                    <button className="px-3 py-2 text-sm bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm">
+                    <button
+                      className="px-3 py-2 text-sm bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm"
+                      onClick={() => {
+                        setShowFunnel(false);
+                        setShowProgression(false);
+                      }}
+                    >
                       Generate Report
                     </button>
                   </div>
