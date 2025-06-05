@@ -12,9 +12,11 @@ interface LeadFunnelProps {
   userId: string | undefined;
   leadData: any[];
   loading: boolean;
+  timeRange: 'day' | 'week' | 'month' | 'year';
+  onRefresh: () => Promise<void>;
 }
 
-const LeadFunnel: React.FC<LeadFunnelProps> = ({ userId, leadData, loading }) => {
+const LeadFunnel: React.FC<LeadFunnelProps> = ({ userId, leadData, loading, timeRange, onRefresh }) => {
   const [categorizedData, setCategorizedData] = useState<LeadStage[]>([]);
 
   useEffect(() => {

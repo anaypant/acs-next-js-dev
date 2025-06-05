@@ -3,85 +3,110 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 interface LeadReportProps {
   userId: string | undefined;
-  leadData: any[]; // Accept raw data from parent
-  loading: boolean; // Accept loading state from parent
+  leadData: any[];
+  loading: boolean;
+  timeRange: 'day' | 'week' | 'month' | 'year';
+  onRefresh: () => Promise<void>;
 }
 
 interface LeadData {
   totalLeads: number;
-  newLeadsThisWeek: number;
+  newLeads: number;
   leadsByStage: { name: string; count: number; evRange: string }[];
   aiInsights: { hotLeads: string[]; followUps: string[]; predictions: string[] };
   dailyLeadGrowth: { day: string; count: number }[];
   performanceSummary: { avgCloseTime: string; sourceBreakdown: { source: string; count: number }[] };
 }
 
-const LeadReport: React.FC<LeadReportProps> = ({ userId, leadData, loading }) => {
+interface Message {
+  ev_score?: number | string;
+  timestamp: string;
+  [key: string]: any;
+}
+
+const LeadReport: React.FC<LeadReportProps> = ({ userId, leadData, loading, timeRange, onRefresh }) => {
   const [processedReportData, setProcessedReportData] = useState<LeadData | null>(null);
-  // Remove internal loading state
-  // const [loading, setLoading] = useState(true);
+  const [loadingReport, setLoadingReport] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Process data only when not loading and data is available
     if (!loading && leadData && Array.isArray(leadData)) {
       const processedData = processLeadDataForReport(leadData);
       setProcessedReportData(processedData);
     } else if (!loading && (!leadData || !Array.isArray(leadData))) {
-       setProcessedReportData(null); // Clear data if leadData is not valid or empty and not loading
+      setProcessedReportData(null);
     }
-  }, [leadData, loading]); // Depend on leadData and loading props
+  }, [leadData, loading, timeRange]);
 
-  // Remove the internal data fetching useEffect
-  // useEffect(() => {
-  //   const fetchData = async () => { ... }
-  //   fetchData();
-  // }, [userId]);
+  const getTimeRangeText = () => {
+    switch (timeRange) {
+      case 'day':
+        return 'Last 24 Hours';
+      case 'week':
+        return 'Last 7 Days';
+      case 'month':
+        return 'Last 30 Days';
+      case 'year':
+        return 'Last 12 Months';
+      default:
+        return 'Last 24 Hours';
+    }
+  };
 
-  // Define types for the incoming conversation and message data
-  interface ConversationData {
-    thread: any; // Define a more specific type later
-    messages: Array<{ ev_score?: number | string; timestamp: string; [key: string]: any }>; // Define a more specific type later
-  }
+  const getTimeRangeDays = () => {
+    switch (timeRange) {
+      case 'day':
+        return 1;
+      case 'week':
+        return 7;
+      case 'month':
+        return 30;
+      case 'year':
+        return 365;
+      default:
+        return 1;
+    }
+  };
 
-  const processLeadDataForReport = (conversationsData: ConversationData[]): LeadData => {
+  const processLeadDataForReport = (conversationsData: any[]): LeadData => {
     const totalLeads = conversationsData.length;
-
-    // Calculate New Leads This Week and Daily Lead Growth for the last 7 days
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Normalize today to midnight
+    today.setHours(0, 0, 0, 0);
 
-    const dailyCounts: Record<string, number> = {}; // { 'YYYY-MM-DD': count }
-    let newLeadsThisWeek = 0; // Count conversations started in the last 7 *full* days
+    const dailyCounts: Record<string, number> = {};
+    let newLeads = 0;
+
+    // Calculate the start date based on timeRange
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - (getTimeRangeDays() - 1));
 
     conversationsData.forEach(({ messages }) => {
       if (messages.length > 0) {
         const firstMessageTimestamp = new Date(messages[0].timestamp);
-        firstMessageTimestamp.setHours(0, 0, 0, 0); // Normalize message timestamp to midnight
+        firstMessageTimestamp.setHours(0, 0, 0, 0);
 
-        // Calculate date 7 days ago (inclusive of the start of that day)
-        const sevenDaysAgo = new Date(today);
-        sevenDaysAgo.setDate(today.getDate() - 6); // Count today and the 6 previous days
-
-        if (firstMessageTimestamp >= sevenDaysAgo && firstMessageTimestamp <= today) {
-             newLeadsThisWeek++;
-
-            const dateKey = firstMessageTimestamp.toISOString().split('T')[0];
-            dailyCounts[dateKey] = (dailyCounts[dateKey] || 0) + 1;
+        if (firstMessageTimestamp >= startDate && firstMessageTimestamp <= today) {
+          newLeads++;
+          const dateKey = firstMessageTimestamp.toISOString().split('T')[0];
+          dailyCounts[dateKey] = (dailyCounts[dateKey] || 0) + 1;
         }
       }
     });
 
-    // Generate dailyLeadGrowth array for the last 7 days
+    // Generate dailyLeadGrowth array based on timeRange
     const dailyLeadGrowth: { day: string; count: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
-        const date = new Date(today);
-        date.setDate(today.getDate() - i);
-        const dayOfWeek = date.toLocaleString('en-US', { weekday: 'short' });
-        const dateKey = date.toISOString().split('T')[0];
-        dailyLeadGrowth.push({ day: dayOfWeek, count: dailyCounts[dateKey] || 0 });
+    const daysToShow = getTimeRangeDays();
+    
+    for (let i = daysToShow - 1; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      const dayOfWeek = date.toLocaleString('en-US', { weekday: 'short' });
+      const dateKey = date.toISOString().split('T')[0];
+      dailyLeadGrowth.push({ day: dayOfWeek, count: dailyCounts[dateKey] || 0 });
     }
 
-    const leadsByStage: { name: string; count: number; evRange: string }[] = [
+    // Rest of your existing processing logic...
+    const leadsByStage = [
       { name: 'Contacted', count: 0, evRange: '0-19' },
       { name: 'Engaged', count: 0, evRange: '20-39' },
       { name: 'Toured', count: 0, evRange: '40-59' },
@@ -89,10 +114,9 @@ const LeadReport: React.FC<LeadReportProps> = ({ userId, leadData, loading }) =>
       { name: 'Closed', count: 0, evRange: '80-100' },
     ];
 
-    // Basic categorization by highest EV score
     conversationsData.forEach(({ messages }) => {
       let highestEv = -1;
-      messages.forEach((message) => {
+      messages.forEach((message: Message) => {
         const ev = typeof message.ev_score === 'string' ? parseFloat(message.ev_score) : message.ev_score;
         if (typeof ev === 'number' && !isNaN(ev)) {
           highestEv = Math.max(highestEv, ev);
@@ -108,19 +132,17 @@ const LeadReport: React.FC<LeadReportProps> = ({ userId, leadData, loading }) =>
       }
     });
 
-    // --- Placeholder data for AI Insights and Performance Summary ---
-    // You will need to implement logic to populate these based on your actual data processing needs
-     const aiInsights = { 
-        hotLeads: ['Lead A (EV 85)', 'Lead B (EV 90)'], // Example structure
-        followUps: ['Lead C (Last contact 3 days ago)', 'Lead D (No response)'], // Example structure
-        predictions: ['Lead E likely to close soon'] // Example structure
-    }; 
-    const performanceSummary = { avgCloseTime: 'N/A', sourceBreakdown: [] }; // Source breakdown is removed as requested
-    // --- End Placeholder data ---
+    const aiInsights = {
+      hotLeads: ['Lead A (EV 85)', 'Lead B (EV 90)'],
+      followUps: ['Lead C (Last contact 3 days ago)', 'Lead D (No response)'],
+      predictions: ['Lead E likely to close soon']
+    };
+
+    const performanceSummary = { avgCloseTime: 'N/A', sourceBreakdown: [] };
 
     return {
       totalLeads,
-      newLeadsThisWeek,
+      newLeads,
       leadsByStage,
       aiInsights,
       dailyLeadGrowth,
@@ -150,10 +172,22 @@ const LeadReport: React.FC<LeadReportProps> = ({ userId, leadData, loading }) =>
     }
   };
 
+  const generateReport = async () => {
+    try {
+      setLoadingReport(true);
+      await onRefresh(); // Use the onRefresh prop to fetch new data
+    } catch (error) {
+      console.error('Error generating report:', error);
+      setError('Failed to generate report. Please try again.');
+    } finally {
+      setLoadingReport(false);
+    }
+  };
+
   return (
     <div className="bg-white p-6 rounded-lg border border-[#0e6537]/20 shadow-sm" id="lead-report-content">
       <h3 className="text-lg font-semibold mb-4">Lead Performance Report</h3>
-      {loading ? (
+      {loadingReport ? (
         <div className="flex items-center justify-center h-64 text-gray-600">Loading report data...</div>
       ) : processedReportData ? (
         <div>
@@ -161,27 +195,26 @@ const LeadReport: React.FC<LeadReportProps> = ({ userId, leadData, loading }) =>
           <div className="mb-6">
             <h4 className="text-lg font-semibold mb-2">Summary</h4>
             <p>Total Leads: {processedReportData.totalLeads}</p>
-            <p>New Leads This Week: {processedReportData.newLeadsThisWeek}</p>
-            {/* Add other summary points based on calculated data */}
+            <p>New Leads {getTimeRangeText()}: {processedReportData.newLeads}</p>
           </div>
 
-          {/* Leads per EV Stage (Horizontal Bar Graph) */}
+          {/* Leads per EV Stage */}
           <div className="mb-6">
-             <h4 className="text-lg font-semibold mb-2">Leads by Engagement Value (EV) Stage</h4>
-             <ResponsiveContainer width="100%" height={200}>
-               <BarChart data={processedReportData.leadsByStage} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-                 <CartesianGrid strokeDasharray="3 3" />
-                 <XAxis type="number" dataKey="count" />
-                 <YAxis type="category" dataKey="name" width={100} tickFormatter={(value) => `${value} (${processedReportData.leadsByStage.find(stage => stage.name === value)?.evRange})`} />
-                 <Tooltip formatter={(value: number, name: string, props: any) => [`${value} leads`, `EV Range: ${props.payload.evRange}`, `Action: ${props.payload.action}`]} />
-                 <Bar dataKey="count" fill="#0e6537" />
-               </BarChart>
-             </ResponsiveContainer>
+            <h4 className="text-lg font-semibold mb-2">Leads by Engagement Value (EV) Stage</h4>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={processedReportData.leadsByStage} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" dataKey="count" />
+                <YAxis type="category" dataKey="name" width={100} tickFormatter={(value) => `${value} (${processedReportData.leadsByStage.find(stage => stage.name === value)?.evRange})`} />
+                <Tooltip formatter={(value: number, name: string, props: any) => [`${value} leads`, `EV Range: ${props.payload.evRange}`]} />
+                <Bar dataKey="count" fill="#0e6537" />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
 
-          {/* Daily Lead Growth (Line Chart) */}
+          {/* Daily Lead Growth */}
           <div className="mb-6">
-            <h4 className="text-lg font-semibold mb-2">Daily Lead Growth This Week</h4>
+            <h4 className="text-lg font-semibold mb-2">Lead Growth {getTimeRangeText()}</h4>
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={processedReportData.dailyLeadGrowth} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -193,7 +226,7 @@ const LeadReport: React.FC<LeadReportProps> = ({ userId, leadData, loading }) =>
             </ResponsiveContainer>
           </div>
 
-          {/* Performance Summary (Only Avg Close Time remains) */}
+          {/* Performance Summary */}
           <div className="mb-6">
             <h4 className="text-lg font-semibold mb-2">Performance Summary</h4>
             <p>Average Close Time: {processedReportData.performanceSummary.avgCloseTime}</p>
@@ -206,11 +239,9 @@ const LeadReport: React.FC<LeadReportProps> = ({ userId, leadData, loading }) =>
           >
             Download PDF Report
           </button>
-
         </div>
-      ) : ( processedReportData === null && !loading ? (
-        <div className="flex items-center justify-center h-64 text-gray-600">Failed to load report data or no data available.</div>
-      ) : null
+      ) : (
+        <div className="flex items-center justify-center h-64 text-gray-600">No data available.</div>
       )}
     </div>
   );

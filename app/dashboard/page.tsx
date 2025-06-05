@@ -7,12 +7,12 @@
  */
 
 "use client"
-import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, PanelLeft, Bell, CheckCircle, XCircle, Flag, Trash2, AlertTriangle, RefreshCw, Clock, ChevronRight } from "lucide-react"
+import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, PanelLeft, Bell, CheckCircle, XCircle, Flag, Trash2, AlertTriangle, RefreshCw, Clock, ChevronRight, ChevronDown } from "lucide-react"
 import type React from "react"
 import { SidebarProvider, AppSidebar, SidebarTrigger, SidebarInset } from "./Sidebar"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { goto404 } from "../utils/error"
 import type { Thread, Message } from "../types/lcp"
 import type { Session } from "next-auth"
@@ -174,10 +174,15 @@ export default function Page() {
   const [threadToDelete, setThreadToDelete] = useState<{ id: string; name: string } | null>(null)
   const [showFunnel, setShowFunnel] = useState(true)
   const [showProgression, setShowProgression] = useState(false)
+  const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month' | 'year'>('week')
+  const [showTimeRangeDropdown, setShowTimeRangeDropdown] = useState(false)
 
   // New state for lead performance data
   const [leadPerformanceData, setLeadPerformanceData] = useState<any[]>([])
   const [loadingLeadPerformance, setLoadingLeadPerformance] = useState(false)
+
+  // Add new state for lead performance refresh
+  const [refreshingLeadPerformance, setRefreshingLeadPerformance] = useState(false)
 
   // Handle mounting state to prevent hydration mismatch
   useEffect(() => {
@@ -390,19 +395,35 @@ export default function Page() {
     }
   };
 
-  // Calculate metrics from conversations data
+  // Function to calculate metrics based on time range
   const calculateMetrics = () => {
     if (!rawThreads.length) return {
-      newLeadsToday: 0,
+      newLeads: 0,
       pendingReplies: 0,
       unopenedLeads: 0
     };
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
+    let startDate = new Date();
+
+    // Set start date based on time range
+    switch (timeRange) {
+      case 'day':
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case 'week':
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case 'month':
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+      case 'year':
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
+    }
 
     const metrics = {
-      newLeadsToday: 0,
+      newLeads: 0,
       pendingReplies: 0,
       unopenedLeads: 0
     };
@@ -427,12 +448,11 @@ export default function Page() {
         metrics.pendingReplies++;
       }
 
-      // Calculate new leads today (latest message is from today)
+      // Calculate new leads within time range
       if (latestMessage) {
         const messageDate = new Date(latestMessage.timestamp);
-        messageDate.setHours(0, 0, 0, 0);
-        if (messageDate.getTime() === today.getTime()) {
-          metrics.newLeadsToday++;
+        if (messageDate >= startDate && messageDate <= now) {
+          metrics.newLeads++;
         }
       }
     });
@@ -443,6 +463,14 @@ export default function Page() {
   // Get metrics
   const metrics = calculateMetrics();
 
+  // Time range options
+  const timeRangeOptions = [
+    { value: 'day', label: 'Last 24 Hours' },
+    { value: 'week', label: 'Last 7 Days' },
+    { value: 'month', label: 'Last 30 Days' },
+    { value: 'year', label: 'Last 12 Months' }
+  ];
+
   // Check authentication status
   useEffect(() => {
     if (!mounted) return;
@@ -450,6 +478,53 @@ export default function Page() {
       goto404("401", "No active session found", router)
     }
   }, [status, session, router, mounted])
+
+  // Memoize the refresh function
+  const refreshLeadPerformance = useCallback(async () => {
+    if (!session?.user?.id) return;
+    
+    try {
+      setRefreshingLeadPerformance(true);
+      const response = await fetch('/api/lcp/get_all_threads', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: session.user.id
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch lead performance data');
+      }
+
+      const data = await response.json();
+      if (data.success && Array.isArray(data.data)) {
+        setLeadPerformanceData(data.data);
+      }
+    } catch (error) {
+      console.error('Error refreshing lead performance:', error);
+    } finally {
+      setRefreshingLeadPerformance(false);
+    }
+  }, [session?.user?.id]); // Only recreate if userId changes
+
+  // Update the time range text based on selection
+  const getTimeRangeText = () => {
+    switch (timeRange) {
+      case 'day':
+        return 'Last 24 Hours';
+      case 'week':
+        return 'Last 7 Days';
+      case 'month':
+        return 'Last 30 Days';
+      case 'year':
+        return 'Last 12 Months';
+      default:
+        return 'Last 24 Hours';
+    }
+  };
 
   return (
     <>
@@ -478,24 +553,27 @@ export default function Page() {
           />
 
           {/* Main dashboard content with gradient background */}
-          <div className="flex flex-1 flex-col gap-6 p-6 bg-gradient-to-b from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1] min-h-screen">
+          <div className="flex flex-1 flex-col gap-3 sm:gap-4 md:gap-6 p-3 sm:p-4 md:p-6 bg-gradient-to-b from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1] min-h-screen">
             {/* Welcome section with personalized greeting */}
-            <div className="bg-gradient-to-b from-[#0a5a2f] via-[#0e6537] to-[#157a42] p-8 rounded-lg">
-              <h1 style={{ color: 'white' }} className="text-3xl font-bold mb-2">Welcome, {session?.user?.name || 'User'}</h1>
-              <p style={{ color: 'white' }}>Ready to convert more leads today?</p>
+            <div className="bg-gradient-to-b from-[#0a5a2f] via-[#0e6537] to-[#157a42] p-4 sm:p-6 md:p-8 rounded-lg">
+              <h1 style={{ color: 'white' }} className="text-xl sm:text-2xl md:text-3xl font-bold mb-2">Welcome, {session?.user?.name || 'User'}</h1>
+              <p style={{ color: 'white' }} className="text-sm sm:text-base">Ready to convert more leads today?</p>
             </div>
 
             {/* Lead statistics widgets with mini charts */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
               {/* New leads widget */}
-              <div className="bg-white p-6 rounded-lg border border-[#0e6537]/20 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
+              <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg border border-[#0e6537]/20 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm sm:text-base font-semibold text-gray-700">Lead Statistics</h3>
+                </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-3xl font-bold text-[#0e6537]">{metrics.newLeadsToday}</p>
-                    <p className="text-sm text-gray-600">New Leads Today</p>
+                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-[#0e6537]">{metrics.newLeads}</p>
+                    <p className="text-xs sm:text-sm text-gray-600">New Leads</p>
                   </div>
                   {/* Mini bar chart visualization */}
-                  <div className="w-16 h-8 bg-[#0e6537]/10 rounded flex items-end justify-center gap-1 p-1">
+                  <div className="w-10 sm:w-12 md:w-16 h-5 sm:h-6 md:h-8 bg-[#0e6537]/10 rounded flex items-end justify-center gap-1 p-1">
                     <div className="w-1 bg-[#0e6537] h-2"></div>
                     <div className="w-1 bg-[#0e6537] h-4"></div>
                     <div className="w-1 bg-[#0e6537] h-3"></div>
@@ -506,14 +584,17 @@ export default function Page() {
               </div>
 
               {/* Pending replies widget */}
-              <div className="bg-white p-6 rounded-lg border border-[#0e6537]/20 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
+              <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg border border-[#0e6537]/20 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm sm:text-base font-semibold text-gray-700">Response Status</h3>
+                </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-3xl font-bold text-[#0e6537]">{metrics.pendingReplies}</p>
-                    <p className="text-sm text-gray-600">Pending Replies</p>
+                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-[#0e6537]">{metrics.pendingReplies}</p>
+                    <p className="text-xs sm:text-sm text-gray-600">Pending Replies</p>
                   </div>
                   {/* Mini bar chart visualization */}
-                  <div className="w-16 h-8 bg-[#0e6537]/10 rounded flex items-end justify-center gap-1 p-1">
+                  <div className="w-10 sm:w-12 md:w-16 h-5 sm:h-6 md:h-8 bg-[#0e6537]/10 rounded flex items-end justify-center gap-1 p-1">
                     <div className="w-1 bg-[#0e6537] h-3"></div>
                     <div className="w-1 bg-[#0e6537] h-5"></div>
                     <div className="w-1 bg-[#0e6537] h-2"></div>
@@ -524,14 +605,17 @@ export default function Page() {
               </div>
 
               {/* Unopened leads widget */}
-              <div className="bg-white p-6 rounded-lg border border-[#0e6537]/20 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
+              <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg border border-[#0e6537]/20 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm sm:text-base font-semibold text-gray-700">Lead Status</h3>
+                </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-3xl font-bold text-[#0e6537]">{metrics.unopenedLeads}</p>
-                    <p className="text-sm text-gray-600">Unopened Leads</p>
+                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-[#0e6537]">{metrics.unopenedLeads}</p>
+                    <p className="text-xs sm:text-sm text-gray-600">Unopened Leads</p>
                   </div>
                   {/* Mini bar chart visualization */}
-                  <div className="w-16 h-8 bg-[#0e6537]/10 rounded flex items-end justify-center gap-1 p-1">
+                  <div className="w-10 sm:w-12 md:w-16 h-5 sm:h-6 md:h-8 bg-[#0e6537]/10 rounded flex items-end justify-center gap-1 p-1">
                     <div className="w-1 bg-[#0e6537] h-4"></div>
                     <div className="w-1 bg-[#0e6537] h-2"></div>
                     <div className="w-1 bg-[#0e6537] h-6"></div>
@@ -543,36 +627,36 @@ export default function Page() {
             </div>
 
             {/* Main dashboard grid layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
               {/* Recent conversations section */}
-              <div className="lg:col-span-3 bg-white p-6 rounded-lg border border-[#0e6537]/20 shadow-sm">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-lg font-semibold">Recent Conversations</h3>
-                  <div className="flex gap-2">
+              <div className="lg:col-span-3 bg-white p-3 sm:p-4 md:p-6 rounded-lg border border-[#0e6537]/20 shadow-sm">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-3 mb-3 sm:mb-4 md:mb-6">
+                  <h3 className="text-base sm:text-lg font-semibold">Recent Conversations</h3>
+                  <div className="flex flex-wrap gap-2">
                     <button
-                      className="px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm flex items-center gap-2"
+                      className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm flex items-center gap-1 sm:gap-2 text-xs sm:text-sm md:text-base"
                       onClick={fetchThreads}
                       disabled={loadingConversations}
                     >
-                      <RefreshCw className={`w-4 h-4 ${loadingConversations ? 'animate-spin' : ''}`} />
+                      <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${loadingConversations ? 'animate-spin' : ''}`} />
                       Refresh
                     </button>
                     <button
-                      className="px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm"
+                      className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm text-xs sm:text-sm md:text-base"
                       onClick={() => (window.location.href = "/dashboard/conversations")}
                     >
                       Load All Conversations
                     </button>
                   </div>
                 </div>
-                <div className="space-y-4">
+                <div className="space-y-2 sm:space-y-3 md:space-y-4">
                   {loadingConversations ? (
-                    <div className="flex items-center justify-center py-8">
-                      <RefreshCw className="w-8 h-8 animate-spin text-[#0e6537]" />
-                      <span className="ml-2 text-gray-600">Loading conversations...</span>
+                    <div className="flex items-center justify-center py-6 sm:py-8">
+                      <RefreshCw className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-[#0e6537]" />
+                      <span className="ml-2 text-sm sm:text-base text-gray-600">Loading conversations...</span>
                     </div>
                   ) : conversations.length === 0 ? (
-                    <div className="text-center py-8 text-gray-600">No conversations found.</div>
+                    <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-gray-600">No conversations found.</div>
                   ) : (
                     conversations.map((conv, idx) => {
                       // All messages for this thread
@@ -610,19 +694,19 @@ export default function Page() {
                       return (
                         <div
                           key={conv.conversation_id || idx}
-                          className="flex items-stretch gap-4 p-4 border border-[#0e6537]/20 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors relative group"
+                          className="flex flex-col sm:flex-row items-stretch gap-2 sm:gap-3 md:gap-4 p-2 sm:p-3 md:p-4 border border-[#0e6537]/20 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors relative group"
                           onClick={() => handleMarkAsRead(conv.conversation_id)}
                         >
                           {/* Avatar and left section */}
-                          <div className="flex flex-col items-center justify-start w-12 pt-1">
+                          <div className="flex flex-row sm:flex-col items-center justify-start gap-2 sm:gap-0 sm:w-10 md:w-12 pt-1">
                             {/* Unread alert badge */}
                             {!conv.read && !updatingRead && (
-                              <span className="flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full font-semibold shadow-md z-10 mb-2">
-                                <Bell className="w-4 h-4" /> Unread
+                              <span className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 bg-red-100 text-red-800 text-xs rounded-full font-semibold shadow-md z-10">
+                                <Bell className="w-3 h-3 sm:w-4 sm:h-4" /> Unread
                               </span>
                             )}
-                            <div className="w-10 h-10 bg-[#0e6537]/10 rounded-full flex items-center justify-center">
-                              <span className="text-sm font-semibold text-[#0e6537]">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-[#0e6537]/10 rounded-full flex items-center justify-center">
+                              <span className="text-xs sm:text-sm font-semibold text-[#0e6537]">
                                 {(latestMessage?.sender || latestMessage?.receiver || 'C').split(' ').map((n: string) => n[0]).join('')}
                               </span>
                             </div>
@@ -630,27 +714,27 @@ export default function Page() {
 
                           {/* Main content: left third */}
                           <div className="flex-1 flex flex-col min-w-0 justify-between">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
                               <div className="flex items-center gap-1">
-                                <p className="font-medium text-sm">{conv.source_name || latestMessage?.sender || latestMessage?.receiver || 'Unknown'}</p>
+                                <p className="font-medium text-xs sm:text-sm">{conv.source_name || latestMessage?.sender || latestMessage?.receiver || 'Unknown'}</p>
                                 {isPendingReply && (
                                   <span className="flex items-center gap-1 text-amber-600" title="Awaiting your reply">
-                                    <Clock className="w-3 h-3" />
+                                    <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                                   </span>
                                 )}
                               </div>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${evColor}`} title="Engagement Value (0=bad, 100=good)">
+                              <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium ${evColor}`} title="Engagement Value (0=bad, 100=good)">
                                 EV: {ev_score >= 0 ? ev_score : 'N/A'}
                               </span>
                               {/* Flag indicator if EV score > threshold */}
                               {ev_score > conv.lcp_flag_threshold && (
-                                <span className="ml-2 flex items-center gap-1 text-red-600 font-bold" title="Flagged for review">
-                                  <Flag className="w-4 h-4" /> Flagged
+                                <span className="flex items-center gap-1 text-red-600 font-bold" title="Flagged for review">
+                                  <Flag className="w-3 h-3 sm:w-4 sm:h-4" /> Flagged
                                 </span>
                               )}
                               {/* LCP toggle button */}
                               <button
-                                className={`ml-2 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition-colors duration-200 shadow-sm
+                                className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-semibold transition-colors duration-200 shadow-sm
                                   ${conv.lcp_enabled ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}
                                   ${updatingLcp === conv.conversation_id ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 onClick={e => { 
@@ -661,17 +745,17 @@ export default function Page() {
                                 title={conv.lcp_enabled ? 'Disable LCP' : 'Enable LCP'}
                               >
                                 {updatingLcp === conv.conversation_id ? (
-                                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                  <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                                 ) : conv.lcp_enabled ? (
-                                  <CheckCircle className="w-4 h-4" />
+                                  <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
                                 ) : (
-                                  <XCircle className="w-4 h-4" />
+                                  <XCircle className="w-3 h-3 sm:w-4 sm:h-4" />
                                 )}
                                 {conv.lcp_enabled ? 'LCP On' : 'LCP Off'}
                               </button>
                               {/* Update Delete button */}
                               <button
-                                className={`ml-2 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition-colors duration-200 shadow-sm
+                                className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-semibold transition-colors duration-200 shadow-sm
                                   ${deletingThread === conv.conversation_id ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-100 text-red-600 hover:text-red-700'}
                                   ${deletingThread === conv.conversation_id ? 'bg-red-100' : 'bg-red-50'}`}
                                 onClick={e => { 
@@ -685,16 +769,15 @@ export default function Page() {
                                 title="Delete conversation"
                               >
                                 {deletingThread === conv.conversation_id ? (
-                                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                  <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                                 ) : (
-                                  <Trash2 className="w-4 h-4" />
+                                  <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                                 )}
                                 Delete
                               </button>
                             </div>
-                            <p className="text-xs text-gray-600 mb-1">{latestMessage?.subject || 'No subject'}</p>
-                            {/* Placeholder for summary */}
-                            <p className="text-xs text-gray-500 italic mb-1">Summary: <span className="not-italic text-gray-700">{conv.ai_summary}</span></p>
+                            <p className="text-xs text-gray-600 mb-0.5 sm:mb-1">{latestMessage?.subject || 'No subject'}</p>
+                            <p className="text-xs text-gray-500 italic mb-0.5 sm:mb-1">Summary: <span className="not-italic text-gray-700">{conv.ai_summary}</span></p>
                             <p className="text-xs text-gray-400">{latestMessage?.timestamp ? new Date(latestMessage.timestamp).toLocaleString() : ''}</p>
                           </div>
 
@@ -707,60 +790,106 @@ export default function Page() {
                             />
                           </div>
 
-                          {/* View Thread: right third, always visible and vertically centered */}
-                          <div className="flex flex-col justify-center items-end w-40 pl-2">
+                          {/* View Thread: right third */}
+                          <div className="flex flex-col justify-center items-end w-full sm:w-32 md:w-40 pl-2">
                             <button
                               onClick={e => {
                                 e.stopPropagation();
                                 handleMarkAsRead(conv.conversation_id);
                               }}
-                              className="arrow-animate-hover px-3 py-2 text-sm font-medium text-[#0e6537] bg-[#e6f5ec] rounded-lg hover:bg-[#bbf7d0] hover:shadow-lg flex items-center gap-2 shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#0e6537]/30 group"
+                              className="arrow-animate-hover w-full sm:w-auto px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-[#0e6537] bg-[#e6f5ec] rounded-lg hover:bg-[#bbf7d0] hover:shadow-lg flex items-center justify-center gap-1 sm:gap-2 shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#0e6537]/30 group"
                             >
-                              <span className="relative flex items-center w-8 h-5 mr-1">
-                                <ChevronRight className="arrow-1 absolute left-0 top-0 w-4 h-4 transition-transform" />
-                                <ChevronRight className="arrow-2 absolute left-2 top-0 w-4 h-4 transition-transform" />
-                                <ChevronRight className="arrow-3 absolute left-4 top-0 w-4 h-4 transition-transform" />
+                              <span className="relative flex items-center w-6 h-4 sm:w-8 sm:h-5 mr-0.5 sm:mr-1">
+                                <ChevronRight className="arrow-1 absolute left-0 top-0 w-3 h-3 sm:w-4 sm:h-4 transition-transform" />
+                                <ChevronRight className="arrow-2 absolute left-1.5 sm:left-2 top-0 w-3 h-3 sm:w-4 sm:h-4 transition-transform" />
+                                <ChevronRight className="arrow-3 absolute left-3 sm:left-4 top-0 w-3 h-3 sm:w-4 sm:h-4 transition-transform" />
                               </span>
                               <span className="transition-colors duration-200 group-hover:text-[#166534]">View Thread</span>
                             </button>
                           </div>
                         </div>
-                      )
+                      );
                     })
                   )}
                 </div>
               </div>
 
               {/* Lead performance metrics section */}
-              <div className="lg:col-span-2 bg-white p-6 rounded-lg border border-[#0e6537]/20 shadow-sm">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-xl font-semibold">Lead Performance</h3>
-                   <button
-                      className="px-3 py-1 text-sm bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm flex items-center gap-1"
-                      onClick={fetchThreads}
-                      disabled={loadingLeadPerformance}
+              <div className="lg:col-span-2 bg-white p-3 sm:p-4 md:p-6 rounded-lg border border-[#0e6537]/20 shadow-sm">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+                  <h3 className="text-base sm:text-lg md:text-xl font-semibold">Lead Performance</h3>
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowTimeRangeDropdown(!showTimeRangeDropdown)}
+                        className="flex items-center gap-1.5 px-2 py-1 text-xs sm:text-sm bg-[#0e6537]/10 text-[#0e6537] rounded-lg hover:bg-[#0e6537]/20 transition-colors"
+                      >
+                        {timeRangeOptions.find(opt => opt.value === timeRange)?.label}
+                        <ChevronDown className={`w-3 h-3 sm:w-4 sm:h-4 transition-transform ${showTimeRangeDropdown ? 'rotate-180' : ''}`} />
+                      </button>
+                      {showTimeRangeDropdown && (
+                        <div className="absolute top-full right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                          {timeRangeOptions.map((option) => (
+                            <button
+                              key={option.value}
+                              onClick={() => {
+                                setTimeRange(option.value as 'day' | 'week' | 'month' | 'year');
+                                setShowTimeRangeDropdown(false);
+                              }}
+                              className={`w-full text-left px-3 py-2 text-xs sm:text-sm hover:bg-gray-50 ${
+                                timeRange === option.value ? 'bg-[#0e6537]/10 text-[#0e6537]' : 'text-gray-700'
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm flex items-center gap-1"
+                      onClick={refreshLeadPerformance}
+                      disabled={refreshingLeadPerformance}
                     >
-                      <RefreshCw className={`w-3 h-3 ${loadingLeadPerformance ? 'animate-spin' : ''}`} />
+                      <RefreshCw className={`w-2.5 h-2.5 sm:w-3 sm:h-3 ${refreshingLeadPerformance ? 'animate-spin' : ''}`} />
                       Refresh
                     </button>
+                  </div>
                 </div>
-                <p className="text-sm text-gray-600 mb-8">Your conversion metrics for this month</p>
+                <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4 md:mb-8">Your conversion metrics for {getTimeRangeText().toLowerCase()}</p>
 
                 {/* Conditionally render Funnel or Report */}
                 {showFunnel ? (
-                  <LeadFunnel userId={session?.user?.id} leadData={leadPerformanceData} loading={loadingLeadPerformance} />
+                  <LeadFunnel 
+                    userId={session?.user?.id} 
+                    leadData={leadPerformanceData} 
+                    loading={loadingLeadPerformance} 
+                    timeRange={timeRange}
+                    onRefresh={refreshLeadPerformance}
+                  />
                 ) : showProgression ? (
-                  <ConversationProgression leadData={leadPerformanceData} loading={loadingLeadPerformance} />
+                  <ConversationProgression 
+                    leadData={leadPerformanceData} 
+                    loading={loadingLeadPerformance} 
+                    timeRange={timeRange}
+                    onRefresh={refreshLeadPerformance}
+                  />
                 ) : (
-                  <LeadReport userId={session?.user?.id} leadData={leadPerformanceData} loading={loadingLeadPerformance} />
+                  <LeadReport 
+                    userId={session?.user?.id} 
+                    leadData={leadPerformanceData} 
+                    loading={loadingLeadPerformance} 
+                    timeRange={timeRange}
+                    onRefresh={refreshLeadPerformance}
+                  />
                 )}
 
                 {/* Quick actions section */}
-                <div>
-                  <h4 className="font-semibold mb-3">Quick Actions</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <div className="mt-3 sm:mt-4 md:mt-6">
+                  <h4 className="font-semibold mb-2 sm:mb-3">Quick Actions</h4>
+                  <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-2">
                     <button
-                      className="px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm"
+                      className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm text-xs sm:text-sm md:text-base"
                       onClick={() => {
                         setShowFunnel(true);
                         setShowProgression(false);
@@ -769,7 +898,7 @@ export default function Page() {
                       Track Lead Journey
                     </button>
                     <button
-                      className="px-3 py-2 text-sm bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm"
+                      className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm"
                       onClick={() => {
                         setShowFunnel(false);
                         setShowProgression(true);
@@ -778,7 +907,7 @@ export default function Page() {
                       Conversation Progression
                     </button>
                     <button
-                      className="px-3 py-2 text-sm bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm"
+                      className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm"
                       onClick={() => {
                         setShowFunnel(false);
                         setShowProgression(false);
@@ -792,75 +921,149 @@ export default function Page() {
             </div>
 
             {/* Bottom section with lead sources and activity */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
               {/* Lead sources section */}
-              <div className="bg-white p-6 rounded-lg border border-[#0e6537]/20 shadow-sm">
-                <h3 className="text-lg font-semibold mb-6">Lead Sources This Week</h3>
+              <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg border border-[#0e6537]/20 shadow-sm">
+                <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 md:mb-6">Lead Sources This Week</h3>
 
                 {/* Lead source progress bars */}
-                <div className="space-y-4">
+                <div className="space-y-2 sm:space-y-3 md:space-y-4">
                   {[
                     { source: "Website Forms", count: 45, percentage: 75 },
                     { source: "Social Media", count: 28, percentage: 50 },
                     { source: "Referrals", count: 18, percentage: 33 },
                     { source: "Open Houses", count: 12, percentage: 25 },
                   ].map((source, index) => (
-                    <div key={index} className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">{source.source}</span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-24 h-2 bg-gray-200 rounded-full">
+                    <div key={index} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5 sm:gap-2">
+                      <span className="text-xs sm:text-sm text-gray-600">{source.source}</span>
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <div className="flex-1 sm:w-24 h-1.5 sm:h-2 bg-gray-200 rounded-full">
                           <div
-                            className="h-2 bg-[#0e6537] rounded-full"
+                            className="h-1.5 sm:h-2 bg-[#0e6537] rounded-full"
                             style={{ width: `${source.percentage}%` }}
                           ></div>
                         </div>
-                        <span className="text-sm font-medium">{source.count}</span>
+                        <span className="text-xs sm:text-sm font-medium">{source.count}</span>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Recent activity section */}
-              <div className="bg-white p-6 rounded-lg border border-[#0e6537]/20 shadow-sm">
-                <h3 className="text-lg font-semibold mb-6">Recent Activity</h3>
+              {/* Lead Statistics section */}
+              <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg border border-[#0e6537]/20 shadow-sm">
+                <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 md:mb-6">Lead Statistics</h3>
 
-                {/* Activity timeline */}
+                {/* Statistics cards */}
                 <div className="space-y-4">
-                  {[
-                    { action: "New lead from website", client: "Michael Rodriguez", time: "5 min ago", type: "new" },
-                    { action: "Scheduled showing", client: "Jennifer Chen", time: "1 hour ago", type: "scheduled" },
-                    {
-                      action: "Sent property recommendations",
-                      client: "David Thompson",
-                      time: "2 hours ago",
-                      type: "sent",
-                    },
-                    { action: "Lead responded to email", client: "Lisa Park", time: "3 hours ago", type: "response" },
-                    { action: "Follow-up call completed", client: "Robert Wilson", time: "4 hours ago", type: "call" },
-                  ].map((activity, index) => (
-                    <div key={index} className="flex items-center gap-3 py-2">
-                      {/* Activity type indicator */}
-                      <div
-                        className={`w-2 h-2 rounded-full ${
-                          activity.type === "new"
-                            ? "bg-[#0e6537]"
-                            : activity.type === "scheduled"
-                              ? "bg-blue-500"
-                              : activity.type === "sent"
-                                ? "bg-purple-500"
-                                : activity.type === "response"
-                                  ? "bg-orange-500"
-                                  : "bg-gray-500"
-                        }`}
-                      ></div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{activity.action}</p>
-                        <p className="text-xs text-gray-600">{activity.client}</p>
-                      </div>
-                      <p className="text-xs text-gray-400">{activity.time}</p>
+                  {/* Average EV Score */}
+                  <div className="bg-[#0e6537]/5 p-3 rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="text-sm font-medium text-gray-700">Average EV Score</h4>
+                      <span className="text-xs text-gray-500">Last 7 days</span>
                     </div>
-                  ))}
+                    <div className="flex items-end gap-2">
+                      <span className="text-2xl font-bold text-[#0e6537]">
+                        {(() => {
+                          const recentLeads = rawThreads.filter(thread => {
+                            const firstMessage = thread.messages?.[0];
+                            if (!firstMessage) return false;
+                            const messageDate = new Date(firstMessage.timestamp);
+                            const weekAgo = new Date();
+                            weekAgo.setDate(weekAgo.getDate() - 7);
+                            return messageDate >= weekAgo;
+                          });
+
+                          const totalEv = recentLeads.reduce((sum, thread) => {
+                            const highestEv = thread.messages?.reduce((max: number, msg: Message) => {
+                              const ev = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
+                              return typeof ev === 'number' && !isNaN(ev) ? Math.max(max, ev) : max;
+                            }, -1) || 0;
+                            return sum + highestEv;
+                          }, 0);
+
+                          return recentLeads.length ? Math.round(totalEv / recentLeads.length) : 0;
+                        })()}
+                      </span>
+                      <span className="text-sm text-gray-600">/ 100</span>
+                    </div>
+                  </div>
+
+                  {/* Conversion Rate */}
+                  <div className="bg-[#0e6537]/5 p-3 rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="text-sm font-medium text-gray-700">Conversion Rate</h4>
+                      <span className="text-xs text-gray-500">Last 7 days</span>
+                    </div>
+                    <div className="flex items-end gap-2">
+                      <span className="text-2xl font-bold text-[#0e6537]">
+                        {(() => {
+                          const recentLeads = rawThreads.filter(thread => {
+                            const firstMessage = thread.messages?.[0];
+                            if (!firstMessage) return false;
+                            const messageDate = new Date(firstMessage.timestamp);
+                            const weekAgo = new Date();
+                            weekAgo.setDate(weekAgo.getDate() - 7);
+                            return messageDate >= weekAgo;
+                          });
+
+                          const flaggedLeads = recentLeads.filter(thread => {
+                            const highestEv = thread.messages?.reduce((max: number, msg: Message) => {
+                              const ev = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
+                              return typeof ev === 'number' && !isNaN(ev) ? Math.max(max, ev) : max;
+                            }, -1) || 0;
+                            return highestEv > (thread.thread?.lcp_flag_threshold || 70);
+                          });
+
+                          return recentLeads.length ? Math.round((flaggedLeads.length / recentLeads.length) * 100) : 0;
+                        })()}%
+                      </span>
+                      <span className="text-sm text-gray-600">of leads flagged</span>
+                    </div>
+                  </div>
+
+                  {/* Average Time to Convert */}
+                  <div className="bg-[#0e6537]/5 p-3 rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="text-sm font-medium text-gray-700">Avg. Time to Convert</h4>
+                      <span className="text-xs text-gray-500">Last 7 days</span>
+                    </div>
+                    <div className="flex items-end gap-2">
+                      <span className="text-2xl font-bold text-[#0e6537]">
+                        {(() => {
+                          const recentLeads = rawThreads.filter(thread => {
+                            const firstMessage = thread.messages?.[0];
+                            if (!firstMessage) return false;
+                            const messageDate = new Date(firstMessage.timestamp);
+                            const weekAgo = new Date();
+                            weekAgo.setDate(weekAgo.getDate() - 7);
+                            return messageDate >= weekAgo;
+                          });
+
+                          const conversionTimes = recentLeads.map(thread => {
+                            const messages = thread.messages || [];
+                            const firstMessage = messages[0];
+                            const flaggedMessage = messages.find(msg => {
+                              const ev = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
+                              return typeof ev === 'number' && !isNaN(ev) && ev > (thread.thread?.lcp_flag_threshold || 70);
+                            });
+
+                            if (!firstMessage || !flaggedMessage) return null;
+                            const startTime = new Date(firstMessage.timestamp);
+                            const endTime = new Date(flaggedMessage.timestamp);
+                            return (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60); // Convert to hours
+                          }).filter(time => time !== null) as number[];
+
+                          if (conversionTimes.length === 0) return 'N/A';
+                          const avgHours = conversionTimes.reduce((sum, time) => sum + time, 0) / conversionTimes.length;
+                          return avgHours < 24 
+                            ? `${Math.round(avgHours)}h`
+                            : `${Math.round(avgHours / 24)}d`;
+                        })()}
+                      </span>
+                      <span className="text-sm text-gray-600">to flag</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
