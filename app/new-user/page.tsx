@@ -403,6 +403,7 @@ export default function NewUserPage() {
             autoEmails,
             lcp_automatic_enabled: autoEmails ? 'true' : 'false',
             sms_enabled: smsEnabled ? 'true' : 'false',
+            newUser: false,
           }
         }),
       });
