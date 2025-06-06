@@ -16,6 +16,37 @@ export async function POST(request: Request) {
       );
     }
 
+    // one thing we have to do is update the thread to set 'busy' to true 
+
+    const url = `${config.API_URL}/db/update`;
+    const updateResponse = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        table_name: 'threads',
+        key_name: 'conversation_id',
+        key_value: conversation_id,
+        update_data: { busy: true }
+      }),
+    });
+
+    if (!updateResponse.ok) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Failed to update thread' 
+        },
+        { status: updateResponse.status }
+      );
+    }
+
+    const updateData = await updateResponse.json();
+    console.log('Update thread response:', updateData);
+    
+
+
     // Make request to the config API endpoint
     const response = await fetch(`${config.API_URL}/lcp/send-email`, {
       method: 'POST',

@@ -15,6 +15,7 @@ export interface Thread {
   timeline: string;
   phone?: string;
   location?: string;
+  busy?: boolean; // true if LCP is busy, false otherwise
   // [key: string]: any; // Uncomment to allow arbitrary extension
 }
 

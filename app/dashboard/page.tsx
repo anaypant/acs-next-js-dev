@@ -224,6 +224,7 @@ export default function Page() {
             budget_range: item.thread?.budget_range || '',
             preferred_property_types: item.thread?.preferred_property_types || '',
             timeline: item.thread?.timeline || '',
+            busy: Boolean(item.thread?.busy),
           }))
         )
         setRawThreads(sortedData)
@@ -434,6 +435,27 @@ export default function Page() {
     }
   }, [status, session, router, mounted])
 
+  // Add CSS for pulsating glow effect
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes pulsate {
+        0% { box-shadow: 0 0 0 0 rgba(14, 101, 55, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(14, 101, 55, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(14, 101, 55, 0); }
+      }
+      .thread-busy-card {
+        animation: pulsate 2s infinite;
+        border: 2px solid #0e6537;
+        background-color: rgba(14, 101, 55, 0.05);
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   return (
     <>
       <IconAnimationStyle />
@@ -589,91 +611,98 @@ export default function Page() {
 
                       // Mark as pending if the latest message is inbound-email
                       const isPendingReply = latestMessage?.type === 'inbound-email';
-
+                      console.log(conv.busy)
                       return (
                         <div
-                          key={conv.conversation_id || idx}
-                          className="flex items-stretch gap-4 p-4 border border-[#0e6537]/20 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors relative group"
+                          key={conv.conversation_id}
+                          className={`relative flex flex-col sm:flex-row gap-4 p-4 rounded-lg border transition-all duration-200 hover:shadow-md cursor-pointer ${
+                            conv.busy ? 'thread-busy-card' : 'bg-white border-gray-200'
+                          }`}
                           onClick={() => handleMarkAsRead(conv.conversation_id)}
                         >
-                          {/* Avatar and left section */}
-                          <div className="flex flex-col items-center justify-start w-12 pt-1">
-                            {/* Unread alert badge */}
-                            {!conv.read && !updatingRead && (
-                              <span className="flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full font-semibold shadow-md z-10 mb-2">
-                                <Bell className="w-4 h-4" /> Unread
-                              </span>
-                            )}
-                            <div className="w-10 h-10 bg-[#0e6537]/10 rounded-full flex items-center justify-center">
-                              <span className="text-sm font-semibold text-[#0e6537]">
-                                {(latestMessage?.sender || latestMessage?.receiver || 'C').split(' ').map((n: string) => n[0]).join('')}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Main content: left third */}
-                          <div className="flex-1 flex flex-col min-w-0 justify-between">
-                            <div className="flex items-center gap-2 mb-1">
-                              <div className="flex items-center gap-1">
-                                <p className="font-medium text-sm">{conv.source_name || latestMessage?.sender || latestMessage?.receiver || 'Unknown'}</p>
-                                {isPendingReply && (
-                                  <span className="flex items-center gap-1 text-amber-600" title="Awaiting your reply">
-                                    <Clock className="w-3 h-3" />
+                          {/* Left third: client info and controls */}
+                          <div className="flex-[0.8] min-w-0">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 bg-[#0e6537]/10 rounded-full flex items-center justify-center">
+                                  <span className="text-sm font-semibold text-[#0e6537]">
+                                    {(conv.source_name || latestMessage?.sender || latestMessage?.receiver || 'Unknown')
+                                      .split(" ")
+                                      .map((n: string) => n[0])
+                                      .join("")}
+                                  </span>
+                                </div>
+                                <div className="flex flex-col">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium text-gray-900">
+                                      {conv.source_name || latestMessage?.sender || latestMessage?.receiver || 'Unknown'}
+                                    </span>
+                                    {conv.busy && (
+                                      <div className="flex items-center gap-1.5 px-2 py-0.5 bg-[#0e6537]/10 rounded-full">
+                                        <div className="w-1.5 h-1.5 bg-[#0e6537] rounded-full animate-pulse" />
+                                        <span className="text-xs text-[#0e6537] font-medium">Email in progress</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  {conv.busy && (
+                                    <p className="text-xs text-[#0e6537] mt-1">Please wait while the email is being sent...</p>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${evColor}`} title="Engagement Value (0=bad, 100=good)">
+                                  EV: {ev_score >= 0 ? ev_score : 'N/A'}
+                                </span>
+                                {/* Flag indicator if EV score > threshold */}
+                                {ev_score > conv.lcp_flag_threshold && (
+                                  <span className="ml-2 flex items-center gap-1 text-red-600 font-bold" title="Flagged for review">
+                                    <Flag className="w-4 h-4" /> Flagged
                                   </span>
                                 )}
+                                {/* LCP toggle button */}
+                                <button
+                                  className={`ml-2 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition-colors duration-200 shadow-sm
+                                    ${conv.lcp_enabled ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}
+                                    ${updatingLcp === conv.conversation_id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                  onClick={e => { 
+                                    e.stopPropagation(); 
+                                    handleLcpToggle(conv.conversation_id, conv.lcp_enabled);
+                                  }}
+                                  disabled={updatingLcp === conv.conversation_id}
+                                  title={conv.lcp_enabled ? 'Disable LCP' : 'Enable LCP'}
+                                >
+                                  {updatingLcp === conv.conversation_id ? (
+                                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                  ) : conv.lcp_enabled ? (
+                                    <CheckCircle className="w-4 h-4" />
+                                  ) : (
+                                    <XCircle className="w-4 h-4" />
+                                  )}
+                                  {conv.lcp_enabled ? 'LCP On' : 'LCP Off'}
+                                </button>
+                                {/* Update Delete button */}
+                                <button
+                                  className={`ml-2 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition-colors duration-200 shadow-sm
+                                    ${deletingThread === conv.conversation_id ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-100 text-red-600 hover:text-red-700'}
+                                    ${deletingThread === conv.conversation_id ? 'bg-red-100' : 'bg-red-50'}`}
+                                  onClick={e => { 
+                                    e.stopPropagation(); 
+                                    handleDeleteThread(
+                                      conv.conversation_id,
+                                      conv.source_name || latestMessage?.sender || latestMessage?.receiver || 'Unknown'
+                                    );
+                                  }}
+                                  disabled={deletingThread === conv.conversation_id}
+                                  title="Delete conversation"
+                                >
+                                  {deletingThread === conv.conversation_id ? (
+                                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                  ) : (
+                                    <Trash2 className="w-4 h-4" />
+                                  )}
+                                  Delete
+                                </button>
                               </div>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${evColor}`} title="Engagement Value (0=bad, 100=good)">
-                                EV: {ev_score >= 0 ? ev_score : 'N/A'}
-                              </span>
-                              {/* Flag indicator if EV score > threshold */}
-                              {ev_score > conv.lcp_flag_threshold && (
-                                <span className="ml-2 flex items-center gap-1 text-red-600 font-bold" title="Flagged for review">
-                                  <Flag className="w-4 h-4" /> Flagged
-                                </span>
-                              )}
-                              {/* LCP toggle button */}
-                              <button
-                                className={`ml-2 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition-colors duration-200 shadow-sm
-                                  ${conv.lcp_enabled ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}
-                                  ${updatingLcp === conv.conversation_id ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                onClick={e => { 
-                                  e.stopPropagation(); 
-                                  handleLcpToggle(conv.conversation_id, conv.lcp_enabled);
-                                }}
-                                disabled={updatingLcp === conv.conversation_id}
-                                title={conv.lcp_enabled ? 'Disable LCP' : 'Enable LCP'}
-                              >
-                                {updatingLcp === conv.conversation_id ? (
-                                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                ) : conv.lcp_enabled ? (
-                                  <CheckCircle className="w-4 h-4" />
-                                ) : (
-                                  <XCircle className="w-4 h-4" />
-                                )}
-                                {conv.lcp_enabled ? 'LCP On' : 'LCP Off'}
-                              </button>
-                              {/* Update Delete button */}
-                              <button
-                                className={`ml-2 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition-colors duration-200 shadow-sm
-                                  ${deletingThread === conv.conversation_id ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-100 text-red-600 hover:text-red-700'}
-                                  ${deletingThread === conv.conversation_id ? 'bg-red-100' : 'bg-red-50'}`}
-                                onClick={e => { 
-                                  e.stopPropagation(); 
-                                  handleDeleteThread(
-                                    conv.conversation_id,
-                                    conv.source_name || latestMessage?.sender || latestMessage?.receiver || 'Unknown'
-                                  );
-                                }}
-                                disabled={deletingThread === conv.conversation_id}
-                                title="Delete conversation"
-                              >
-                                {deletingThread === conv.conversation_id ? (
-                                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                  <Trash2 className="w-4 h-4" />
-                                )}
-                                Delete
-                              </button>
                             </div>
                             <p className="text-xs text-gray-600 mb-1">{latestMessage?.subject || 'No subject'}</p>
                             {/* Placeholder for summary */}

@@ -263,6 +263,26 @@ export default function ConversationDetailPage() {
   const [showResponseModal, setShowResponseModal] = useState(false)
   const [editedResponse, setEditedResponse] = useState("")
 
+  // Add CSS for pulsating glow effect
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes pulsate {
+        0% { box-shadow: 0 0 0 0 rgba(14, 101, 55, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(14, 101, 55, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(14, 101, 55, 0); }
+      }
+      .thread-busy {
+        animation: pulsate 2s infinite;
+        border: 2px solid #0e6537;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   // Add reloadConversation function
   const reloadConversation = async () => {
     setLoading(true);
@@ -411,10 +431,18 @@ export default function ConversationDetailPage() {
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <h1 className="text-2xl font-bold">Conversation with {leadName}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold">Conversation with {leadName}</h1>
+            {thread?.busy && (
+              <div className="flex items-center gap-2 px-3 py-1 bg-[#0e6537]/10 rounded-full">
+                <div className="w-2 h-2 bg-[#0e6537] rounded-full animate-pulse" />
+                <span className="text-sm text-[#0e6537] font-medium">Email in progress</span>
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 ${thread?.busy ? 'thread-busy rounded-lg' : ''}`}>
           {/* Messages section with chat interface */}
           <div className="lg:col-span-2 bg-white rounded-lg border shadow-sm flex flex-col relative h-[50rem]">
             <div className="p-4 border-b">
@@ -499,14 +527,16 @@ export default function ConversationDetailPage() {
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Type your message..."
-                  className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0e6537]"
+                  placeholder={thread?.busy ? "Email sending in progress..." : "Type your message..."}
+                  className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0e6537] disabled:bg-gray-50 disabled:text-gray-500"
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
+                  disabled={thread?.busy}
                 />
                 <button 
                   className="px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={!messageInput.trim()}
+                  disabled={!messageInput.trim() || thread?.busy}
+                  title={thread?.busy ? "Email sending in progress" : "Send message"}
                 >
                   Send
                 </button>
@@ -514,15 +544,17 @@ export default function ConversationDetailPage() {
               <div className="flex justify-end">
                 <button
                   onClick={generateAIResponse}
-                  disabled={!canGenerateResponse || generatingResponse}
+                  disabled={!canGenerateResponse || generatingResponse || thread?.busy}
                   className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all duration-200 ${
-                    canGenerateResponse 
+                    canGenerateResponse && !thread?.busy
                       ? 'bg-[#0e6537]/10 text-[#0e6537] hover:bg-[#0e6537]/20' 
                       : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   }`}
-                  title={canGenerateResponse 
-                    ? "Generate an AI response to the last message" 
-                    : "Can only generate responses to user messages"}
+                  title={thread?.busy 
+                    ? "Email sending in progress" 
+                    : canGenerateResponse 
+                      ? "Generate an AI response to the last message" 
+                      : "Can only generate responses to user messages"}
                 >
                   {generatingResponse ? (
                     <>
