@@ -11,7 +11,7 @@ import {
 
 const VerifyEmailPage = () => {
     const router = useRouter();
-    const { status } = useSession();
+    const { status, data: session } = useSession();
 
     // TODO: Email verification flow will be implemented later
     // This is a temporary redirect to dashboard
@@ -19,9 +19,15 @@ const VerifyEmailPage = () => {
     // that will be restored when needed
     React.useEffect(() => {
         if (status === 'authenticated') {
-            router.push('/dashboard');
+            // If the user is new, route to new-user
+            const isNewUser = (session && 'user' in session && (session.user as any)?.isNewUser) || false;
+            if (isNewUser) {
+                router.push('/new-user');
+            } else {
+                router.push('/dashboard');
+            }
         }
-    }, [status, router]);
+    }, [status, session, router]);
 
     // Show loading state while checking session
     if (status === 'loading') {
