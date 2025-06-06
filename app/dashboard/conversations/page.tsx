@@ -162,6 +162,7 @@ export default function ConversationsPage() {
             budget_range: item.thread?.budget_range || '',
             preferred_property_types: item.thread?.preferred_property_types || '',
             timeline: item.thread?.timeline || '',
+            busy: Boolean(item.thread?.busy),
           }))
         )
         setRawThreads(sortedData)
@@ -280,6 +281,7 @@ export default function ConversationsPage() {
         status,
         propertyTypes: thread.preferred_property_types || "Not specified",
         budget: thread.budget_range || "Not specified",
+        busy: Boolean(thread.busy),
       };
     })
     .sort((a, b) => {
@@ -297,6 +299,26 @@ export default function ConversationsPage() {
 
       return 0;
     });
+
+  // Add CSS for pulsating glow effect
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes pulsate {
+        0% { box-shadow: 0 0 0 0 rgba(14, 101, 55, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(14, 101, 55, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(14, 101, 55, 0); }
+      }
+      .thread-busy-row {
+        animation: pulsate 2s infinite;
+        border-left: 2px solid #0e6537;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a5a2f] via-[#0e6537] to-[#157a42]">
@@ -452,7 +474,9 @@ export default function ConversationsPage() {
                   {filteredAndSortedConversations.map((conversation) => (
                     <tr
                       key={conversation.id}
-                      className="border-b hover:bg-[#0e6537]/5 cursor-pointer"
+                      className={`border-b hover:bg-[#0e6537]/5 cursor-pointer transition-all duration-200 ${
+                        conversation.busy ? 'thread-busy-row bg-[#0e6537]/5' : ''
+                      }`}
                       onClick={() => (window.location.href = `/dashboard/conversations/${conversation.id}`)}
                     >
                       {/* Client information cell */}
@@ -466,9 +490,19 @@ export default function ConversationsPage() {
                                 .join("")}
                             </span>
                           </div>
-                          <div>
-                            <p className="font-medium">{conversation.name}</p>
-                            <p className="text-sm text-gray-500">{conversation.budget}</p>
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-gray-900">{conversation.name}</span>
+                              {conversation.busy && (
+                                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-[#0e6537]/10 rounded-full">
+                                  <div className="w-1.5 h-1.5 bg-[#0e6537] rounded-full animate-pulse" />
+                                  <span className="text-xs text-[#0e6537] font-medium">Email in progress</span>
+                                </div>
+                              )}
+                            </div>
+                            {conversation.busy && (
+                              <p className="text-xs text-[#0e6537] mt-1">Please wait while the email is being sent...</p>
+                            )}
                           </div>
                         </div>
                       </td>
