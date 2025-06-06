@@ -238,6 +238,7 @@ export default function Page() {
             budget_range: item.thread?.budget_range || '',
             preferred_property_types: item.thread?.preferred_property_types || '',
             timeline: item.thread?.timeline || '',
+            busy: Boolean(item.thread?.busy),
           }))
         )
         setRawThreads(sortedData)
@@ -526,6 +527,27 @@ export default function Page() {
     }
   };
 
+  // Add CSS for pulsating glow effect
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes pulsate {
+        0% { box-shadow: 0 0 0 0 rgba(14, 101, 55, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(14, 101, 55, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(14, 101, 55, 0); }
+      }
+      .thread-busy-card {
+        animation: pulsate 2s infinite;
+        border: 2px solid #0e6537;
+        background-color: rgba(14, 101, 55, 0.05);
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   return (
     <>
       <IconAnimationStyle />
@@ -690,7 +712,7 @@ export default function Page() {
 
                       // Mark as pending if the latest message is inbound-email
                       const isPendingReply = latestMessage?.type === 'inbound-email';
-
+                      console.log(conv.busy)
                       return (
                         <div
                           key={conv.conversation_id || idx}
@@ -721,7 +743,23 @@ export default function Page() {
                                   <span className="flex items-center gap-1 text-amber-600" title="Awaiting your reply">
                                     <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                                   </span>
-                                )}
+                                </div>
+                                <div className="flex flex-col">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium text-gray-900">
+                                      {conv.source_name || latestMessage?.sender || latestMessage?.receiver || 'Unknown'}
+                                    </span>
+                                    {conv.busy && (
+                                      <div className="flex items-center gap-1.5 px-2 py-0.5 bg-[#0e6537]/10 rounded-full">
+                                        <div className="w-1.5 h-1.5 bg-[#0e6537] rounded-full animate-pulse" />
+                                        <span className="text-xs text-[#0e6537] font-medium">Email in progress</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  {conv.busy && (
+                                    <p className="text-xs text-[#0e6537] mt-1">Please wait while the email is being sent...</p>
+                                  )}
+                                </div>
                               </div>
                               <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium ${evColor}`} title="Engagement Value (0=bad, 100=good)">
                                 EV: {ev_score >= 0 ? ev_score : 'N/A'}
@@ -772,9 +810,52 @@ export default function Page() {
                                   <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                                 ) : (
                                   <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
+
                                 )}
-                                Delete
-                              </button>
+                                {/* LCP toggle button */}
+                                <button
+                                  className={`ml-2 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition-colors duration-200 shadow-sm
+                                    ${conv.lcp_enabled ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}
+                                    ${updatingLcp === conv.conversation_id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                  onClick={e => { 
+                                    e.stopPropagation(); 
+                                    handleLcpToggle(conv.conversation_id, conv.lcp_enabled);
+                                  }}
+                                  disabled={updatingLcp === conv.conversation_id}
+                                  title={conv.lcp_enabled ? 'Disable LCP' : 'Enable LCP'}
+                                >
+                                  {updatingLcp === conv.conversation_id ? (
+                                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                  ) : conv.lcp_enabled ? (
+                                    <CheckCircle className="w-4 h-4" />
+                                  ) : (
+                                    <XCircle className="w-4 h-4" />
+                                  )}
+                                  {conv.lcp_enabled ? 'LCP On' : 'LCP Off'}
+                                </button>
+                                {/* Update Delete button */}
+                                <button
+                                  className={`ml-2 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition-colors duration-200 shadow-sm
+                                    ${deletingThread === conv.conversation_id ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-100 text-red-600 hover:text-red-700'}
+                                    ${deletingThread === conv.conversation_id ? 'bg-red-100' : 'bg-red-50'}`}
+                                  onClick={e => { 
+                                    e.stopPropagation(); 
+                                    handleDeleteThread(
+                                      conv.conversation_id,
+                                      conv.source_name || latestMessage?.sender || latestMessage?.receiver || 'Unknown'
+                                    );
+                                  }}
+                                  disabled={deletingThread === conv.conversation_id}
+                                  title="Delete conversation"
+                                >
+                                  {deletingThread === conv.conversation_id ? (
+                                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                  ) : (
+                                    <Trash2 className="w-4 h-4" />
+                                  )}
+                                  Delete
+                                </button>
+                              </div>
                             </div>
                             <p className="text-xs text-gray-600 mb-0.5 sm:mb-1">{latestMessage?.subject || 'No subject'}</p>
                             <p className="text-xs text-gray-500 italic mb-0.5 sm:mb-1">Summary: <span className="not-italic text-gray-700">{conv.ai_summary}</span></p>
