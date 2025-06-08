@@ -124,131 +124,6 @@ function LoadingSkeleton() {
   )
 }
 
-// Update the Modal component
-function ResponseModal({ 
-  isOpen, 
-  onClose, 
-  response, 
-  onResponseChange,
-  onSend,
-  isSending
-}: { 
-  isOpen: boolean; 
-  onClose: () => void; 
-  response: string;
-  onResponseChange: (newResponse: string) => void;
-  onSend: () => void;
-  isSending: boolean;
-}) {
-  // Add state for animation
-  const [isVisible, setIsVisible] = useState(false);
-
-  // Handle animation timing
-  useEffect(() => {
-    if (isOpen) {
-      // Small delay to ensure the modal is mounted before animation
-      requestAnimationFrame(() => setIsVisible(true));
-    } else {
-      setIsVisible(false);
-    }
-  }, [isOpen]);
-
-  if (!isOpen) return null;
-
-  return (
-    <div 
-      className={`fixed inset-0 bg-black/50 flex items-center justify-center z-50 transition-opacity duration-300 ${
-        isVisible ? 'opacity-100' : 'opacity-0'
-      }`}
-      onClick={(e) => {
-        // Close modal when clicking outside
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div 
-        className={`bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 transform transition-all duration-300 ${
-          isVisible 
-            ? 'translate-y-0 opacity-100 scale-100' 
-            : 'translate-y-4 opacity-0 scale-95'
-        }`}
-      >
-        <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold">Review AI-Generated Response</h3>
-            <div className="group relative">
-              <Info className="h-5 w-5 text-gray-400 cursor-help" />
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-                The email subject and your signature will be automatically added when sending.
-              </div>
-            </div>
-          </div>
-          <button 
-            onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <X className="h-5 w-5 text-gray-500" />
-          </button>
-        </div>
-
-        <div className="p-4 space-y-4">
-          {/* Info banner */}
-          <div className="bg-[#0e6537]/5 border border-[#0e6537]/20 rounded-lg p-3 flex items-start gap-2">
-            <Info className="h-5 w-5 text-[#0e6537] mt-0.5 flex-shrink-0" />
-            <div className="text-sm text-[#0e6537]">
-              <p className="font-medium mb-1">Email Details</p>
-              <ul className="list-disc list-inside space-y-1 text-[#0e6537]/80">
-                <li>Subject will be automatically generated based on the conversation</li>
-                <li>Your email signature will be appended to the message</li>
-                <li>You can edit the response before sending</li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Response textarea */}
-          <div className="relative">
-            <textarea
-              value={response}
-              onChange={(e) => onResponseChange(e.target.value)}
-              className="w-full h-48 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0e6537] resize-none transition-shadow duration-200"
-              placeholder="Edit the AI-generated response..."
-            />
-            <div className="absolute bottom-2 right-2 text-xs text-gray-400">
-              {response.length} characters
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4 border-t flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            disabled={isSending}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onSend}
-            disabled={isSending}
-            className="px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm flex items-center gap-2 disabled:opacity-50"
-          >
-            {isSending ? (
-              <>
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                Sending...
-              </>
-            ) : (
-              <>
-                <Mail className="h-4 w-4" />
-                Send Response
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /**
  * ConversationDetailPage Component
  * Main conversation detail component displaying message history and client information
@@ -272,8 +147,6 @@ export default function ConversationDetailPage() {
   const [generatingResponse, setGeneratingResponse] = useState(false)
   const [sendingEmail, setSendingEmail] = useState(false)
   const [messageInput, setMessageInput] = useState("")
-  const [showResponseModal, setShowResponseModal] = useState(false)
-  const [editedResponse, setEditedResponse] = useState("")
   const [copySuccess, setCopySuccess] = useState(false)
   const [generatingPdf, setGeneratingPdf] = useState(false)
   const [feedback, setFeedback] = useState<Record<string, 'like' | 'dislike' | null>>({});
@@ -381,7 +254,7 @@ export default function ConversationDetailPage() {
   const lastMessage = sortedMessages[sortedMessages.length - 1]
   const canGenerateResponse = lastMessage?.type === "inbound-email"
 
-  // Function to generate AI response
+  // Update generateAIResponse function
   const generateAIResponse = async () => {
     if (!canGenerateResponse || !thread) return
 
@@ -405,9 +278,8 @@ export default function ConversationDetailPage() {
 
       const data = await response.json()
       if (data.success) {
-        // Set the response in state and show modal
-        setEditedResponse(data.data.response || '')
-        setShowResponseModal(true)
+        // Directly set the response in the text field
+        setMessageInput(data.data.response || '')
       } else {
         throw new Error(data.error || 'Failed to generate response')
       }
@@ -419,9 +291,9 @@ export default function ConversationDetailPage() {
     }
   }
 
-  // Update handleSendResponse to use reloadConversation
+  // Update handleSendResponse function
   const handleSendResponse = async () => {
-    if (!thread || !editedResponse.trim()) return;
+    if (!thread || !messageInput.trim()) return;
 
     try {
       setSendingEmail(true);
@@ -432,7 +304,7 @@ export default function ConversationDetailPage() {
         },
         body: JSON.stringify({
           conversation_id: conversationId,
-          response_body: editedResponse
+          response_body: messageInput
         })
       });
 
@@ -443,10 +315,8 @@ export default function ConversationDetailPage() {
       }
 
       if (data.success) {
-        // Close the modal and clear states
-        setShowResponseModal(false);
+        // Clear the message input
         setMessageInput('');
-        setEditedResponse('');
         // Reload all conversation data
         await reloadConversation();
       } else {
@@ -671,14 +541,6 @@ export default function ConversationDetailPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1]">
-      <ResponseModal
-        isOpen={showResponseModal}
-        onClose={() => setShowResponseModal(false)}
-        response={editedResponse}
-        onResponseChange={setEditedResponse}
-        onSend={handleSendResponse}
-        isSending={sendingEmail}
-      />
       <div className="max-w-[1400px] mx-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-10 h-[calc(100vh-48px)]">
         {/* Left: Conversation History */}
         <div className="flex flex-col flex-1">
@@ -798,6 +660,19 @@ export default function ConversationDetailPage() {
               <span className="text-xs text-gray-400">(Draft a reply with AI assistance)</span>
             </div>
             <div className="px-8 py-6 flex flex-col gap-4">
+              {/* Info banner */}
+              <div className="bg-[#0e6537]/5 border border-[#0e6537]/20 rounded-lg p-3 flex items-start gap-2">
+                <Info className="h-5 w-5 text-[#0e6537] mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-[#0e6537]">
+                  <p className="font-medium mb-1">Email Details</p>
+                  <ul className="list-disc list-inside space-y-1 text-[#0e6537]/80">
+                    <li>Subject will be automatically generated based on the conversation</li>
+                    <li>Your email signature will be appended to the message</li>
+                    <li>You can edit the response before sending</li>
+                  </ul>
+                </div>
+              </div>
+
               <textarea
                 value={messageInput}
                 onChange={(e) => setMessageInput(e.target.value)}
@@ -825,11 +700,22 @@ export default function ConversationDetailPage() {
                   )}
                 </button>
                 <button
+                  onClick={handleSendResponse}
                   className="px-6 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={!messageInput.trim() || thread?.busy}
+                  disabled={!messageInput.trim() || thread?.busy || sendingEmail}
                   title={thread?.busy ? "Email sending in progress" : "Send email"}
                 >
-                  Send Email
+                  {sendingEmail ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin inline mr-2" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="h-4 w-4 inline mr-2" />
+                      Send Email
+                    </>
+                  )}
                 </button>
               </div>
             </div>

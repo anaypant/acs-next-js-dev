@@ -397,10 +397,8 @@ export default function NewUserPage() {
           key_name: 'id',
           key_value: session?.user?.id,
           update_data: {
-            signature,
-            smsEnabled,
+            email_signature: signature,
             phone: cleanedPhone,
-            autoEmails,
             lcp_automatic_enabled: autoEmails ? 'true' : 'false',
             sms_enabled: smsEnabled ? 'true' : 'false',
             newUser: false,

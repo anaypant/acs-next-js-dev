@@ -110,6 +110,12 @@ export default function SettingsPage() {
   const [signatureError, setSignatureError] = useState<string | null>(null)
   const [signatureSuccess, setSignatureSuccess] = useState(false)
 
+  // Automated emailing state
+  const [autoEmails, setAutoEmails] = useState(true)
+  const [autoEmailsLoading, setAutoEmailsLoading] = useState(false)
+  const [autoEmailsError, setAutoEmailsError] = useState<string | null>(null)
+  const [autoEmailsSuccess, setAutoEmailsSuccess] = useState(false)
+
   // Debug log for signature form state changes
   useEffect(() => {
     console.log('Signature form state updated:', signatureForm);
@@ -169,9 +175,12 @@ export default function SettingsPage() {
         // Check if data.items is an array and has items
         if (Array.isArray(data.items) && data.items.length > 0) {
           const signature = data.items[0].email_signature;
+          const autoEmailsEnabled = data.items[0].lcp_automatic_enabled === 'true';
           setSignatureForm({ email_signature: signature || '' });
+          setAutoEmails(autoEmailsEnabled);
         } else {
           setSignatureForm({ email_signature: '' });
+          setAutoEmails(true); // Default to true if not set
         }
       } catch (err) {
         setSignatureError(err instanceof Error ? err.message : 'Failed to fetch signature');
@@ -318,6 +327,47 @@ export default function SettingsPage() {
       setSignatureLoading(false)
     }
   }
+
+  // Handle automated emailing update
+  const handleAutoEmailsUpdate = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!session?.user?.id) return;
+    
+    const newValue = e.target.checked;
+    setAutoEmailsLoading(true);
+    setAutoEmailsError(null);
+    setAutoEmailsSuccess(false);
+
+    try {
+      // First update the user's automated emailing setting
+      const userResponse = await fetch('/api/db/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          table_name: 'Users',
+          key_name: 'id',
+          key_value: session.user.id,
+          update_data: {
+            lcp_automatic_enabled: newValue ? 'true' : 'false',
+            updated_at: new Date().toISOString()
+          }
+        }),
+        credentials: 'include',
+      });
+
+      if (!userResponse.ok) {
+        throw new Error('Failed to update automated emailing setting');
+      }
+
+      setAutoEmails(newValue);
+      setAutoEmailsSuccess(true);
+    } catch (err) {
+      setAutoEmailsError(err instanceof Error ? err.message : 'Failed to update automated emailing setting');
+    } finally {
+      setAutoEmailsLoading(false);
+    }
+  };
 
   // Handle mounting state to prevent hydration mismatch
   useEffect(() => {
@@ -677,46 +727,79 @@ export default function SettingsPage() {
               id="customize"
               className="bg-white p-6 rounded-lg border-[#d8eee1] border shadow-sm bg-gradient-to-br from-[#e6f5ec] to-[#f0f9f4] scroll-mt-6"
             >
-              <h2 className="text-lg font-semibold mb-4">Email Signature</h2>
-              <p className="text-sm text-gray-600 mb-4">
-                This is your default email signature, automatically created by ACS. It will be used on all your automated emails sent through the platform. You can customize it below.
-              </p>
-              <form onSubmit={handleSignatureUpdate} className="space-y-4">
-                <div className="relative">
-                  <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-gray-50 to-transparent pointer-events-none rounded-t-lg"></div>
-                  <textarea
-                    name="email_signature"
-                    value={signatureForm.email_signature}
-                    onChange={handleSignatureChange}
-                    className="w-full h-64 px-4 py-8 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537] font-mono text-sm whitespace-pre-wrap"
-                    placeholder="Enter your email signature here..."
-                    style={{ 
-                      fontFamily: 'monospace',
-                      lineHeight: '1.5',
-                      tabSize: 2
-                    }}
-                  />
-                  
-                  <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-gray-50 to-transparent pointer-events-none rounded-b-lg"></div>
+              <h2 className="text-lg font-semibold mb-4">Email Settings</h2>
+              
+              {/* Automated Emailing Setting */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="font-medium">Automated Emailing</p>
+                    <p className="text-sm text-gray-600">
+                      Allow ACS to automatically send emails on your behalf. If disabled, ACS will provide suggestions and AI responses, but will not send emails automatically.
+                    </p>
+                  </div>
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="autoEmails"
+                      checked={autoEmails}
+                      onChange={handleAutoEmailsUpdate}
+                      disabled={autoEmailsLoading}
+                      className="w-4 h-4 text-[#0e6537] rounded focus:ring-[#0e6537]"
+                    />
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <span className="inline-block w-2 h-2 bg-gray-300 rounded-full"></span>
-                  <span>Preserves whitespace and formatting</span>
-                </div>
-                {signatureError && (
-                  <p className="text-sm text-red-600 mt-2">{signatureError}</p>
+                {autoEmailsError && (
+                  <p className="text-sm text-red-600 mt-2">{autoEmailsError}</p>
                 )}
-                {signatureSuccess && (
-                  <p className="text-sm text-green-600 mt-2">Signature updated successfully!</p>
+                {autoEmailsSuccess && (
+                  <p className="text-sm text-green-600 mt-2">Automated emailing setting updated successfully!</p>
                 )}
-                <button
-                  type="submit"
-                  disabled={signatureLoading}
-                  className="mt-4 px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm disabled:opacity-50"
-                >
-                  {signatureLoading ? 'Saving...' : 'Save Signature'}
-                </button>
-              </form>
+              </div>
+
+              {/* Email Signature */}
+              <div>
+                <h3 className="text-md font-semibold mb-2">Email Signature</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  This is your default email signature, automatically created by ACS. It will be used on all your automated emails sent through the platform. You can customize it below.
+                </p>
+                <form onSubmit={handleSignatureUpdate} className="space-y-4">
+                  <div className="relative">
+                    <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-gray-50 to-transparent pointer-events-none rounded-t-lg"></div>
+                    <textarea
+                      name="email_signature"
+                      value={signatureForm.email_signature}
+                      onChange={handleSignatureChange}
+                      className="w-full h-64 px-4 py-8 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537] font-mono text-sm whitespace-pre-wrap"
+                      placeholder="Enter your email signature here..."
+                      style={{ 
+                        fontFamily: 'monospace',
+                        lineHeight: '1.5',
+                        tabSize: 2
+                      }}
+                    />
+                    
+                    <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-gray-50 to-transparent pointer-events-none rounded-b-lg"></div>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <span className="inline-block w-2 h-2 bg-gray-300 rounded-full"></span>
+                    <span>Preserves whitespace and formatting</span>
+                  </div>
+                  {signatureError && (
+                    <p className="text-sm text-red-600 mt-2">{signatureError}</p>
+                  )}
+                  {signatureSuccess && (
+                    <p className="text-sm text-green-600 mt-2">Signature updated successfully!</p>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={signatureLoading}
+                    className="mt-4 px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm disabled:opacity-50"
+                  >
+                    {signatureLoading ? 'Saving...' : 'Save Signature'}
+                  </button>
+                </form>
+              </div>
             </div>
 
             {/* Notification Settings @TODO: Implement */}
