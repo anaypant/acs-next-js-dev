@@ -360,6 +360,28 @@ export default function SettingsPage() {
         throw new Error('Failed to update automated emailing setting');
       }
 
+      // Then update all threads' LCP enabled values using the associated_account index
+      const threadsResponse = await fetch('/api/db/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          table_name: 'Threads',
+          index_name: 'associated_account-index',
+          key_name: 'associated_account',
+          key_value: session.user.id,
+          update_data: {
+            lcp_enabled: newValue ? 'true' : 'false'
+          }
+        }),
+        credentials: 'include',
+      });
+
+      if (!threadsResponse.ok) {
+        throw new Error('Failed to update thread LCP settings');
+      }
+
       setAutoEmails(newValue);
       setAutoEmailsSuccess(true);
     } catch (err) {

@@ -31,6 +31,10 @@ export async function POST(request: Request) {
       }),
       credentials: 'include',
     });
+    console.log('response', response);
+    console.log('response.ok', response.ok);
+    const data = await response.json();
+    console.log('data', data);
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Response not ok:', {
@@ -41,21 +45,9 @@ export async function POST(request: Request) {
       throw new Error(`API request failed with status ${response.status}: ${errorText}`);
     }
 
-    // Get the response text first
-    const responseText = await response.text();
-
-    // Parse the response text
-    let proxyResponse;
-    try {
-      proxyResponse = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('Error parsing response:', parseError);
-      throw new Error('Invalid response format from API');
-    }
-    
-    // Handle the response which is an array directly
-    if (!Array.isArray(proxyResponse)) {
-      console.error('Expected array response but got:', typeof proxyResponse);
+    // The data is already parsed from response.json(), no need to parse again
+    if (!Array.isArray(data)) {
+      console.error('Expected array response but got:', typeof data);
       return NextResponse.json(
         { error: 'Invalid response format - expected array' },
         { status: 500 }
@@ -65,7 +57,7 @@ export async function POST(request: Request) {
     // Return the array directly as items
     return NextResponse.json({
       success: true,
-      items: proxyResponse
+      items: data
     });
 
   } catch (error) {

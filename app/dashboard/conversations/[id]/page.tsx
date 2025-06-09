@@ -7,7 +7,7 @@
  */
 
 "use client"
-import { ArrowLeft, Phone, Mail, Calendar, MapPin, Flag, RefreshCw, Sparkles, X, Info, Copy, Check, Download, ThumbsUp, ThumbsDown } from "lucide-react"
+import { ArrowLeft, Phone, Mail, Calendar, MapPin, RefreshCw, Sparkles, X, Info, Copy, Check, Download, ThumbsUp, ThumbsDown } from "lucide-react"
 import { useParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import type { Thread } from "@/app/types/lcp"
@@ -16,6 +16,8 @@ import 'react-circular-progressbar/dist/styles.css';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import 'jspdf-autotable';
+import { useSession } from "next-auth/react"
+import type { User } from "@/types/auth"
 
 // Add type declaration for jsPDF with autoTable
 declare module 'jspdf' {
@@ -138,12 +140,12 @@ function LoadingSkeleton() {
  */
 export default function ConversationDetailPage() {
   const params = useParams()
+  const { data: session } = useSession()
+  const user = session?.user as User | undefined
   const conversationId = params.id as string
   const [thread, setThread] = useState<Thread | null>(null)
   const [messages, setMessages] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [threshold, setThreshold] = useState<number | null>(null)
-  const [updatingThreshold, setUpdatingThreshold] = useState(false)
   const [generatingResponse, setGeneratingResponse] = useState(false)
   const [sendingEmail, setSendingEmail] = useState(false)
   const [messageInput, setMessageInput] = useState("")
@@ -151,6 +153,35 @@ export default function ConversationDetailPage() {
   const [generatingPdf, setGeneratingPdf] = useState(false)
   const [feedback, setFeedback] = useState<Record<string, 'like' | 'dislike' | null>>({});
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [emailPreview, setEmailPreview] = useState<{ subject: string; body: string; signature: string } | null>(null);
+  const [userSignature, setUserSignature] = useState<string>("");
+
+  // Fetch user signature on component mount
+  useEffect(() => {
+    const fetchUserSignature = async () => {
+      if (!user?.id) return;
+      try {
+        const response = await fetch('/api/db/select', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            table_name: 'Users',
+            index_name: 'id-index',
+            key_name: 'id',
+            key_value: user.id
+          })
+        });
+        const data = await response.json();
+        if (data.items[0]?.email_signature) {
+          setUserSignature(data.items[0].email_signature);
+        }
+      } catch (error) {
+        console.error('Error fetching user signature:', error);
+      }
+    };
+    fetchUserSignature();
+  }, [user?.id]);
 
   // Add CSS for pulsating glow effect
   useEffect(() => {
@@ -185,10 +216,6 @@ export default function ConversationDetailPage() {
       if (data.success) {
         setThread(data.data.thread);
         setMessages(data.data.messages);
-        setThreshold(typeof data.data.thread.lcp_flag_threshold === 'number' 
-          ? data.data.thread.lcp_flag_threshold 
-          : Number(data.data.thread.lcp_flag_threshold) || 0
-        );
       }
     } catch (error) {
       console.error('Error reloading conversation:', error);
@@ -295,6 +322,31 @@ export default function ConversationDetailPage() {
   const handleSendResponse = async () => {
     if (!thread || !messageInput.trim()) return;
 
+    // Get the subject from the last inbound message
+    const lastInboundMessage = [...messages]
+      .filter(msg => msg.type === 'inbound-email')
+      .pop();
+    const originalSubject = lastInboundMessage?.subject || 'Conversation';
+    
+    // Only add "Re:" if it's not already present
+    const subject = originalSubject.startsWith('Re:') ? originalSubject : `Re: ${originalSubject}`;
+
+    // Construct the preview directly
+    const preview = {
+      subject,
+      body: messageInput,
+      signature: userSignature || `Best regards,\nACS Team\n\n---\nThis email was sent from ACS Conversation Platform`
+    };
+
+    // Show preview modal
+    setEmailPreview(preview);
+    setShowPreview(true);
+  }
+
+  // Add function to handle actual email sending
+  const handleConfirmSend = async () => {
+    if (!thread || !messageInput.trim()) return;
+
     try {
       setSendingEmail(true);
       const response = await fetch('/api/lcp/send_email', {
@@ -315,8 +367,10 @@ export default function ConversationDetailPage() {
       }
 
       if (data.success) {
-        // Clear the message input
+        // Clear the message input and close preview
         setMessageInput('');
+        setShowPreview(false);
+        setEmailPreview(null);
         // Reload all conversation data
         await reloadConversation();
       } else {
@@ -541,6 +595,68 @@ export default function ConversationDetailPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1]">
+      {/* Email Preview Modal */}
+      {showPreview && emailPreview && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+            <div className="px-6 py-4 border-b flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Review Email</h3>
+              <button
+                onClick={() => {
+                  setShowPreview(false);
+                  setEmailPreview(null);
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-700">Subject:</span>
+                  <div className="p-3 bg-gray-50 rounded-lg text-gray-900 flex-1">{emailPreview.subject}</div>
+                </div>
+                <div>
+                  <div className="p-3 bg-gray-50 rounded-lg text-gray-900 whitespace-pre-line">{emailPreview.body}</div>
+                </div>
+                <div>
+                  <div className="p-3 bg-gray-50 rounded-lg text-gray-900 whitespace-pre-line">{emailPreview.signature}</div>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowPreview(false);
+                  setEmailPreview(null);
+                }}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmSend}
+                disabled={sendingEmail}
+                className="px-6 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {sendingEmail ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="h-4 w-4" />
+                    Confirm & Send
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-[1400px] mx-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-10 h-[calc(100vh-48px)]">
         {/* Left: Conversation History */}
         <div className="flex flex-col flex-1">
@@ -760,56 +876,6 @@ export default function ConversationDetailPage() {
                 </div>
               );
             })()}
-
-            {/* EV Score Threshold */}
-            <div className="bg-white rounded-2xl border shadow-lg p-6 min-h-[170px] flex flex-col justify-center">
-              <div className="flex items-center gap-2 mb-2">
-                <Flag className="w-5 h-5 text-red-600" />
-                <span className="font-semibold text-gray-700">EV Score Threshold</span>
-              </div>
-              <p className="text-sm text-gray-600 mb-2">
-                Set the threshold to flag conversations for review when EV score exceeds this value.
-              </p>
-              <div className="flex items-center gap-4 mb-2">
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={threshold ?? 0}
-                  onChange={e => setThreshold(Number(e.target.value))}
-                  className="w-40 accent-red-600"
-                  disabled={updatingThreshold}
-                />
-                <span className="font-mono text-lg text-red-700">{threshold}</span>
-              </div>
-              <button
-                className="w-full px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm disabled:opacity-50"
-                disabled={updatingThreshold || threshold === thread?.lcp_flag_threshold}
-                onClick={async () => {
-                  if (!thread) return;
-                  setUpdatingThreshold(true);
-                  try {
-                    const res = await fetch('/api/db/update', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        table_name: 'Threads',
-                        key_name: 'conversation_id',
-                        key_value: thread.conversation_id,
-                        update_data: { lcp_flag_threshold: String(threshold) }
-                      })
-                    });
-                    if (res.ok) {
-                      setThread((prev: any) => ({ ...prev, lcp_flag_threshold: threshold }));
-                    }
-                  } finally {
-                    setUpdatingThreshold(false);
-                  }
-                }}
-              >
-                {updatingThreshold ? 'Applying...' : 'Apply Threshold'}
-              </button>
-            </div>
           </div>
         </div>
       </div>

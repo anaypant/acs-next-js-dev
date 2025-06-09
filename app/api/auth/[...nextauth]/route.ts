@@ -46,7 +46,7 @@ export const authOptions = {
             email: creds.email,
             name: data.user?.name || data.name || creds.name || '',
             provider: creds.provider,
-            authType: 'existing',
+            authType: data.authType || data.user?.authType || 'existing',
             ...(creds.provider === 'google' && { accessToken: data.accessToken })
           };
 
@@ -99,8 +99,8 @@ export const authOptions = {
           
           // Store the user data in the token for session creation
           if (loginResponseData.success) {
-            // Set authType in the token
-            user.authType = 'existing';
+            // Set authType from the login response
+            user.authType = loginResponseData.user?.authType || loginResponseData.authType || 'existing';
             user.id = loginResponseData.user.id;
             return true;
           }
@@ -139,8 +139,14 @@ export const authOptions = {
             console.error('Signup error:', data.error);
             return false;
           }
-          // Set authType in the token
-          user.authType = 'new';
+
+          // Get authType from the signup response
+          if (data.success && data.data?.session?.user?.authType) {
+            user.authType = data.data.session.user.authType;
+          } else {
+            // Fallback to 'new' for new Google signups
+            user.authType = 'new';
+          }
           return true;
         } catch (err) {
           console.error('NextAuth Google signup error:', err);
@@ -150,45 +156,40 @@ export const authOptions = {
       return true;
     },
     async jwt({ token, user, account }: { token: any; user: any; account: any }) {
-      // console.log('JWT Callback - Input:', { token, user, account });
-
       if (user) {
+        console.log('JWT Callback - User authType:', user.authType);
         const mappedToken = {
           ...token,
           id: user.id,
           email: user.email,
           name: user.name,
           provider: user.provider || 'form',
-          authType: user.authType || 'credentials',
+          authType: user.authType,
           accessToken: account?.access_token || user.accessToken || undefined,
         };
-
-        // console.log('JWT Callback - Updated token:', mappedToken);
+        console.log('JWT Callback - Mapped token authType:', mappedToken.authType);
         return mappedToken;
       }
-
       return token;
     },
     async session({ session, token }: { session: any; token: any }) {
-      // console.log('Session Callback - Input:', { session, token });
-
-      // Map token fields to session user
+      console.log('Session Callback - Token authType:', token.authType);
       const mappedUser = {
         ...session.user,
         id: token.id,
         email: token.email,
         name: token.name ?? '',
         provider: token.provider || 'form',
-        authType: token.authType || 'credentials',
+        authType: token.authType,
         accessToken: token.accessToken,
       };
+      console.log('Session Callback - Mapped user authType:', mappedUser.authType);
 
       const updatedSession = {
         ...session,
         user: mappedUser
       };
 
-      // console.log('Session Callback - Updated session:', updatedSession);
       return updatedSession;
     }
   },
