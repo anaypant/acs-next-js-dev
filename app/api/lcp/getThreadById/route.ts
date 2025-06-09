@@ -53,7 +53,14 @@ export async function POST(request: Request) {
       }),
     });
 
+
+    console.log('messagesResponse', messagesResponse);
+
     if (!messagesResponse.ok) {
+      // log the error
+      console.log('messagesResponse error', messagesResponse);
+      console.log('messagesResponse error', messagesResponse.statusText);
+      console.log('messagesResponse error', messagesResponse.body);
       throw new Error(`Failed to fetch messages for thread ${conversation_id}`);
     }
 

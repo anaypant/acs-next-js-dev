@@ -7,7 +7,7 @@
  */
 
 "use client"
-import { ArrowLeft, Phone, Mail, Calendar, MapPin, Flag, RefreshCw, Sparkles, X, Info, Copy, Check, Download, ThumbsUp, ThumbsDown } from "lucide-react"
+import { ArrowLeft, Phone, Mail, Calendar, MapPin, RefreshCw, Sparkles, X, Info, Copy, Check, Download, ThumbsUp, ThumbsDown } from "lucide-react"
 import { useParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import type { Thread } from "@/app/types/lcp"
@@ -16,6 +16,8 @@ import 'react-circular-progressbar/dist/styles.css';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import 'jspdf-autotable';
+import { useSession } from "next-auth/react"
+import type { User } from "@/types/auth"
 
 // Add type declaration for jsPDF with autoTable
 declare module 'jspdf' {
@@ -124,131 +126,6 @@ function LoadingSkeleton() {
   )
 }
 
-// Update the Modal component
-function ResponseModal({ 
-  isOpen, 
-  onClose, 
-  response, 
-  onResponseChange,
-  onSend,
-  isSending
-}: { 
-  isOpen: boolean; 
-  onClose: () => void; 
-  response: string;
-  onResponseChange: (newResponse: string) => void;
-  onSend: () => void;
-  isSending: boolean;
-}) {
-  // Add state for animation
-  const [isVisible, setIsVisible] = useState(false);
-
-  // Handle animation timing
-  useEffect(() => {
-    if (isOpen) {
-      // Small delay to ensure the modal is mounted before animation
-      requestAnimationFrame(() => setIsVisible(true));
-    } else {
-      setIsVisible(false);
-    }
-  }, [isOpen]);
-
-  if (!isOpen) return null;
-
-  return (
-    <div 
-      className={`fixed inset-0 bg-black/50 flex items-center justify-center z-50 transition-opacity duration-300 ${
-        isVisible ? 'opacity-100' : 'opacity-0'
-      }`}
-      onClick={(e) => {
-        // Close modal when clicking outside
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div 
-        className={`bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 transform transition-all duration-300 ${
-          isVisible 
-            ? 'translate-y-0 opacity-100 scale-100' 
-            : 'translate-y-4 opacity-0 scale-95'
-        }`}
-      >
-        <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold">Review AI-Generated Response</h3>
-            <div className="group relative">
-              <Info className="h-5 w-5 text-gray-400 cursor-help" />
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-                The email subject and your signature will be automatically added when sending.
-              </div>
-            </div>
-          </div>
-          <button 
-            onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <X className="h-5 w-5 text-gray-500" />
-          </button>
-        </div>
-
-        <div className="p-4 space-y-4">
-          {/* Info banner */}
-          <div className="bg-[#0e6537]/5 border border-[#0e6537]/20 rounded-lg p-3 flex items-start gap-2">
-            <Info className="h-5 w-5 text-[#0e6537] mt-0.5 flex-shrink-0" />
-            <div className="text-sm text-[#0e6537]">
-              <p className="font-medium mb-1">Email Details</p>
-              <ul className="list-disc list-inside space-y-1 text-[#0e6537]/80">
-                <li>Subject will be automatically generated based on the conversation</li>
-                <li>Your email signature will be appended to the message</li>
-                <li>You can edit the response before sending</li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Response textarea */}
-          <div className="relative">
-            <textarea
-              value={response}
-              onChange={(e) => onResponseChange(e.target.value)}
-              className="w-full h-48 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0e6537] resize-none transition-shadow duration-200"
-              placeholder="Edit the AI-generated response..."
-            />
-            <div className="absolute bottom-2 right-2 text-xs text-gray-400">
-              {response.length} characters
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4 border-t flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            disabled={isSending}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onSend}
-            disabled={isSending}
-            className="px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm flex items-center gap-2 disabled:opacity-50"
-          >
-            {isSending ? (
-              <>
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                Sending...
-              </>
-            ) : (
-              <>
-                <Mail className="h-4 w-4" />
-                Send Response
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /**
  * ConversationDetailPage Component
  * Main conversation detail component displaying message history and client information
@@ -263,21 +140,48 @@ function ResponseModal({
  */
 export default function ConversationDetailPage() {
   const params = useParams()
+  const { data: session } = useSession()
+  const user = session?.user as User | undefined
   const conversationId = params.id as string
   const [thread, setThread] = useState<Thread | null>(null)
   const [messages, setMessages] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [threshold, setThreshold] = useState<number | null>(null)
-  const [updatingThreshold, setUpdatingThreshold] = useState(false)
   const [generatingResponse, setGeneratingResponse] = useState(false)
   const [sendingEmail, setSendingEmail] = useState(false)
   const [messageInput, setMessageInput] = useState("")
-  const [showResponseModal, setShowResponseModal] = useState(false)
-  const [editedResponse, setEditedResponse] = useState("")
   const [copySuccess, setCopySuccess] = useState(false)
   const [generatingPdf, setGeneratingPdf] = useState(false)
   const [feedback, setFeedback] = useState<Record<string, 'like' | 'dislike' | null>>({});
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [emailPreview, setEmailPreview] = useState<{ subject: string; body: string; signature: string } | null>(null);
+  const [userSignature, setUserSignature] = useState<string>("");
+
+  // Fetch user signature on component mount
+  useEffect(() => {
+    const fetchUserSignature = async () => {
+      if (!user?.id) return;
+      try {
+        const response = await fetch('/api/db/select', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            table_name: 'Users',
+            index_name: 'id-index',
+            key_name: 'id',
+            key_value: user.id
+          })
+        });
+        const data = await response.json();
+        if (data.items[0]?.email_signature) {
+          setUserSignature(data.items[0].email_signature);
+        }
+      } catch (error) {
+        console.error('Error fetching user signature:', error);
+      }
+    };
+    fetchUserSignature();
+  }, [user?.id]);
 
   // Add CSS for pulsating glow effect
   useEffect(() => {
@@ -312,10 +216,6 @@ export default function ConversationDetailPage() {
       if (data.success) {
         setThread(data.data.thread);
         setMessages(data.data.messages);
-        setThreshold(typeof data.data.thread.lcp_flag_threshold === 'number' 
-          ? data.data.thread.lcp_flag_threshold 
-          : Number(data.data.thread.lcp_flag_threshold) || 0
-        );
       }
     } catch (error) {
       console.error('Error reloading conversation:', error);
@@ -381,7 +281,7 @@ export default function ConversationDetailPage() {
   const lastMessage = sortedMessages[sortedMessages.length - 1]
   const canGenerateResponse = lastMessage?.type === "inbound-email"
 
-  // Function to generate AI response
+  // Update generateAIResponse function
   const generateAIResponse = async () => {
     if (!canGenerateResponse || !thread) return
 
@@ -405,9 +305,8 @@ export default function ConversationDetailPage() {
 
       const data = await response.json()
       if (data.success) {
-        // Set the response in state and show modal
-        setEditedResponse(data.data.response || '')
-        setShowResponseModal(true)
+        // Directly set the response in the text field
+        setMessageInput(data.data.response || '')
       } else {
         throw new Error(data.error || 'Failed to generate response')
       }
@@ -419,9 +318,34 @@ export default function ConversationDetailPage() {
     }
   }
 
-  // Update handleSendResponse to use reloadConversation
+  // Update handleSendResponse function
   const handleSendResponse = async () => {
-    if (!thread || !editedResponse.trim()) return;
+    if (!thread || !messageInput.trim()) return;
+
+    // Get the subject from the last inbound message
+    const lastInboundMessage = [...messages]
+      .filter(msg => msg.type === 'inbound-email')
+      .pop();
+    const originalSubject = lastInboundMessage?.subject || 'Conversation';
+    
+    // Only add "Re:" if it's not already present
+    const subject = originalSubject.startsWith('Re:') ? originalSubject : `Re: ${originalSubject}`;
+
+    // Construct the preview directly
+    const preview = {
+      subject,
+      body: messageInput,
+      signature: userSignature || `Best regards,\nACS Team\n\n---\nThis email was sent from ACS Conversation Platform`
+    };
+
+    // Show preview modal
+    setEmailPreview(preview);
+    setShowPreview(true);
+  }
+
+  // Add function to handle actual email sending
+  const handleConfirmSend = async () => {
+    if (!thread || !messageInput.trim()) return;
 
     try {
       setSendingEmail(true);
@@ -432,7 +356,7 @@ export default function ConversationDetailPage() {
         },
         body: JSON.stringify({
           conversation_id: conversationId,
-          response_body: editedResponse
+          response_body: messageInput
         })
       });
 
@@ -443,10 +367,10 @@ export default function ConversationDetailPage() {
       }
 
       if (data.success) {
-        // Close the modal and clear states
-        setShowResponseModal(false);
+        // Clear the message input and close preview
         setMessageInput('');
-        setEditedResponse('');
+        setShowPreview(false);
+        setEmailPreview(null);
         // Reload all conversation data
         await reloadConversation();
       } else {
@@ -671,14 +595,68 @@ export default function ConversationDetailPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1]">
-      <ResponseModal
-        isOpen={showResponseModal}
-        onClose={() => setShowResponseModal(false)}
-        response={editedResponse}
-        onResponseChange={setEditedResponse}
-        onSend={handleSendResponse}
-        isSending={sendingEmail}
-      />
+      {/* Email Preview Modal */}
+      {showPreview && emailPreview && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+            <div className="px-6 py-4 border-b flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Review Email</h3>
+              <button
+                onClick={() => {
+                  setShowPreview(false);
+                  setEmailPreview(null);
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-700">Subject:</span>
+                  <div className="p-3 bg-gray-50 rounded-lg text-gray-900 flex-1">{emailPreview.subject}</div>
+                </div>
+                <div>
+                  <div className="p-3 bg-gray-50 rounded-lg text-gray-900 whitespace-pre-line">{emailPreview.body}</div>
+                </div>
+                <div>
+                  <div className="p-3 bg-gray-50 rounded-lg text-gray-900 whitespace-pre-line">{emailPreview.signature}</div>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowPreview(false);
+                  setEmailPreview(null);
+                }}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmSend}
+                disabled={sendingEmail}
+                className="px-6 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {sendingEmail ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="h-4 w-4" />
+                    Confirm & Send
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-[1400px] mx-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-10 h-[calc(100vh-48px)]">
         {/* Left: Conversation History */}
         <div className="flex flex-col flex-1">
@@ -798,6 +776,19 @@ export default function ConversationDetailPage() {
               <span className="text-xs text-gray-400">(Draft a reply with AI assistance)</span>
             </div>
             <div className="px-8 py-6 flex flex-col gap-4">
+              {/* Info banner */}
+              <div className="bg-[#0e6537]/5 border border-[#0e6537]/20 rounded-lg p-3 flex items-start gap-2">
+                <Info className="h-5 w-5 text-[#0e6537] mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-[#0e6537]">
+                  <p className="font-medium mb-1">Email Details</p>
+                  <ul className="list-disc list-inside space-y-1 text-[#0e6537]/80">
+                    <li>Subject will be automatically generated based on the conversation</li>
+                    <li>Your email signature will be appended to the message</li>
+                    <li>You can edit the response before sending</li>
+                  </ul>
+                </div>
+              </div>
+
               <textarea
                 value={messageInput}
                 onChange={(e) => setMessageInput(e.target.value)}
@@ -825,11 +816,22 @@ export default function ConversationDetailPage() {
                   )}
                 </button>
                 <button
+                  onClick={handleSendResponse}
                   className="px-6 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={!messageInput.trim() || thread?.busy}
+                  disabled={!messageInput.trim() || thread?.busy || sendingEmail}
                   title={thread?.busy ? "Email sending in progress" : "Send email"}
                 >
-                  Send Email
+                  {sendingEmail ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin inline mr-2" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="h-4 w-4 inline mr-2" />
+                      Send Email
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -874,56 +876,6 @@ export default function ConversationDetailPage() {
                 </div>
               );
             })()}
-
-            {/* EV Score Threshold */}
-            <div className="bg-white rounded-2xl border shadow-lg p-6 min-h-[170px] flex flex-col justify-center">
-              <div className="flex items-center gap-2 mb-2">
-                <Flag className="w-5 h-5 text-red-600" />
-                <span className="font-semibold text-gray-700">EV Score Threshold</span>
-              </div>
-              <p className="text-sm text-gray-600 mb-2">
-                Set the threshold to flag conversations for review when EV score exceeds this value.
-              </p>
-              <div className="flex items-center gap-4 mb-2">
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={threshold ?? 0}
-                  onChange={e => setThreshold(Number(e.target.value))}
-                  className="w-40 accent-red-600"
-                  disabled={updatingThreshold}
-                />
-                <span className="font-mono text-lg text-red-700">{threshold}</span>
-              </div>
-              <button
-                className="w-full px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm disabled:opacity-50"
-                disabled={updatingThreshold || threshold === thread?.lcp_flag_threshold}
-                onClick={async () => {
-                  if (!thread) return;
-                  setUpdatingThreshold(true);
-                  try {
-                    const res = await fetch('/api/db/update', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        table_name: 'Threads',
-                        key_name: 'conversation_id',
-                        key_value: thread.conversation_id,
-                        update_data: { lcp_flag_threshold: String(threshold) }
-                      })
-                    });
-                    if (res.ok) {
-                      setThread((prev: any) => ({ ...prev, lcp_flag_threshold: threshold }));
-                    }
-                  } finally {
-                    setUpdatingThreshold(false);
-                  }
-                }}
-              >
-                {updatingThreshold ? 'Applying...' : 'Apply Threshold'}
-              </button>
-            </div>
           </div>
         </div>
       </div>

@@ -746,17 +746,12 @@ export default function Page() {
                                 )}
                               </div>
                               <div className="flex flex-col">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium text-gray-900">
-                                    {conv.source_name || latestMessage?.sender || latestMessage?.receiver || 'Unknown'}
-                                  </span>
-                                  {conv.busy && (
-                                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-[#0e6537]/10 rounded-full">
-                                      <div className="w-1.5 h-1.5 bg-[#0e6537] rounded-full animate-pulse" />
-                                      <span className="text-xs text-[#0e6537] font-medium">Email in progress</span>
-                                    </div>
-                                  )}
-                                </div>
+                                {conv.busy && (
+                                  <div className="flex items-center gap-1.5 px-2 py-0.5 bg-[#0e6537]/10 rounded-full">
+                                    <div className="w-1.5 h-1.5 bg-[#0e6537] rounded-full animate-pulse" />
+                                    <span className="text-xs text-[#0e6537] font-medium">Email in progress</span>
+                                  </div>
+                                )}
                                 {conv.busy && (
                                   <p className="text-xs text-[#0e6537] mt-1">Please wait while the email is being sent...</p>
                                 )}

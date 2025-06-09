@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     // For each thread, fetch its associated messages
     const conversationsWithMessages = await Promise.all(
       threads.map(async (thread: any) => {
-        const messagesResponse = await fetch(`${config.API_URL}/db/select`, {
+        const messagesResponse = await fetch(`${config.API_URL}db/select`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
