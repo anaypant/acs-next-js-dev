@@ -65,6 +65,11 @@ export default function NewUserPage() {
   const [phone, setPhone] = useState('');
   const [autoEmails, setAutoEmails] = useState(true);
   const [settingsLoading, setSettingsLoading] = useState(false);
+  const [lcpSettings, setLcpSettings] = useState({
+    tone: "professional",
+    style: "concise",
+    samplePrompt: ""
+  });
 
   // List of unsupported public email domains
   const unsupportedDomains = [
@@ -419,7 +424,7 @@ export default function NewUserPage() {
       setLoading(true);
       const finalEmail = emailOption === 'default' 
         ? responseEmail 
-        : customEmail; // Use the full custom email
+        : customEmail;
 
       if (emailOption === 'custom') {
         const domain = customEmail.split('@')[1];
@@ -489,11 +494,65 @@ export default function NewUserPage() {
         }
       }
 
+      // Update LCP settings along with email settings
+      const updateRes = await fetch('/api/db/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table_name: 'Users',
+          key_name: 'id',
+          key_value: session?.user?.id,
+          update_data: {
+            acsMail: finalEmail,
+            responseEmail: finalEmail,
+            lcp_tone: lcpSettings.tone,
+            lcp_style: lcpSettings.style,
+            lcp_sample_prompt: lcpSettings.samplePrompt
+          }
+        }),
+      });
+      if (!updateRes.ok) {
+        throw new Error('Failed to update email and LCP settings');
+      }
+
       // Success: proceed to next step
+      setStep(3);
+    } catch (error) {
+      console.error('Error updating settings:', error);
+      showError(error instanceof Error ? error.message : 'Failed to update settings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCompleteSetup = async () => {
+    try {
+      setLoading(true);
+      // Update LCP settings
+      const updateRes = await fetch('/api/db/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table_name: 'Users',
+          key_name: 'id',
+          key_value: session?.user?.id,
+          update_data: {
+            lcp_tone: lcpSettings.tone,
+            lcp_style: lcpSettings.style,
+            lcp_sample_prompt: lcpSettings.samplePrompt,
+            newUser: false
+          }
+        }),
+      });
+      if (!updateRes.ok) {
+        throw new Error('Failed to update LCP settings');
+      }
+
+      // Proceed to next step
       setStep(4);
     } catch (error) {
-      console.error('Error updating email:', error);
-      showError(error instanceof Error ? error.message : 'Failed to update email');
+      console.error('Error updating LCP settings:', error);
+      showError(error instanceof Error ? error.message : 'Failed to update LCP settings');
     } finally {
       setLoading(false);
     }
@@ -576,7 +635,12 @@ export default function NewUserPage() {
             setStep={setStep}
           />
         ) : step === 3 ? (
-          <Step3Complete />
+          <Step3Complete
+            lcpSettings={lcpSettings}
+            setLcpSettings={setLcpSettings}
+            handleComplete={handleCompleteSetup}
+            loading={loading}
+          />
         ) : step === 4 ? (
           <Step4Settings
             signature={signature}
