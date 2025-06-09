@@ -12,6 +12,7 @@ import HomePage from './landing/page';
 import Navbar from './Navbar';
 import Footer from './Footer';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 /**
  * Home Component
@@ -22,6 +23,7 @@ import { useSession } from 'next-auth/react';
  * - Layout composition (Navbar, HomePage, Footer)
  * - Client-side rendering
  * - Session debugging and logging
+ * - Automatic redirection to dashboard for authenticated users
  * 
  * State Management:
  * - Tracks authentication session
@@ -32,6 +34,14 @@ import { useSession } from 'next-auth/react';
 export default function Home() {
     // Get session data and status from NextAuth
     const { data: session, status } = useSession();
+    const router = useRouter();
+
+    // Handle redirection for authenticated users
+    useEffect(() => {
+        if (status === 'authenticated' && session) {
+            router.push('/dashboard');
+        }
+    }, [status, session, router]);
 
     // Debug logging for session information
     useEffect(() => {
@@ -41,11 +51,9 @@ export default function Home() {
         console.log('Full Session:', session);
         if (session?.user) {
             console.log('User Details:');
-            console.log('id:', session.user.id);
             console.log('email:', session.user.email);
             console.log('name:', session.user.name);
-            console.log('provider:', session.user.provider);
-            console.log('authType:', session.user.authType);
+            console.log('image:', session.user.image);
         }
         console.log('-------------------');
     }, [session, status]);
