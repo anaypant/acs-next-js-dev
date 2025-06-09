@@ -16,6 +16,8 @@ export interface Thread {
   phone?: string;
   location?: string;
   busy?: boolean; // true if LCP is busy, false otherwise
+  flag_for_review?: boolean; // true if conversation is flagged for review
+  flag_review_override?: string; // 'true' if review check is disabled, undefined or 'false' if enabled
   // [key: string]: any; // Uncomment to allow arbitrary extension
 }
 

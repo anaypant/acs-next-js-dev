@@ -30,20 +30,30 @@ export async function POST(request: Request) {
       }),
     });
 
+    const data = await response.json();
+    console.log('LLM response:', data);
+
+    // Check if the response is flagged for review first
+    if (data.status === 'flagged_for_review') {
+      return NextResponse.json({
+        success: true,
+        data,
+        flagged: true
+      });
+    }
+
+    // Then check for other errors
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Error from LLM API:', errorData);
+      console.error('Error from LLM API:', data);
       return NextResponse.json(
         { 
           success: false,
-          error: errorData.message || 'Failed to get LLM response'
+          error: data.message || 'Failed to get LLM response'
         },
         { status: response.status }
       );
     }
 
-    const data = await response.json();
-    console.log('LLM response:', data);
     return NextResponse.json({
       success: true,
       data

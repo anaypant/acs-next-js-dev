@@ -7,7 +7,7 @@
  */
 
 "use client"
-import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, PanelLeft, Bell, CheckCircle, XCircle, Flag, Trash2, AlertTriangle, RefreshCw, Clock, ChevronRight, ChevronDown } from "lucide-react"
+import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, PanelLeft, Bell, CheckCircle, XCircle, Flag, Trash2, AlertTriangle, RefreshCw, Clock, ChevronRight, ChevronDown, X, Shield, ShieldOff } from "lucide-react"
 import type React from "react"
 import { SidebarProvider, AppSidebar, SidebarTrigger, SidebarInset } from "./Sidebar"
 import { useSession } from "next-auth/react"
@@ -21,11 +21,12 @@ import LeadReport from '../components/dashboard/LeadReport'
 import ConversationProgression from '../components/dashboard/ConversationProgression'
 
 // Add Modal component at the top level
-const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, conversationName }: { 
+const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, conversationName, isDeleting }: { 
   isOpen: boolean; 
   onClose: () => void; 
   onConfirm: () => void;
   conversationName: string;
+  isDeleting: boolean;
 }) => {
   if (!isOpen) return null;
 
@@ -47,15 +48,28 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, conversationName 
         <div className="flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            disabled={isDeleting}
+            className={`px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg transition-colors ${
+              isDeleting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'
+            }`}
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+            disabled={isDeleting}
+            className={`px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg transition-colors flex items-center gap-2 ${
+              isDeleting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-700'
+            }`}
           >
-            Delete
+            {isDeleting ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              'Delete'
+            )}
           </button>
         </div>
       </div>
@@ -147,6 +161,59 @@ const TripleArrowAnimationStyle = () => (
   `}</style>
 );
 
+// Add custom keyframes for flagged glow effects
+const FlaggedGlowStyle = () => (
+  <style>{`
+    @keyframes flagged-review-glow {
+      0% { box-shadow: 0 0 5px rgba(234, 179, 8, 0.5), 0 0 10px rgba(234, 179, 8, 0.3); }
+      50% { box-shadow: 0 0 10px rgba(234, 179, 8, 0.7), 0 0 20px rgba(234, 179, 8, 0.5); }
+      100% { box-shadow: 0 0 5px rgba(234, 179, 8, 0.5), 0 0 10px rgba(234, 179, 8, 0.3); }
+    }
+    @keyframes flagged-completion-glow {
+      0% { box-shadow: 0 0 5px rgba(34, 197, 94, 0.3), 0 0 10px rgba(34, 197, 94, 0.2); }
+      50% { box-shadow: 0 0 10px rgba(34, 197, 94, 0.4), 0 0 20px rgba(34, 197, 94, 0.3); }
+      100% { box-shadow: 0 0 5px rgba(34, 197, 94, 0.3), 0 0 10px rgba(34, 197, 94, 0.2); }
+    }
+    .flagged-review {
+      animation: flagged-review-glow 2s infinite;
+      border: 2px solid #eab308;
+      background: linear-gradient(to right, rgba(234, 179, 8, 0.05), rgba(234, 179, 8, 0.02));
+    }
+    .flagged-review:hover {
+      background: linear-gradient(to right, rgba(234, 179, 8, 0.08), rgba(234, 179, 8, 0.04));
+    }
+    .flagged-completion {
+      animation: flagged-completion-glow 2s infinite;
+      border: 2px solid #22c55e;
+      background: linear-gradient(to right, rgba(34, 197, 94, 0.05), rgba(34, 197, 94, 0.02));
+    }
+    .flagged-completion:hover {
+      background: linear-gradient(to right, rgba(34, 197, 94, 0.08), rgba(34, 197, 94, 0.04));
+    }
+  `}</style>
+);
+
+// Update OverrideStatus component to only show icon
+const OverrideStatus = ({ isEnabled }: { isEnabled: boolean }) => {
+  return (
+    <div className="group relative inline-flex items-center p-1.5 bg-gray-50 rounded-lg">
+      {isEnabled ? (
+        <ShieldOff className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-500" />
+      ) : (
+        <Shield className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
+      )}
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 w-48">
+        {isEnabled ? (
+          "AI review checks are disabled for this conversation. The AI will not flag this conversation for review, even if it detects potential issues."
+        ) : (
+          "AI review checks are enabled. The AI will flag this conversation for review if it detects any uncertainty or issues that need human attention."
+        )}
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-gray-900" />
+      </div>
+    </div>
+  );
+};
+
 /**
  * Page Component
  * Main dashboard component that displays the lead conversion pipeline and analytics
@@ -183,6 +250,13 @@ export default function Page() {
 
   // Add new state for lead performance refresh
   const [refreshingLeadPerformance, setRefreshingLeadPerformance] = useState(false)
+
+  // Add new state for filters
+  const [filters, setFilters] = useState({
+    unread: false,
+    review: false,
+    completion: false
+  });
 
   // Handle mounting state to prevent hydration mismatch
   useEffect(() => {
@@ -238,7 +312,8 @@ export default function Page() {
             budget_range: item.thread?.budget_range || '',
             preferred_property_types: item.thread?.preferred_property_types || '',
             timeline: item.thread?.timeline || '',
-            busy: Boolean(item.thread?.busy),
+            busy: item.thread?.busy === 'true',
+            flag_for_review: Boolean(item.thread?.flag_for_review),
           }))
         )
         setRawThreads(sortedData)
@@ -548,10 +623,44 @@ export default function Page() {
     };
   }, []);
 
+  // Add filter toggle function
+  const toggleFilter = (filter: keyof typeof filters) => {
+    setFilters(prev => ({
+      ...prev,
+      [filter]: !prev[filter]
+    }));
+  };
+
+  // Add filtered conversations function
+  const getFilteredConversations = () => {
+    return conversations.filter(conv => {
+      const messages = rawThreads.find(t => t.thread?.conversation_id === conv.conversation_id)?.messages || [];
+      const evMessage = messages
+        .filter((msg: any) => {
+          const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
+          return typeof score === 'number' && !isNaN(score) && score >= 0 && score <= 100;
+        })
+        .reduce((latest: any, msg: any) => {
+          if (!latest) return msg;
+          return new Date(msg.timestamp) > new Date(latest.timestamp) ? msg : latest;
+        }, undefined);
+
+      const ev_score = evMessage ? (typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score) : -1;
+      const isFlaggedForCompletion = ev_score > conv.lcp_flag_threshold;
+
+      if (filters.unread && !conv.read) return true;
+      if (filters.review && conv.flag_for_review) return true;
+      if (filters.completion && isFlaggedForCompletion && !conv.flag_for_review) return true;
+      if (!filters.unread && !filters.review && !filters.completion) return true;
+      return false;
+    });
+  };
+
   return (
     <>
       <IconAnimationStyle />
       <TripleArrowAnimationStyle />
+      <FlaggedGlowStyle />
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset>
@@ -572,6 +681,7 @@ export default function Page() {
             }}
             onConfirm={confirmDelete}
             conversationName={threadToDelete?.name || 'Unknown'}
+            isDeleting={deletingThread !== null}
           />
 
           {/* Main dashboard content with gradient background */}
@@ -652,197 +762,301 @@ export default function Page() {
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
               {/* Recent conversations section */}
               <div className="lg:col-span-3 bg-white p-3 sm:p-4 md:p-6 rounded-lg border border-[#0e6537]/20 shadow-sm">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-3 mb-3 sm:mb-4 md:mb-6">
-                  <h3 className="text-base sm:text-lg font-semibold">Recent Conversations</h3>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm flex items-center gap-1 sm:gap-2 text-xs sm:text-sm md:text-base"
-                      onClick={fetchThreads}
-                      disabled={loadingConversations}
-                    >
-                      <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${loadingConversations ? 'animate-spin' : ''}`} />
-                      Refresh
-                    </button>
-                    <button
-                      className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm text-xs sm:text-sm md:text-base"
-                      onClick={() => (window.location.href = "/dashboard/conversations")}
-                    >
-                      Load All Conversations
-                    </button>
-                  </div>
-                </div>
-                <div className="space-y-2 sm:space-y-3 md:space-y-4">
-                  {loadingConversations ? (
-                    <div className="flex items-center justify-center py-6 sm:py-8">
-                      <RefreshCw className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-[#0e6537]" />
-                      <span className="ml-2 text-sm sm:text-base text-gray-600">Loading conversations...</span>
-                    </div>
-                  ) : conversations.length === 0 ? (
-                    <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-gray-600">No conversations found.</div>
-                  ) : (
-                    conversations.map((conv, idx) => {
-                      // All messages for this thread
-                      const messages: Message[] = rawThreads?.[idx]?.messages || [];
-                      // Sort messages by timestamp descending (newest first)
-                      const sortedMessages = [...messages].sort((a, b) => 
-                        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-                      );
-                      
-                      // Get the latest message (first in sorted array) for gradient text
-                      const latestMessage = sortedMessages[0];
-
-                      // Find the most recent message with a valid ev_score (0-100) - only for EV score display
-                      const evMessage = sortedMessages
-                        .filter(msg => {
-                          const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
-                          return typeof score === 'number' && !isNaN(score) && score >= 0 && score <= 100;
-                        })
-                        .reduce((latest, msg) => {
-                          if (!latest) return msg;
-                          return new Date(msg.timestamp) > new Date(latest.timestamp) ? msg : latest;
-                        }, undefined as Message | undefined);
-                      
-                      // Calculate EV score - only for display purposes
-                      const ev_score = evMessage ? (typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score) : -1;
-                      // Determine badge color
-                      let evColor = 'bg-gray-200 text-gray-700';
-                      if (ev_score >= 0 && ev_score <= 39) evColor = 'bg-red-100 text-red-800';
-                      else if (ev_score >= 40 && ev_score <= 69) evColor = 'bg-yellow-100 text-yellow-800';
-                      else if (ev_score >= 70 && ev_score <= 100) evColor = 'bg-green-100 text-green-800';
-
-                      // Mark as pending if the latest message is inbound-email
-                      const isPendingReply = latestMessage?.type === 'inbound-email';
-                      console.log(conv.busy)
-                      return (
-                        <div
-                          key={conv.conversation_id || idx}
-                          className="flex flex-col sm:flex-row items-stretch gap-2 sm:gap-3 md:gap-4 p-2 sm:p-3 md:p-4 border border-[#0e6537]/20 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors relative group"
-                          onClick={() => handleMarkAsRead(conv.conversation_id)}
+                <div className="flex flex-col gap-3 sm:gap-4">
+                  {/* Header with title and actions */}
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-3">
+                    <h3 className="text-base sm:text-lg font-semibold">Recent Conversations</h3>
+                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-center">
+                      {/* Centered filter bar with label */}
+                      <div className="flex items-center gap-1 px-3 py-1 bg-gray-50 rounded-lg border border-gray-200 mx-auto">
+                        <span className="text-sm font-medium text-gray-700 mr-1">Filters:</span>
+                        <button
+                          onClick={() => toggleFilter('unread')}
+                          className={`p-1.5 rounded-md transition-all duration-200 relative group ${
+                            filters.unread 
+                              ? 'bg-blue-100 text-blue-700' 
+                              : 'text-gray-600 hover:bg-gray-100'
+                          }`}
+                          title="Show unread messages"
                         >
-                          {/* Avatar and left section */}
-                          <div className="flex flex-row sm:flex-col items-center justify-start gap-2 sm:gap-0 sm:w-10 md:w-12 pt-1">
-                            {/* Unread alert badge */}
-                            {!conv.read && !updatingRead && (
-                              <span className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 bg-red-100 text-red-800 text-xs rounded-full font-semibold shadow-md z-10">
-                                <Bell className="w-3 h-3 sm:w-4 sm:h-4" /> Unread
-                              </span>
-                            )}
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-[#0e6537]/10 rounded-full flex items-center justify-center">
-                              <span className="text-xs sm:text-sm font-semibold text-[#0e6537]">
-                                {(latestMessage?.sender || latestMessage?.receiver || 'C').split(' ').map((n: string) => n[0]).join('')}
-                              </span>
-                            </div>
-                          </div>
+                          <Bell className="w-4 h-4" />
+                          {filters.unread && (
+                            <span className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-blue-200 text-blue-700 rounded-full text-xs">
+                              {conversations.filter(c => !c.read).length}
+                            </span>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => toggleFilter('review')}
+                          className={`p-1.5 rounded-md transition-all duration-200 relative group ${
+                            filters.review 
+                              ? 'bg-yellow-100 text-yellow-700' 
+                              : 'text-gray-600 hover:bg-gray-100'
+                          }`}
+                          title="Show flagged for review"
+                        >
+                          <Flag className="w-4 h-4" />
+                          {filters.review && (
+                            <span className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-yellow-200 text-yellow-700 rounded-full text-xs">
+                              {conversations.filter(c => c.flag_for_review).length}
+                            </span>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => toggleFilter('completion')}
+                          className={`p-1.5 rounded-md transition-all duration-200 relative group ${
+                            filters.completion 
+                              ? 'bg-green-100 text-green-700' 
+                              : 'text-gray-600 hover:bg-gray-100'
+                          }`}
+                          title="Show flagged for completion"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          {filters.completion && (
+                            <span className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-green-200 text-green-700 rounded-full text-xs">
+                              {conversations.filter(c => {
+                                const thread = rawThreads.find(t => t.thread?.conversation_id === c.conversation_id);
+                                const messages = thread?.messages || [];
+                                const evMessage = messages
+                                  .filter((msg: any) => {
+                                    const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
+                                    return typeof score === 'number' && !isNaN(score) && score >= 0 && score <= 100;
+                                  })
+                                  .reduce((latest: any, msg: any) => {
+                                    if (!latest) return msg;
+                                    return new Date(msg.timestamp) > new Date(latest.timestamp) ? msg : latest;
+                                  }, undefined);
+                                const ev_score = evMessage ? (typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score) : -1;
+                                return ev_score > c.lcp_flag_threshold && !c.flag_for_review;
+                              }).length}
+                            </span>
+                          )}
+                        </button>
+                        {(filters.unread || filters.review || filters.completion) && (
+                          <button
+                            onClick={() => setFilters({ unread: false, review: false, completion: false })}
+                            className="p-1.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
+                            title="Clear all filters"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                      <button
+                        className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm flex items-center gap-1 sm:gap-2 text-xs sm:text-sm md:text-base"
+                        onClick={fetchThreads}
+                        disabled={loadingConversations}
+                      >
+                        <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${loadingConversations ? 'animate-spin' : ''}`} />
+                        Refresh
+                      </button>
+                      <button
+                        className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm text-xs sm:text-sm md:text-base"
+                        onClick={() => (window.location.href = "/dashboard/conversations")}
+                      >
+                        Load All Conversations
+                      </button>
+                    </div>
+                  </div>
 
-                          {/* Main content: left third */}
-                          <div className="flex-1 flex flex-col min-w-0 justify-between">
-                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
-                              <div className="flex items-center gap-1">
-                                <p className="font-medium text-xs sm:text-sm">{conv.source_name || latestMessage?.sender || latestMessage?.receiver || 'Unknown'}</p>
-                                {isPendingReply && (
-                                  <span className="flex items-center gap-1 text-amber-600" title="Awaiting your reply">
-                                    <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                                  </span>
-                                )}
+                  {/* Conversations list */}
+                  <div className="space-y-2 sm:space-y-3 md:space-y-4 mt-3 sm:mt-4">
+                    {loadingConversations ? (
+                      <div className="flex items-center justify-center py-6 sm:py-8">
+                        <RefreshCw className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-[#0e6537]" />
+                        <span className="ml-2 text-sm sm:text-base text-gray-600">Loading conversations...</span>
+                      </div>
+                    ) : getFilteredConversations().length === 0 ? (
+                      <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-gray-600">
+                        {Object.values(filters).some(Boolean) 
+                          ? "No conversations match the selected filters."
+                          : "No conversations found."}
+                      </div>
+                    ) : (
+                      getFilteredConversations().map((conv, idx) => {
+                        // All messages for this thread
+                        const messages: Message[] = rawThreads?.[idx]?.messages || [];
+                        // Sort messages by timestamp descending (newest first)
+                        const sortedMessages = [...messages].sort((a, b) => 
+                          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+                        );
+                        
+                        // Get the latest message (first in sorted array) for gradient text
+                        const latestMessage = sortedMessages[0];
+
+                        // Find the most recent message with a valid ev_score (0-100) - only for EV score display
+                        const evMessage = sortedMessages
+                          .filter(msg => {
+                            const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
+                            return typeof score === 'number' && !isNaN(score) && score >= 0 && score <= 100;
+                          })
+                          .reduce((latest, msg) => {
+                            if (!latest) return msg;
+                            return new Date(msg.timestamp) > new Date(latest.timestamp) ? msg : latest;
+                          }, undefined as Message | undefined);
+                          
+                        // Calculate EV score - only for display purposes
+                        const ev_score = evMessage ? (typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score) : -1;
+                        // Determine badge color
+                        let evColor = 'bg-gray-200 text-gray-700';
+                        if (ev_score >= 0 && ev_score <= 39) evColor = 'bg-red-100 text-red-800';
+                        else if (ev_score >= 40 && ev_score <= 69) evColor = 'bg-yellow-100 text-yellow-800';
+                        else if (ev_score >= 70 && ev_score <= 100) evColor = 'bg-green-100 text-green-800';
+
+                        // Mark as pending if the latest message is inbound-email
+                        const isPendingReply = latestMessage?.type === 'inbound-email';
+                        console.log(conv.busy)
+                        return (
+                          <div
+                            key={conv.conversation_id || idx}
+                            className={`flex flex-col sm:flex-row items-stretch gap-2 sm:gap-3 md:gap-4 p-2 sm:p-3 md:p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors relative group ${
+                              conv.flag_for_review 
+                                ? 'flagged-review' 
+                                : ev_score > conv.lcp_flag_threshold 
+                                  ? 'flagged-completion'
+                                  : 'border-[#0e6537]/20'
+                            }`}
+                            onClick={() => handleMarkAsRead(conv.conversation_id)}
+                          >
+                            {/* Add flag indicator badges */}
+                            {conv.flag_for_review && (
+                              <div className="absolute -top-2 -right-2 bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full text-xs font-semibold shadow-sm flex items-center gap-1">
+                                <Flag className="w-3 h-3" />
+                                Flagged for Review
                               </div>
-                              <div className="flex flex-col">
-                                {conv.busy && (
-                                  <div className="flex items-center gap-1.5 px-2 py-0.5 bg-[#0e6537]/10 rounded-full">
-                                    <div className="w-1.5 h-1.5 bg-[#0e6537] rounded-full animate-pulse" />
-                                    <span className="text-xs text-[#0e6537] font-medium">Email in progress</span>
-                                  </div>
-                                )}
-                                {conv.busy && (
-                                  <p className="text-xs text-[#0e6537] mt-1">Please wait while the email is being sent...</p>
-                                )}
+                            )}
+                            {!conv.flag_for_review && ev_score > conv.lcp_flag_threshold && (
+                              <div className="absolute -top-2 -right-2 bg-green-400 text-green-900 px-2 py-0.5 rounded-full text-xs font-semibold shadow-sm flex items-center gap-1">
+                                <CheckCircle className="w-3 h-3" />
+                                Flagged for Completion
                               </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium ${evColor}`} title="Engagement Value (0=bad, 100=good)">
-                                EV: {ev_score >= 0 ? ev_score : 'N/A'}
-                              </span>
-                              {ev_score > conv.lcp_flag_threshold && (
-                                <span className="flex items-center gap-1 text-red-600 font-bold" title="Flagged for review">
-                                  <Flag className="w-3 h-3 sm:w-4 sm:h-4" /> Flagged
+                            )}
+                            {/* Avatar and left section */}
+                            <div className="flex flex-row sm:flex-col items-center justify-start gap-2 sm:gap-0 sm:w-10 md:w-12 pt-1">
+                              {/* Unread alert badge */}
+                              {!conv.read && !updatingRead && (
+                                <span className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 bg-red-100 text-red-800 text-xs rounded-full font-semibold shadow-md z-10">
+                                  <Bell className="w-3 h-3 sm:w-4 sm:h-4" /> Unread
                                 </span>
                               )}
-                              <button
-                                className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-semibold transition-colors duration-200 shadow-sm
-                                  ${conv.lcp_enabled ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}
-                                  ${updatingLcp === conv.conversation_id ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                onClick={e => { 
-                                  e.stopPropagation(); 
-                                  handleLcpToggle(conv.conversation_id, conv.lcp_enabled);
-                                }}
-                                disabled={updatingLcp === conv.conversation_id}
-                                title={conv.lcp_enabled ? 'Disable LCP' : 'Enable LCP'}
-                              >
-                                {updatingLcp === conv.conversation_id ? (
-                                  <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                ) : conv.lcp_enabled ? (
-                                  <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
-                                ) : (
-                                  <XCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-[#0e6537]/10 rounded-full flex items-center justify-center">
+                                <span className="text-xs sm:text-sm font-semibold text-[#0e6537]">
+                                  {(latestMessage?.sender || latestMessage?.receiver || 'C').split(' ').map((n: string) => n[0]).join('')}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Main content: left third */}
+                            <div className="flex-1 flex flex-col min-w-0 justify-between">
+                              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
+                                <div className="flex items-center gap-1">
+                                  <p className="font-medium text-xs sm:text-sm">{conv.source_name || latestMessage?.sender || latestMessage?.receiver || 'Unknown'}</p>
+                                  {isPendingReply && (
+                                    <span className="flex items-center gap-1 text-amber-600" title="Awaiting your reply">
+                                      <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex flex-col">
+                                  {conv.busy && (
+                                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-[#0e6537]/10 rounded-full">
+                                      <div className="w-1.5 h-1.5 bg-[#0e6537] rounded-full animate-pulse" />
+                                      <span className="text-xs text-[#0e6537] font-medium">Email in progress</span>
+                                    </div>
+                                  )}
+                                  {conv.busy && (
+                                    <p className="text-xs text-[#0e6537] mt-1">Please wait while the email is being sent...</p>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium ${evColor}`} title="Engagement Value (0=bad, 100=good)">
+                                  EV: {ev_score >= 0 ? ev_score : 'N/A'}
+                                </span>
+                                {ev_score > conv.lcp_flag_threshold && !conv.flag_for_review && (
+                                  <span className="flex items-center gap-1 text-green-600 font-bold" title="Flagged for completion">
+                                    <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" /> Flagged
+                                  </span>
                                 )}
-                                {conv.lcp_enabled ? 'LCP On' : 'LCP Off'}
-                              </button>
+                                <OverrideStatus isEnabled={conv.flag_review_override === 'true'} />
+                                <button
+                                  className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-semibold transition-colors duration-200 shadow-sm
+                                    ${conv.lcp_enabled ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}
+                                    ${updatingLcp === conv.conversation_id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                  onClick={e => { 
+                                    e.stopPropagation(); 
+                                    handleLcpToggle(conv.conversation_id, conv.lcp_enabled);
+                                  }}
+                                  disabled={updatingLcp === conv.conversation_id}
+                                  title={conv.lcp_enabled ? 'Disable LCP' : 'Enable LCP'}
+                                >
+                                  {updatingLcp === conv.conversation_id ? (
+                                    <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                  ) : conv.lcp_enabled ? (
+                                    <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                                  ) : (
+                                    <XCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                                  )}
+                                  {conv.lcp_enabled ? 'LCP On' : 'LCP Off'}
+                                </button>
+                                <button
+                                  className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-semibold transition-colors duration-200 shadow-sm
+                                    ${deletingThread === conv.conversation_id ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-100 text-red-600 hover:text-red-700'}
+                                    ${deletingThread === conv.conversation_id ? 'bg-red-100' : 'bg-red-50'}`}
+                                  onClick={e => { 
+                                    e.stopPropagation(); 
+                                    handleDeleteThread(
+                                      conv.conversation_id,
+                                      conv.source_name || latestMessage?.sender || latestMessage?.receiver || 'Unknown'
+                                    );
+                                  }}
+                                  disabled={deletingThread === conv.conversation_id}
+                                  title="Delete conversation"
+                                >
+                                  {deletingThread === conv.conversation_id ? (
+                                    <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                  ) : (
+                                    <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                                  )}
+                                  Delete
+                                </button>
+                              </div>
+                              <p className="text-xs text-gray-600 mb-0.5 sm:mb-1">{latestMessage?.subject || 'No subject'}</p>
+                              <p className="text-xs text-gray-500 italic mb-0.5 sm:mb-1">Summary: <span className="not-italic text-gray-700">{conv.ai_summary}</span></p>
+                              <p className="text-xs text-gray-400">{latestMessage?.timestamp ? new Date(latestMessage.timestamp).toLocaleString() : ''}</p>
+                            </div>
+
+                            {/* Body: center third */}
+                            <div className="flex-[1.2] flex items-center justify-center min-w-0">
+                              <GradientText 
+                                text={latestMessage?.body || ''} 
+                                isPending={isPendingReply} 
+                                messageType={latestMessage?.type}
+                              />
+                            </div>
+
+                            {/* View Thread: right third */}
+                            <div className="flex flex-col justify-center items-end w-full sm:w-32 md:w-40 pl-2">
                               <button
-                                className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-semibold transition-colors duration-200 shadow-sm
-                                  ${deletingThread === conv.conversation_id ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-100 text-red-600 hover:text-red-700'}
-                                  ${deletingThread === conv.conversation_id ? 'bg-red-100' : 'bg-red-50'}`}
-                                onClick={e => { 
-                                  e.stopPropagation(); 
-                                  handleDeleteThread(
-                                    conv.conversation_id,
-                                    conv.source_name || latestMessage?.sender || latestMessage?.receiver || 'Unknown'
-                                  );
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  handleMarkAsRead(conv.conversation_id);
                                 }}
-                                disabled={deletingThread === conv.conversation_id}
-                                title="Delete conversation"
+                                className="arrow-animate-hover w-full sm:w-auto px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-[#0e6537] bg-[#e6f5ec] rounded-lg hover:bg-[#bbf7d0] hover:shadow-lg flex items-center justify-center gap-1 sm:gap-2 shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#0e6537]/30 group"
                               >
-                                {deletingThread === conv.conversation_id ? (
-                                  <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                  <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                                )}
-                                Delete
+                                <span className="relative flex items-center w-6 h-4 sm:w-8 sm:h-5 mr-0.5 sm:mr-1">
+                                  <ChevronRight className="arrow-1 absolute left-0 top-0 w-3 h-3 sm:w-4 sm:h-4 transition-transform" />
+                                  <ChevronRight className="arrow-2 absolute left-1.5 sm:left-2 top-0 w-3 h-3 sm:w-4 sm:h-4 transition-transform" />
+                                  <ChevronRight className="arrow-3 absolute left-3 sm:left-4 top-0 w-3 h-3 sm:w-4 sm:h-4 transition-transform" />
+                                </span>
+                                <span className="transition-colors duration-200 group-hover:text-[#166534]">View Thread</span>
                               </button>
                             </div>
-                            <p className="text-xs text-gray-600 mb-0.5 sm:mb-1">{latestMessage?.subject || 'No subject'}</p>
-                            <p className="text-xs text-gray-500 italic mb-0.5 sm:mb-1">Summary: <span className="not-italic text-gray-700">{conv.ai_summary}</span></p>
-                            <p className="text-xs text-gray-400">{latestMessage?.timestamp ? new Date(latestMessage.timestamp).toLocaleString() : ''}</p>
                           </div>
-
-                          {/* Body: center third */}
-                          <div className="flex-[1.2] flex items-center justify-center min-w-0">
-                            <GradientText 
-                              text={latestMessage?.body || ''} 
-                              isPending={isPendingReply} 
-                              messageType={latestMessage?.type}
-                            />
-                          </div>
-
-                          {/* View Thread: right third */}
-                          <div className="flex flex-col justify-center items-end w-full sm:w-32 md:w-40 pl-2">
-                            <button
-                              onClick={e => {
-                                e.stopPropagation();
-                                handleMarkAsRead(conv.conversation_id);
-                              }}
-                              className="arrow-animate-hover w-full sm:w-auto px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-[#0e6537] bg-[#e6f5ec] rounded-lg hover:bg-[#bbf7d0] hover:shadow-lg flex items-center justify-center gap-1 sm:gap-2 shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#0e6537]/30 group"
-                            >
-                              <span className="relative flex items-center w-6 h-4 sm:w-8 sm:h-5 mr-0.5 sm:mr-1">
-                                <ChevronRight className="arrow-1 absolute left-0 top-0 w-3 h-3 sm:w-4 sm:h-4 transition-transform" />
-                                <ChevronRight className="arrow-2 absolute left-1.5 sm:left-2 top-0 w-3 h-3 sm:w-4 sm:h-4 transition-transform" />
-                                <ChevronRight className="arrow-3 absolute left-3 sm:left-4 top-0 w-3 h-3 sm:w-4 sm:h-4 transition-transform" />
-                              </span>
-                              <span className="transition-colors duration-200 group-hover:text-[#166534]">View Thread</span>
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               </div>
 

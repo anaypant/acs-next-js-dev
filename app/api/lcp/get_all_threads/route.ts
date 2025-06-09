@@ -26,10 +26,8 @@ export async function POST(request: Request) {
       }),
     });
 
-    console.log('threadsResponse', threadsResponse);
 
     const threads = await threadsResponse.json();
-    console.log('threadsResponse body', threads);
 
     if (!threadsResponse.ok) {
       throw new Error(`Failed to fetch threads: ${threadsResponse.statusText}`);
