@@ -81,6 +81,19 @@ type FilterState = {
 };
 
 /**
+ * Helper function to safely parse boolean values from various formats
+ * @param value - The value to parse (can be boolean, string, or any other type)
+ * @returns boolean - The parsed boolean value
+ */
+function parseBoolean(value: any): boolean {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    return value.toLowerCase() === 'true';
+  }
+  return false;
+}
+
+/**
  * ConversationsPage Component
  * Main conversations dashboard component displaying a list of client conversations
  * 
@@ -149,22 +162,22 @@ export default function ConversationsPage() {
           return bLatestTimestamp - aLatestTimestamp; // Descending order (newest first)
         });
 
-        setConversations(
-          sortedData.map((item: any) => ({
-            conversation_id: item.thread?.conversation_id || '',
-            associated_account: item.thread?.associated_account || '',
-            lcp_enabled: item.thread?.lcp_enabled === true || item.thread?.lcp_enabled === 'true',
-            read: item.thread?.read === true || item.thread?.read === 'true',
-            source: item.thread?.source || '',
-            source_name: item.thread?.source_name || '',
-            lcp_flag_threshold: typeof item.thread?.lcp_flag_threshold === 'number' ? item.thread.lcp_flag_threshold : Number(item.thread?.lcp_flag_threshold) || 0,
-            ai_summary: item.thread?.ai_summary || '',
-            budget_range: item.thread?.budget_range || '',
-            preferred_property_types: item.thread?.preferred_property_types || '',
-            timeline: item.thread?.timeline || '',
-            busy: Boolean(item.thread?.busy),
-          }))
-        )
+        const parsedConversations = sortedData.map((item: any) => ({
+          conversation_id: item.thread?.conversation_id || '',
+          associated_account: item.thread?.associated_account || '',
+          lcp_enabled: parseBoolean(item.thread?.lcp_enabled),
+          read: parseBoolean(item.thread?.read),
+          source: item.thread?.source || '',
+          source_name: item.thread?.source_name || '',
+          lcp_flag_threshold: typeof item.thread?.lcp_flag_threshold === 'number' ? item.thread.lcp_flag_threshold : Number(item.thread?.lcp_flag_threshold) || 0,
+          ai_summary: item.thread?.ai_summary || '',
+          budget_range: item.thread?.budget_range || '',
+          preferred_property_types: item.thread?.preferred_property_types || '',
+          timeline: item.thread?.timeline || '',
+          busy: parseBoolean(item.thread?.busy),
+        }))
+        console.log('Parsed conversations:', parsedConversations)
+        setConversations(parsedConversations)
         setRawThreads(sortedData)
       } else {
         setConversations([])
@@ -281,7 +294,7 @@ export default function ConversationsPage() {
         status,
         propertyTypes: thread.preferred_property_types || "Not specified",
         budget: thread.budget_range || "Not specified",
-        busy: Boolean(thread.busy),
+        busy: parseBoolean(thread.busy),
       };
     })
     .sort((a, b) => {
