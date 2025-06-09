@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { config } from '@/lib/local-api-config';
-import { getServerSession } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../[...nextauth]/route';
 import { Session } from 'next-auth';
 
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     }
 
     // Get current session to verify user
-    const session = await getServerSession(authOptions) as Session & { user: { provider?: string; accessToken?: string } };
+    const session = await getServerSession(authOptions) as Session & { user: { id: string; email: string; provider?: string; accessToken?: string } };
     if (!session || session.user.email !== email) {
       return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
     }
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
         ...(sessionCookie ? { cookie: sessionCookie } : {}),
       },
       body: JSON.stringify({ 
-        email,
+        id: session.user.id,
         provider: session.user.provider
       }),
       credentials: 'include',

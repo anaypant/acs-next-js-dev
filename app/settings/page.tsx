@@ -116,6 +116,16 @@ export default function SettingsPage() {
   const [autoEmailsError, setAutoEmailsError] = useState<string | null>(null)
   const [autoEmailsSuccess, setAutoEmailsSuccess] = useState(false)
 
+  // Add new state for LCP AI settings
+  const [lcpSettings, setLcpSettings] = useState({
+    tone: "professional",
+    style: "concise",
+    samplePrompt: ""
+  })
+  const [lcpLoading, setLcpLoading] = useState(false)
+  const [lcpError, setLcpError] = useState<string | null>(null)
+  const [lcpSuccess, setLcpSuccess] = useState(false)
+
   // Debug log for signature form state changes
   useEffect(() => {
     console.log('Signature form state updated:', signatureForm);
@@ -190,6 +200,61 @@ export default function SettingsPage() {
     };
 
     fetchSignature();
+  }, [session?.user?.id, status]);
+
+  // Add useEffect to fetch LCP settings
+  useEffect(() => {
+    const fetchLcpSettings = async () => {
+      if (status === "loading" || !session?.user?.id) {
+        return;
+      }
+
+      try {
+        setLcpLoading(true);
+        const requestBody = {
+          table_name: 'Users',
+          index_name: 'id-index',
+          key_name: 'id',
+          key_value: session.user.id,
+        };
+
+        const response = await fetch('/api/db/select', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+          credentials: 'include',
+        });
+
+        const responseText = await response.text();
+        if (!response.ok) {
+          throw new Error(`Failed to fetch LCP settings: ${response.status} ${responseText}`);
+        }
+
+        let data;
+        try {
+          data = JSON.parse(responseText);
+        } catch (parseError) {
+          throw new Error('Invalid response format from API');
+        }
+
+        if (Array.isArray(data.items) && data.items.length > 0) {
+          const settings = data.items[0];
+          setLcpSettings({
+            tone: settings.lcp_tone || "professional",
+            style: settings.lcp_style || "concise",
+            samplePrompt: settings.lcp_sample_prompt || ""
+          });
+        }
+      } catch (err) {
+        setLcpError(err instanceof Error ? err.message : 'Failed to fetch LCP settings');
+      } finally {
+        setLcpLoading(false);
+      }
+    };
+
+    fetchLcpSettings();
   }, [session?.user?.id, status]);
 
   // Handle profile form changes
@@ -419,6 +484,60 @@ export default function SettingsPage() {
     } finally {
       setAutoEmailsLoading(false);
     }
+  };
+
+  // Add handler for LCP settings update
+  const handleLcpSettingsUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!session?.user?.id) return;
+
+    setLcpLoading(true);
+    setLcpError(null);
+    setLcpSuccess(false);
+
+    try {
+      const response = await fetch('/api/db/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          table_name: 'Users',
+          key_name: 'id',
+          key_value: session.user.id,
+          update_data: {
+            deletelcp_tone: lcpSettings.tone,
+            lcp_style: lcpSettings.style,
+            lcp_sample_prompt: lcpSettings.samplePrompt,
+            updated_at: new Date().toISOString()
+          }
+        }),
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update LCP settings');
+      }
+
+      setLcpSuccess(true);
+    } catch (err: any) {
+      setLcpError(err.message || 'An error occurred while updating LCP settings');
+    } finally {
+      setLcpLoading(false);
+    }
+  };
+
+  // Add handler for LCP settings change
+  const handleLcpSettingsChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setLcpSettings(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    setLcpError(null);
+    setLcpSuccess(false);
   };
 
   // Handle mounting state to prevent hydration mismatch
@@ -781,6 +900,76 @@ export default function SettingsPage() {
             >
               <h2 className="text-lg font-semibold mb-4">Email Settings</h2>
               
+              {/* LCP AI Customization */}
+              <div className="mb-8">
+                <h3 className="text-md font-semibold mb-4">LCP AI Customization</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Customize how the LCP AI generates email responses. These settings will be used as a base for all AI-generated emails.
+                </p>
+                <form onSubmit={handleLcpSettingsUpdate} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email Tone</label>
+                      <select
+                        name="tone"
+                        value={lcpSettings.tone}
+                        onChange={handleLcpSettingsChange}
+                        className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
+                      >
+                        <option value="professional">Professional</option>
+                        <option value="friendly">Friendly</option>
+                        <option value="formal">Formal</option>
+                        <option value="casual">Casual</option>
+                        <option value="empathetic">Empathetic</option>
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">Sets the overall tone of AI-generated emails</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Writing Style</label>
+                      <select
+                        name="style"
+                        value={lcpSettings.style}
+                        onChange={handleLcpSettingsChange}
+                        className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
+                      >
+                        <option value="concise">Concise</option>
+                        <option value="detailed">Detailed</option>
+                        <option value="conversational">Conversational</option>
+                        <option value="technical">Technical</option>
+                        <option value="persuasive">Persuasive</option>
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">Determines the writing style of AI-generated emails</p>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Sample Email Prompt</label>
+                    <textarea
+                      name="samplePrompt"
+                      value={lcpSettings.samplePrompt}
+                      onChange={handleLcpSettingsChange}
+                      className="w-full h-32 px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
+                      placeholder="Enter a sample email that represents your preferred writing style..."
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Provide a sample email that demonstrates your preferred writing style. This helps the AI better understand your communication preferences.
+                    </p>
+                  </div>
+                  {lcpError && (
+                    <p className="text-sm text-red-600 mt-2">{lcpError}</p>
+                  )}
+                  {lcpSuccess && (
+                    <p className="text-sm text-green-600 mt-2">LCP settings updated successfully!</p>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={lcpLoading}
+                    className="mt-4 px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm disabled:opacity-50"
+                  >
+                    {lcpLoading ? 'Saving...' : 'Save LCP Settings'}
+                  </button>
+                </form>
+              </div>
+
               {/* Automated Emailing Setting */}
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-2">
@@ -949,7 +1138,9 @@ export default function SettingsPage() {
               <p className="text-sm text-gray-600 mb-4">
                 Are you sure you want to delete your account? This action cannot be undone.
               </p>
-              <p className="text-sm text-gray-500 mb-4">Please type your email address to confirm:</p>
+              <p className="text-sm text-gray-500 mb-4">
+                Please type <span className="font-bold">{session?.user?.email}</span> to delete:
+              </p>
               <input
                 type="email"
                 value={emailInput}
