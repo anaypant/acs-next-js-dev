@@ -31,16 +31,19 @@ export async function POST(request: Request) {
       }),
       credentials: 'include',
     });
-    const responseText = await response.text();
-
-    console.log('Raw response:', responseText);
-
 
     if (!response.ok) {
-      throw new Error(`API request failed with status ${response.status}`);
+      const errorText = await response.text();
+      console.error('Update failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText
+      });
+      throw new Error(`API request failed with status ${response.status}: ${errorText}`);
     }
 
-    // Get the response text first
+    const responseText = await response.text();
+    console.log('Raw response:', responseText);
 
     // Parse the response text
     let proxyResponse;

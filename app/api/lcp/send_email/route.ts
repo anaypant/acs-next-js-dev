@@ -25,9 +25,10 @@ export async function POST(request: Request) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ 
-        table_name: 'threads',
+        table_name: 'Threads',
         key_name: 'conversation_id',
         key_value: conversation_id,
+        index_name: 'conversation_id-index',
         update_data: { busy: true }
       }),
     });

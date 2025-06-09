@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     // For each thread, fetch its associated messages
     const conversationsWithMessages = await Promise.all(
       threads.map(async (thread: any) => {
-        const messagesResponse = await fetch(`${config.API_URL}db/select`, {
+        const messagesResponse = await fetch(`${config.API_URL}/db/select`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -52,6 +52,12 @@ export async function POST(request: Request) {
         });
 
         if (!messagesResponse.ok) {
+          console.error('Messages fetch error details:', {
+            status: messagesResponse.status,
+            statusText: messagesResponse.statusText,
+            threadId: thread.conversation_id,
+            url: `${config.API_URL}/db/select`
+          });
           throw new Error(`Failed to fetch messages for thread ${thread.conversation_id}`);
         }
 

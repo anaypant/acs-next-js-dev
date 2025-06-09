@@ -10,7 +10,7 @@
 import { useSession, signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
-import { ArrowLeft, User, Bell, Shield, Database, Mail } from "lucide-react"
+import { ArrowLeft, User, Bell, Shield, Database, Mail, Loader2 } from "lucide-react"
 import type { Session } from "next-auth"
 import type { SignupProvider } from "@/app/types/auth"
 
@@ -360,8 +360,8 @@ export default function SettingsPage() {
         throw new Error('Failed to update automated emailing setting');
       }
 
-      // Then update all threads' LCP enabled values using the associated_account index
-      const threadsResponse = await fetch('/api/db/update', {
+      // First get all threads for this user
+      const threadsQueryResponse = await fetch('/api/db/select', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -370,16 +370,46 @@ export default function SettingsPage() {
           table_name: 'Threads',
           index_name: 'associated_account-index',
           key_name: 'associated_account',
-          key_value: session.user.id,
-          update_data: {
-            lcp_enabled: newValue ? 'true' : 'false'
-          }
+          key_value: session.user.id
         }),
         credentials: 'include',
       });
 
-      if (!threadsResponse.ok) {
-        throw new Error('Failed to update thread LCP settings');
+      if (!threadsQueryResponse.ok) {
+        throw new Error('Failed to fetch user threads');
+      }
+
+      const threadsData = await threadsQueryResponse.json();
+      if (!threadsData.items || !Array.isArray(threadsData.items)) {
+        throw new Error('Invalid response format for threads');
+      }
+
+      // Update each thread individually
+      const updatePromises = threadsData.items.map((thread: any) => 
+        fetch('/api/db/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            table_name: 'Threads',
+            key_name: 'conversation_id',
+            key_value: thread.conversation_id,
+            index_name: 'conversation_id-index',
+            update_data: {
+              lcp_enabled: newValue ? 'true' : 'false'
+            }
+          }),
+          credentials: 'include',
+        })
+      );
+
+      // Wait for all updates to complete
+      const updateResults = await Promise.all(updatePromises);
+      const failedUpdates = updateResults.filter(res => !res.ok);
+      
+      if (failedUpdates.length > 0) {
+        throw new Error(`Failed to update ${failedUpdates.length} threads`);
       }
 
       setAutoEmails(newValue);
@@ -761,14 +791,20 @@ export default function SettingsPage() {
                     </p>
                   </div>
                   <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="autoEmails"
-                      checked={autoEmails}
-                      onChange={handleAutoEmailsUpdate}
-                      disabled={autoEmailsLoading}
-                      className="w-4 h-4 text-[#0e6537] rounded focus:ring-[#0e6537]"
-                    />
+                    {autoEmailsLoading ? (
+                      <div className="w-4 h-4 relative">
+                        <Loader2 className="w-4 h-4 text-[#0e6537] animate-spin" />
+                      </div>
+                    ) : (
+                      <input
+                        type="checkbox"
+                        id="autoEmails"
+                        checked={autoEmails}
+                        onChange={handleAutoEmailsUpdate}
+                        disabled={autoEmailsLoading}
+                        className="w-4 h-4 text-[#0e6537] rounded focus:ring-[#0e6537] disabled:opacity-50"
+                      />
+                    )}
                   </div>
                 </div>
                 {autoEmailsError && (
