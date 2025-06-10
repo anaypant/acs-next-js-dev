@@ -7,16 +7,17 @@
  */
 
 "use client"
-import { ArrowLeft, Phone, Mail, Calendar, MapPin, RefreshCw, Sparkles, X, Info, Copy, Check, Download, ThumbsUp, ThumbsDown, AlertTriangle, Save, Edit2, Shield, ShieldOff, Flag, CheckCircle } from "lucide-react"
+import { ArrowLeft, Phone, Mail, Calendar, MapPin, RefreshCw, Sparkles, X, Info, Copy, Check, Download, ThumbsUp, ThumbsDown, AlertTriangle, Save, Edit2, Shield, ShieldOff, Flag, CheckCircle, MessageSquare } from "lucide-react"
 import { useParams } from "next/navigation"
-import { useEffect, useState } from "react"
-import type { Thread } from "@/app/types/lcp"
+import { useEffect, useState, type ReactNode } from "react"
+import type { Thread, Message } from "@/app/types/lcp"
+import type { Session } from "next-auth"
+import { useSession } from "next-auth/react"
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import 'jspdf-autotable';
-import { useSession } from "next-auth/react"
 import type { User } from "@/types/auth"
 
 // Add type declaration for jsPDF with autoTable
@@ -126,81 +127,13 @@ function LoadingSkeleton() {
   )
 }
 
-// Add NotesWidget component
-function NotesWidget({ 
-  notes, 
-  onSave, 
-  conversationId 
-}: { 
-  notes: string; 
-  onSave: (notes: string) => Promise<void>; 
-  conversationId: string;
-}) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedNotes, setEditedNotes] = useState(notes);
-  const [saving, setSaving] = useState(false);
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      await onSave(editedNotes);
-      setIsEditing(false);
-    } catch (error) {
-      console.error('Error saving notes:', error);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="bg-white rounded-lg border shadow-sm">
-      <div className="p-4 border-b flex justify-between items-center">
-        <h3 className="font-medium text-gray-900">Context Notes</h3>
-        {!isEditing ? (
-          <button
-            onClick={() => setIsEditing(true)}
-            className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <Edit2 className="w-4 h-4 text-gray-500" />
-          </button>
-        ) : (
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="p-1 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
-          >
-            {saving ? (
-              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Save className="w-4 h-4 text-gray-500" />
-            )}
-          </button>
-        )}
-      </div>
-      <div className="p-4">
-        {isEditing ? (
-          <textarea
-            value={editedNotes}
-            onChange={(e) => setEditedNotes(e.target.value)}
-            placeholder="Add context notes about this conversation..."
-            className="w-full h-32 p-2 border rounded-lg focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] outline-none resize-none"
-          />
-        ) : (
-          <p className="text-gray-600 whitespace-pre-wrap">
-            {notes || "No context notes added yet. Click the edit button to add notes."}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// Update OverrideStatus component to be clickable
+// Update OverrideStatus component to add data attribute
 function OverrideStatus({ isEnabled, onToggle, updating }: { isEnabled: boolean; onToggle: () => void; updating: boolean }) {
   return (
     <button
       onClick={onToggle}
       disabled={updating}
+      data-override-status
       className="group relative inline-flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {updating ? (
@@ -331,6 +264,7 @@ export default function ConversationDetailPage() {
   const [notes, setNotes] = useState("");
   const [updatingOverride, setUpdatingOverride] = useState(false);
   const [unflagging, setUnflagging] = useState(false);
+  const [flagReason, setFlagReason] = useState("");
 
   // Fetch user signature on component mount
   useEffect(() => {
@@ -490,6 +424,7 @@ export default function ConversationDetailPage() {
       // Check if the response is flagged for review
       if (result.flagged || result.data?.status === 'flagged_for_review') {
         setShowFlaggedModal(true);
+        setFlagReason("AI flagged the response as needing human review.");
         return;
       }
 
@@ -837,48 +772,103 @@ export default function ConversationDetailPage() {
   };
 
   // Update the FlaggedForReviewModal
-  const FlaggedForReviewModal = () => (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
-        <div className="flex items-center gap-3 mb-4">
-          <AlertTriangle className="w-6 h-6 text-yellow-500" />
-          <h3 className="text-lg font-semibold">Conversation Flagged for Review</h3>
-        </div>
-        
-        <div className="space-y-4">
-          <p className="text-gray-600">
-            This conversation has been flagged for human review. The AI system takes a conservative approach to ensure quality service - 
-            it will flag conversations when there's any uncertainty or when the content needs human expertise.
-          </p>
-
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-medium text-gray-900 mb-2">Why was this conversation flagged?</h4>
-            <p className="text-sm text-gray-600 mb-3">
-              The AI flags conversations in these situations:
+  const FlaggedForReviewModal = () => {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4">
+          <div className="flex items-center gap-3 mb-4">
+            <AlertTriangle className="w-6 h-6 text-yellow-500" />
+            <h3 className="text-lg font-semibold text-gray-900">Flagged for Review</h3>
+          </div>
+          
+          <div className="mb-6">
+            <p className="text-gray-600 mb-4">
+              This conversation has been flagged for review because the AI detected potential issues that need human attention.
             </p>
-            <ul className="text-sm text-gray-600 list-disc list-inside space-y-1">
-              <li>Uncertainty about the appropriate response</li>
-              <li>Missing critical context</li>
-              <li>Ambiguous or unclear information</li>
-              <li>Conversation seems irrelevant to real estate goals</li>
-              <li>Complex or sensitive topics</li>
-              <li>Test messages or non-meaningful content</li>
-              <li>Messages too short to determine intent (less than 5 words)</li>
-              <li>Potential spam or automated content</li>
-            </ul>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <h4 className="font-medium text-yellow-800 mb-2">Why was this conversation flagged?</h4>
+              <p className="text-sm text-yellow-700 mb-3">
+                The AI flags conversations in these situations:
+              </p>
+              <ul className="text-sm text-yellow-700 list-disc list-inside space-y-1">
+                <li>Uncertainty about the appropriate response</li>
+                <li>Missing critical context</li>
+                <li>Ambiguous or unclear information</li>
+                <li>Conversation seems irrelevant to real estate goals</li>
+                <li>Complex or sensitive topics</li>
+                <li>Test messages or non-meaningful content</li>
+                <li>Messages too short to determine intent (less than 5 words)</li>
+                <li>Potential spam or automated content</li>
+              </ul>
+            </div>
           </div>
 
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <p className="text-sm text-blue-800">
-              <span className="font-medium">Note:</span> The AI is designed to be cautious and will flag conversations when in doubt. 
-              This ensures that all interactions receive appropriate human attention when needed.
-            </p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-blue-100 rounded-full">
+                <MessageSquare className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h4 className="font-medium text-blue-800 mb-1">Add Context Notes</h4>
+                <p className="text-blue-700 mb-2">
+                  To help the AI generate a better response, you can add context notes using the Notes widget on the right side of the page.
+                </p>
+                <button
+                  onClick={() => {
+                    setShowFlaggedModal(false);
+                    // Scroll to notes widget
+                    const notesWidget = document.getElementById('notes-widget');
+                    if (notesWidget) {
+                      notesWidget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      // Add a highlight effect
+                      notesWidget.classList.add('highlight-notes');
+                      setTimeout(() => notesWidget.classList.remove('highlight-notes'), 2000);
+                    }
+                  }}
+                  className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  Go to Notes Widget
+                </button>
+              </div>
+            </div>
           </div>
 
-          <div className="flex justify-end gap-3 mt-6">
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-gray-100 rounded-full">
+                <ShieldOff className="w-5 h-5 text-gray-600" />
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-800 mb-1">Think this is a mistake?</h4>
+                <p className="text-gray-700 mb-2">
+                  If you believe this conversation was incorrectly flagged, you can disable the automatic review check for this conversation using the "Review Check" toggle above the response area.
+                </p>
+                <button
+                  onClick={() => {
+                    setShowFlaggedModal(false);
+                    // Scroll to override status button
+                    const overrideButton = document.querySelector('[data-override-status]');
+                    if (overrideButton) {
+                      overrideButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      // Add a highlight effect
+                      overrideButton.classList.add('highlight-override');
+                      setTimeout(() => overrideButton.classList.remove('highlight-override'), 2000);
+                    }
+                  }}
+                  className="text-gray-600 hover:text-gray-700 font-medium flex items-center gap-1"
+                >
+                  <ShieldOff className="w-4 h-4" />
+                  Go to Review Check Toggle
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3">
             <button
               onClick={() => setShowFlaggedModal(false)}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
             >
               Close
             </button>
@@ -887,26 +877,54 @@ export default function ConversationDetailPage() {
                 setShowFlaggedModal(false);
                 generateAIResponse();
               }}
-              className="px-4 py-2 bg-[#0e6537] text-white rounded-lg hover:bg-[#0a5a2f] transition-colors"
+              className="px-4 py-2 text-sm font-medium text-white bg-[#0e6537] rounded-lg hover:bg-[#157a42] transition-colors flex items-center gap-2"
             >
+              <RefreshCw className="w-4 h-4" />
               Try Again
-            </button>
-            <button
-              onClick={handleOverride}
-              disabled={updatingOverride}
-              className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors disabled:opacity-50"
-            >
-              {updatingOverride ? (
-                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              ) : (
-                "Override & Continue"
-              )}
             </button>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
+
+  // Add styles for notes widget highlight effect
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes highlight-notes {
+        0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
+        50% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0.2); }
+        100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+      }
+      .highlight-notes {
+        animation: highlight-notes 2s ease-out;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
+  // Add styles for override button highlight effect
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes highlight-override {
+        0% { box-shadow: 0 0 0 0 rgba(107, 114, 128, 0.5); }
+        50% { box-shadow: 0 0 0 10px rgba(107, 114, 128, 0.2); }
+        100% { box-shadow: 0 0 0 0 rgba(107, 114, 128, 0); }
+      }
+      .highlight-override {
+        animation: highlight-override 2s ease-out;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
 
   // Add new function to handle opening email preview
   const handleOpenEmailPreview = () => {
@@ -947,6 +965,67 @@ export default function ConversationDetailPage() {
     } finally {
       setUnflagging(false);
     }
+  };
+
+  // Add NotesWidget component with proper type definitions
+  const NotesWidget = ({ notes, onSave }: { notes: string; onSave: (notes: string) => Promise<void> }): ReactNode => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedNotes, setEditedNotes] = useState(notes);
+    const [saving, setSaving] = useState(false);
+
+    const handleSave = async () => {
+      setSaving(true);
+      try {
+        await onSave(editedNotes);
+        setIsEditing(false);
+      } catch (error) {
+        console.error('Error saving notes:', error);
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    return (
+      <div id="notes-widget" className="bg-white rounded-lg border border-[#0e6537]/20 p-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-medium text-gray-900">Context Notes</h3>
+          {!isEditing ? (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <Edit2 className="w-4 h-4 text-gray-500" />
+            </button>
+          ) : (
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="p-1 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {saving ? (
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 text-gray-500" />
+              )}
+            </button>
+          )}
+        </div>
+        <div>
+          {isEditing ? (
+            <textarea
+              value={editedNotes}
+              onChange={(e) => setEditedNotes(e.target.value)}
+              placeholder="Add context notes about this conversation..."
+              className="w-full h-32 p-2 border rounded-lg focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] outline-none resize-none"
+            />
+          ) : (
+            <p className="text-gray-600 whitespace-pre-wrap">
+              {notes || "No context notes added yet. Click the edit button to add notes."}
+            </p>
+          )}
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -1254,7 +1333,6 @@ export default function ConversationDetailPage() {
               <NotesWidget
                 notes={notes}
                 onSave={saveNotes}
-                conversationId={conversationId}
               />
             </div>
           </div>

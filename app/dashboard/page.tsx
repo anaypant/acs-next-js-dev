@@ -313,7 +313,7 @@ export default function Page() {
             preferred_property_types: item.thread?.preferred_property_types || '',
             timeline: item.thread?.timeline || '',
             busy: item.thread?.busy === 'true',
-            flag_for_review: Boolean(item.thread?.flag_for_review),
+            flag_for_review: item.thread?.flag_for_review === 'true',
           }))
         )
         setRawThreads(sortedData)
