@@ -18,6 +18,7 @@ export interface Thread {
   busy?: boolean; // true if LCP is busy, false otherwise
   flag_for_review?: boolean; // true if conversation is flagged for review
   flag_review_override?: string; // 'true' if review check is disabled, undefined or 'false' if enabled
+  spam?: boolean; // true if email is marked as spam
   // [key: string]: any; // Uncomment to allow arbitrary extension
 }
 

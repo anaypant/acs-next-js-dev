@@ -20,6 +20,11 @@ import LeadFunnel from '../components/dashboard/LeadFunnel'
 import LeadReport from '../components/dashboard/LeadReport'
 import ConversationProgression from '../components/dashboard/ConversationProgression'
 
+// Add type for message with response_id
+type MessageWithResponseId = Message & {
+  response_id: string;
+};
+
 // Add Modal component at the top level
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, conversationName, isDeleting }: { 
   isOpen: boolean; 
@@ -237,6 +242,7 @@ export default function Page() {
   const [updatingLcp, setUpdatingLcp] = useState<string | null>(null)
   const [updatingRead, setUpdatingRead] = useState<string | null>(null)
   const [deletingThread, setDeletingThread] = useState<string | null>(null)
+  const [updatingSpam, setUpdatingSpam] = useState<string | null>(null)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [threadToDelete, setThreadToDelete] = useState<{ id: string; name: string } | null>(null)
   const [showFunnel, setShowFunnel] = useState(true)
@@ -314,11 +320,28 @@ export default function Page() {
             timeline: item.thread?.timeline || '',
             busy: item.thread?.busy === 'true',
             flag_for_review: item.thread?.flag_for_review === 'true',
+            spam: item.thread?.spam === true || item.thread?.spam === 'true',
           }))
         )
         setRawThreads(sortedData)
-         // Also update lead performance data
+        // Also update lead performance data
         setLeadPerformanceData(data.data);
+
+        // Update sidebar junk email count
+        try {
+          // Count spam threads
+          const spamCount = sortedData.filter((thread: { thread?: { spam?: boolean | string } }) => 
+            thread.thread?.spam === true || thread.thread?.spam === 'true'
+          ).length;
+          
+          // Update the sidebar count through local storage
+          localStorage.setItem('junkEmailCount', spamCount.toString());
+          
+          // Dispatch an event to notify the sidebar
+          window.dispatchEvent(new CustomEvent('junkEmailCountUpdated', { detail: spamCount }));
+        } catch (error) {
+          console.error('Error updating junk email count:', error);
+        }
       } else {
         setConversations([])
         setRawThreads([])
@@ -331,10 +354,10 @@ export default function Page() {
       console.error('Error fetching threads:', error);
       setConversations([])
       setRawThreads([])
-       setLeadPerformanceData([]);
+      setLeadPerformanceData([]);
     } finally {
       setLoadingConversations(false);
-       setLoadingLeadPerformance(false); // Set loading to false here as well
+      setLoadingLeadPerformance(false); // Set loading to false here as well
     }
   };
 
@@ -436,6 +459,66 @@ export default function Page() {
     
     setThreadToDelete({ id: conversationId, name: conversationName });
     setDeleteModalOpen(true);
+  };
+
+  // Function to handle marking as not spam
+  const handleMarkAsNotSpam = async (conversationId: string) => {
+    if (!session?.user?.id) return;
+    
+    try {
+      setUpdatingSpam(conversationId);
+      
+      // Find the thread data
+      const threadData = rawThreads.find(t => t.thread?.conversation_id === conversationId);
+      if (!threadData?.thread?.associated_account) {
+        throw new Error('Missing thread data');
+      }
+
+      console.log(threadData)
+
+      // Get the most recent message with a message_id
+      const messages = threadData.messages || [];
+      const latestMessage = messages
+        .filter((msg: Message): msg is MessageWithResponseId => Boolean(msg.response_id)) // Type guard to ensure response_id exists
+        .sort((a: MessageWithResponseId, b: MessageWithResponseId) => 
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        )[0]; // Sort by timestamp descending and take first
+
+      if (!latestMessage?.response_id) {
+        throw new Error('No messages found with message_id');
+      }
+      
+      const response = await fetch('/api/lcp/mark_not_spam', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          conversation_id: conversationId,
+          message_id: latestMessage.response_id,
+          account_id: threadData.thread.associated_account
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to mark as not spam');
+      }
+
+      // Update local state after successful API call
+      setConversations(prev => prev.map(conv => 
+        conv.conversation_id === conversationId 
+          ? { ...conv, spam: false }
+          : conv
+      ));
+
+      // Refresh conversations to get updated data
+      await fetchThreads();
+    } catch (error) {
+      console.error('Error marking as not spam:', error);
+      // Optionally show an error message to the user
+    } finally {
+      setUpdatingSpam(null);
+    }
   };
 
   const confirmDelete = async () => {
@@ -634,16 +717,15 @@ export default function Page() {
   // Add filtered conversations function
   const getFilteredConversations = () => {
     return conversations.filter(conv => {
+      // First filter out any spam threads
+      if (conv.spam) return false;
+
       const messages = rawThreads.find(t => t.thread?.conversation_id === conv.conversation_id)?.messages || [];
       const evMessage = messages
-        .filter((msg: any) => {
-          const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
-          return typeof score === 'number' && !isNaN(score) && score >= 0 && score <= 100;
-        })
-        .reduce((latest: any, msg: any) => {
-          if (!latest) return msg;
-          return new Date(msg.timestamp) > new Date(latest.timestamp) ? msg : latest;
-        }, undefined);
+        .filter((msg: Message): msg is MessageWithResponseId => Boolean(msg.response_id)) // Type guard to ensure response_id exists
+        .sort((a: MessageWithResponseId, b: MessageWithResponseId) => 
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        )[0]; // Sort by timestamp descending and take first
 
       const ev_score = evMessage ? (typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score) : -1;
       const isFlaggedForCompletion = ev_score > conv.lcp_flag_threshold;
@@ -818,14 +900,10 @@ export default function Page() {
                                 const thread = rawThreads.find(t => t.thread?.conversation_id === c.conversation_id);
                                 const messages = thread?.messages || [];
                                 const evMessage = messages
-                                  .filter((msg: any) => {
-                                    const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
-                                    return typeof score === 'number' && !isNaN(score) && score >= 0 && score <= 100;
-                                  })
-                                  .reduce((latest: any, msg: any) => {
-                                    if (!latest) return msg;
-                                    return new Date(msg.timestamp) > new Date(latest.timestamp) ? msg : latest;
-                                  }, undefined);
+                                  .filter((msg: Message): msg is MessageWithResponseId => Boolean(msg.response_id)) // Type guard to ensure response_id exists
+                                  .sort((a: MessageWithResponseId, b: MessageWithResponseId) => 
+                                    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+                                  )[0]; // Sort by timestamp descending and take first
                                 const ev_score = evMessage ? (typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score) : -1;
                                 return ev_score > c.lcp_flag_threshold && !c.flag_for_review;
                               }).length}
@@ -886,14 +964,10 @@ export default function Page() {
 
                         // Find the most recent message with a valid ev_score (0-100) - only for EV score display
                         const evMessage = sortedMessages
-                          .filter(msg => {
-                            const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
-                            return typeof score === 'number' && !isNaN(score) && score >= 0 && score <= 100;
-                          })
-                          .reduce((latest, msg) => {
-                            if (!latest) return msg;
-                            return new Date(msg.timestamp) > new Date(latest.timestamp) ? msg : latest;
-                          }, undefined as Message | undefined);
+                          .filter((msg: Message): msg is MessageWithResponseId => Boolean(msg.response_id)) // Type guard to ensure response_id exists
+                          .sort((a: MessageWithResponseId, b: MessageWithResponseId) => 
+                            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+                          )[0]; // Sort by timestamp descending and take first
                           
                         // Calculate EV score - only for display purposes
                         const ev_score = evMessage ? (typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score) : -1;
@@ -1289,7 +1363,7 @@ export default function Page() {
                           const conversionTimes = recentLeads.map(thread => {
                             const messages = thread.messages || [];
                             const firstMessage = messages[0];
-                            const flaggedMessage = messages.find(msg => {
+                            const flaggedMessage = messages.find((msg: Message) => {
                               const ev = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
                               return typeof ev === 'number' && !isNaN(ev) && ev > (thread.thread?.lcp_flag_threshold || 70);
                             });
