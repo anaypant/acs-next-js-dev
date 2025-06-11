@@ -14,15 +14,16 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useSession } from "next-auth/react"
 import { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
+import { format, subHours, subDays, subMonths, parse } from 'date-fns';
 
 interface UsageStats {
   totalInvocations: number
   totalInputTokens: number
   totalOutputTokens: number
-  conversationsByTime: {
-    timeKey: string
-    invocations: number
-  }[]
+  invocations: {
+    timestamp: number;
+    // ...other fields if needed
+  }[];
   conversationsByThread: {
     threadId: string
     threadName: string
@@ -31,6 +32,17 @@ interface UsageStats {
     outputTokens: number
     conversationUrl: string | null
     timestamp: number
+    isSelected: boolean
+  }[]
+  timeStats: {
+    timeKey: string
+    totalInvocations: number
+    conversations: {
+      threadId: string
+      threadName: string
+      invocations: number
+      conversationUrl: string | null
+    }[]
   }[]
 }
 
@@ -64,13 +76,82 @@ function filterByDateRange(invocations, range) {
   return invocations.filter(inv => new Date(inv.timestamp) >= fromDate);
 }
 
+function generateTimeKeys(range: string) {
+  const now = new Date();
+  let keys: string[] = [];
+  if (range === '24h') {
+    for (let i = 23; i >= 0; i--) {
+      const d = subHours(now, i);
+      keys.push(format(d, 'yyyy-MM-dd HH:00'));
+    }
+  } else if (range === '7d' || range === '30d') {
+    const days = range === '7d' ? 6 : 29;
+    for (let i = days; i >= 0; i--) {
+      const d = subDays(now, i);
+      keys.push(format(d, 'yyyy-MM-dd'));
+    }
+  } else if (range === '1y') {
+    for (let i = 11; i >= 0; i--) {
+      const d = subMonths(now, i);
+      keys.push(format(d, 'yyyy-MM'));
+    }
+  }
+  return keys;
+}
+
+function groupInvocations(invocations: { timestamp: number }[], range: string) {
+  const counts: Record<string, number> = {};
+  invocations.forEach(inv => {
+    const localDate = new Date(inv.timestamp);
+    let key: string;
+    if (range === '24h') {
+      key = format(localDate, 'yyyy-MM-dd HH:00');
+    } else if (range === '7d' || range === '30d') {
+      key = format(localDate, 'yyyy-MM-dd');
+    } else if (range === '1y') {
+      key = format(localDate, 'yyyy-MM');
+    }
+    counts[key] = (counts[key] || 0) + 1;
+  });
+  return counts;
+}
+
+function buildChartData(invocations: { timestamp: number }[], range: string) {
+  const keys = generateTimeKeys(range);
+  const counts = groupInvocations(invocations, range);
+  return keys.map(key => ({
+    timeKey: key,
+    invocations: counts[key] || 0,
+  }));
+}
+
+function safeParse(value: string, formatStr: string) {
+  try {
+    if (!value) return null;
+    const date = parse(value, formatStr, new Date());
+    if (isNaN(date.getTime())) return null;
+    return date;
+  } catch {
+    return null;
+  }
+}
+
+function getXAxisInterval(dateRange: string) {
+  if (dateRange === '24h') return 2;      // every 3rd hour
+  if (dateRange === '7d') return 1;       // every other day
+  if (dateRange === '30d') return 3;      // every 4th day
+  if (dateRange === '1y') return 1;       // every other month
+  return 0;
+}
+
 export default function UsagePage() {
   const { data: session } = useSession()
   const [stats, setStats] = useState<UsageStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [search, setSearch] = useState("");
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" }>({ key: "invocations", direction: "desc" });
-  const [dateRange, setDateRange] = useState("7d");
+  const [search, setSearch] = useState("")
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" }>({ key: "invocations", direction: "desc" })
+  const [dateRange, setDateRange] = useState("7d")
+  const [selectedThreads, setSelectedThreads] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const fetchUsageStats = async () => {
@@ -144,13 +225,19 @@ export default function UsagePage() {
       (thread) => thread.threadName !== "Unnamed Thread"
     );
 
+    // Build time stats from raw invocations
+    const filteredTimeStats = buildChartData(
+      filterByDateRange(stats.invocations, dateRange),
+      dateRange
+    );
+
     return {
       filteredThreads: threads,
       unnamedThreadInvocations: unnamed ? unnamed.invocations : 0,
       filteredBarChartThreads,
-      filteredTimeStats: stats.conversationsByTime,
+      filteredTimeStats,
     };
-  }, [stats, search, sortConfig]);
+  }, [stats, search, sortConfig, dateRange]);
 
   const handleSort = (key: string) => {
     setSortConfig((prev) => {
@@ -160,6 +247,59 @@ export default function UsagePage() {
       return { key, direction: "asc" };
     });
   };
+
+  // Handle thread selection
+  const handleThreadSelection = (threadId: string) => {
+    setSelectedThreads(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(threadId)) {
+        newSet.delete(threadId)
+      } else {
+        newSet.add(threadId)
+      }
+      return newSet
+    })
+  }
+
+  // Filter threads for chart based on selection
+  const chartThreads = useMemo(() => {
+    if (!stats) return []
+    return stats.conversationsByThread
+      .filter(thread => selectedThreads.has(thread.threadId))
+      .sort((a, b) => b.invocations - a.invocations)
+      .slice(0, 5)
+  }, [stats, selectedThreads])
+
+  // Custom tooltip component for the chart
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-lg">
+          <p className="font-medium mb-2">{label}</p>
+          {payload.map((entry: any, index: number) => {
+            const thread = entry.payload.conversation
+            return (
+              <div key={index} className="mb-1">
+                <p className="text-sm">
+                  {thread.conversationUrl ? (
+                    <Link
+                      href={thread.conversationUrl}
+                      className="text-[#0a5a2f] hover:underline"
+                    >
+                      {thread.threadName}
+                    </Link>
+                  ) : (
+                    thread.threadName
+                  )}: {entry.value} invocations
+                </p>
+              </div>
+            )
+          })}
+        </div>
+      )
+    }
+    return null
+  }
 
   if (isLoading) {
     return (
@@ -231,11 +371,18 @@ export default function UsagePage() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
                       dataKey="timeKey" 
+                      interval={getXAxisInterval(dateRange)}
                       tickFormatter={(value) => {
+                        if (!value) return '';
                         if (dateRange === '24h') {
-                          return `${value}h`;
+                          const date = safeParse(value, 'yyyy-MM-dd HH:00');
+                          return date ? format(date, 'h a') : value;
                         } else if (dateRange === '7d' || dateRange === '30d') {
-                          return value;
+                          const date = safeParse(value, 'yyyy-MM-dd');
+                          return date ? format(date, 'MMM d') : value;
+                        } else if (dateRange === '1y') {
+                          const date = safeParse(value, 'yyyy-MM');
+                          return date ? format(date, 'MMM yyyy') : value;
                         }
                         return value;
                       }}
@@ -243,12 +390,18 @@ export default function UsagePage() {
                     <YAxis />
                     <Tooltip 
                       labelFormatter={(value) => {
+                        if (!value) return '';
                         if (dateRange === '24h') {
-                          return `Hour: ${value}`;
+                          const date = safeParse(value, 'yyyy-MM-dd HH:00');
+                          return date ? format(date, 'MMM d, h a') : value;
                         } else if (dateRange === '7d' || dateRange === '30d') {
-                          return `Date: ${value}`;
+                          const date = safeParse(value, 'yyyy-MM-dd');
+                          return date ? format(date, 'MMM d, yyyy') : value;
+                        } else if (dateRange === '1y') {
+                          const date = safeParse(value, 'yyyy-MM');
+                          return date ? format(date, 'MMMM yyyy') : value;
                         }
-                        return `Month: ${value}`;
+                        return value;
                       }}
                     />
                     <Line type="monotone" dataKey="invocations" stroke="#0a5a2f" strokeWidth={2} />
@@ -267,11 +420,11 @@ export default function UsagePage() {
             <CardContent>
               <div className="h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={filteredBarChartThreads}>
+                  <BarChart data={chartThreads}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="threadName" />
                     <YAxis />
-                    <Tooltip />
+                    <Tooltip content={<CustomTooltip />} />
                     <Bar dataKey="invocations" fill="#0a5a2f" />
                   </BarChart>
                 </ResponsiveContainer>
@@ -298,15 +451,32 @@ export default function UsagePage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left py-2 cursor-pointer select-none" onClick={() => handleSort("threadName")}>Conversation {sortConfig.key === "threadName" ? (sortConfig.direction === "asc" ? "▲" : "▼") : ""}</th>
-                      <th className="text-right py-2 cursor-pointer select-none" onClick={() => handleSort("invocations")}>Invocations {sortConfig.key === "invocations" ? (sortConfig.direction === "asc" ? "▲" : "▼") : ""}</th>
-                      <th className="text-right py-2 cursor-pointer select-none" onClick={() => handleSort("inputTokens")}>Input Tokens {sortConfig.key === "inputTokens" ? (sortConfig.direction === "asc" ? "▲" : "▼") : ""}</th>
-                      <th className="text-right py-2 cursor-pointer select-none" onClick={() => handleSort("outputTokens")}>Output Tokens {sortConfig.key === "outputTokens" ? (sortConfig.direction === "asc" ? "▲" : "▼") : ""}</th>
+                      <th className="text-left py-2 w-8"></th>
+                      <th className="text-left py-2 cursor-pointer select-none" onClick={() => handleSort("threadName")}>
+                        Conversation {sortConfig.key === "threadName" ? (sortConfig.direction === "asc" ? "▲" : "▼") : ""}
+                      </th>
+                      <th className="text-right py-2 cursor-pointer select-none" onClick={() => handleSort("invocations")}>
+                        Invocations {sortConfig.key === "invocations" ? (sortConfig.direction === "asc" ? "▲" : "▼") : ""}
+                      </th>
+                      <th className="text-right py-2 cursor-pointer select-none" onClick={() => handleSort("inputTokens")}>
+                        Input Tokens {sortConfig.key === "inputTokens" ? (sortConfig.direction === "asc" ? "▲" : "▼") : ""}
+                      </th>
+                      <th className="text-right py-2 cursor-pointer select-none" onClick={() => handleSort("outputTokens")}>
+                        Output Tokens {sortConfig.key === "outputTokens" ? (sortConfig.direction === "asc" ? "▲" : "▼") : ""}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredThreads.map((thread, index) => (
                       <tr key={thread.threadId || `thread-${index}`} className="border-b">
+                        <td className="py-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedThreads.has(thread.threadId)}
+                            onChange={() => handleThreadSelection(thread.threadId)}
+                            className="h-4 w-4 rounded border-gray-300 text-[#0a5a2f] focus:ring-[#0a5a2f]"
+                          />
+                        </td>
                         <td className="py-2">
                           {thread.conversationUrl ? (
                             <Link

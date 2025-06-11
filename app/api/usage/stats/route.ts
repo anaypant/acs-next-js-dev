@@ -83,19 +83,6 @@ export async function GET(request: Request) {
       }
     };
 
-    // Group by time period for stats
-    const conversationsByTime = filteredInvocations.reduce((acc, inv) => {
-      const timeKey = getTimeKey(inv.timestamp);
-      acc[timeKey] = (acc[timeKey] || 0) + 1;
-      return acc;
-    }, {});
-
-    // Convert to array format for the chart and sort by time
-    const timeStats = Object.entries(conversationsByTime).map(([timeKey, invocations]) => ({
-      timeKey,
-      invocations
-    })).sort((a, b) => a.timeKey.localeCompare(b.timeKey));
-
     // Group by thread for thread stats
     const conversationsByThread = filteredInvocations.reduce((acc, inv) => {
       const threadId = inv.conversation_id;
@@ -107,7 +94,8 @@ export async function GET(request: Request) {
           inputTokens: 0,
           outputTokens: 0,
           conversationUrl: threadId ? `/dashboard/conversations/${threadId}` : null,
-          timestamp: inv.timestamp // Add timestamp for filtering
+          timestamp: inv.timestamp,
+          isSelected: false // Add selection state
         };
       }
       acc[threadId].invocations++;
@@ -116,15 +104,57 @@ export async function GET(request: Request) {
       return acc;
     }, {});
 
-    // Convert to array format
-    const threadStats = Object.values(conversationsByThread);
+    // Convert to array format and sort by invocations
+    const threadStats = Object.values(conversationsByThread)
+      .sort((a, b) => b.invocations - a.invocations)
+      .slice(0, 5); // Only take top 5 by default
+
+    // Group by time period for stats, including selected conversations
+    const conversationsByTime = filteredInvocations.reduce((acc, inv) => {
+      const timeKey = getTimeKey(inv.timestamp);
+      const threadId = inv.conversation_id;
+      
+      if (!acc[timeKey]) {
+        acc[timeKey] = {
+          timeKey,
+          totalInvocations: 0,
+          selectedInvocations: 0,
+          conversations: {} // Track invocations per conversation
+        };
+      }
+      
+      acc[timeKey].totalInvocations++;
+      
+      // Track invocations per conversation
+      if (!acc[timeKey].conversations[threadId]) {
+        acc[timeKey].conversations[threadId] = {
+          threadId,
+          threadName: inv.conversation_id || 'Unnamed Thread',
+          invocations: 0,
+          conversationUrl: threadId ? `/dashboard/conversations/${threadId}` : null
+        };
+      }
+      acc[timeKey].conversations[threadId].invocations++;
+      
+      return acc;
+    }, {});
+
+    // Convert to array format for the chart and sort by time
+    const timeStats = Object.entries(conversationsByTime)
+      .map(([timeKey, data]) => ({
+        timeKey,
+        totalInvocations: data.totalInvocations,
+        conversations: Object.values(data.conversations)
+      }))
+      .sort((a, b) => a.timeKey.localeCompare(b.timeKey));
 
     return NextResponse.json({
       totalInvocations,
       totalInputTokens,
       totalOutputTokens,
-      conversationsByTime: timeStats,
-      conversationsByThread: threadStats
+      invocations, // Return raw invocations with timestamps
+      conversationsByThread: threadStats,
+      timeStats // Include detailed time stats with conversation data
     });
 
   } catch (error: any) {
