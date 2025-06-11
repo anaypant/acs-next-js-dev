@@ -1,15 +1,7 @@
 import { NextResponse } from 'next/server';
 import { config } from '@/lib/local-api-config';
-import { getServerSession } from "next-auth/next"
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
     const body = await request.json();
     const { table_name, index_name, key_name, key_value } = body;
@@ -39,7 +31,10 @@ export async function POST(request: Request) {
       }),
       credentials: 'include',
     });
+    console.log('response', response);
+    console.log('response.ok', response.ok);
     const data = await response.json();
+    console.log('data', data);
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Response not ok:', {
@@ -50,9 +45,19 @@ export async function POST(request: Request) {
       throw new Error(`API request failed with status ${response.status}: ${errorText}`);
     }
 
-    // The data is already parsed from response.json(), no need to parse again
-    if (!Array.isArray(data)) {
-      console.error('Expected array response but got:', typeof data);
+    const responseText = await response.json();
+    // Parse the response text
+    let proxyResponse;
+    try {
+      proxyResponse = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Error parsing response:', parseError);
+      throw new Error('Invalid response format from API');
+    }
+    
+    // Handle the response which is an array directly
+    if (!Array.isArray(proxyResponse)) {
+      console.error('Expected array response but got:', typeof proxyResponse);
       return NextResponse.json(
         { error: 'Invalid response format - expected array' },
         { status: 500 }
@@ -62,7 +67,7 @@ export async function POST(request: Request) {
     // Return the array directly as items
     return NextResponse.json({
       success: true,
-      items: data
+      items: proxyResponse
     });
 
   } catch (error) {
