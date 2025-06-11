@@ -1,4 +1,5 @@
 import NextAuth from "next-auth/next";
+import { JWT } from "next-auth/jwt";
 import Google from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { config } from '@/lib/local-api-config';
@@ -26,8 +27,6 @@ export const authOptions = {
             provider: (credentials.provider || 'form') as SignupProvider
           };
 
-          console.log('Authorize - Starting form-based auth with credentials:', creds);
-
           const response = await fetch(`${config.API_URL}/users/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -35,22 +34,23 @@ export const authOptions = {
           });
 
           const data = await response.json();
-          console.log('Authorize - API Response:', data);
 
           if (!response.ok) {
             throw new Error(data.error || 'Authentication failed');
           }
 
-          const user = {
-            id: data.user?.id || data.id || undefined,
+          const user: User = {
+            id: data.user?.id || data.id || '',
             email: creds.email,
             name: data.user?.name || data.name || creds.name || '',
             provider: creds.provider,
             authType: data.authType || data.user?.authType || 'existing',
-            ...(creds.provider === 'google' && { accessToken: data.accessToken })
           };
+          
+          if (creds.provider === 'google' && data.accessToken) {
+            user.accessToken = data.accessToken;
+          }
 
-          console.log('Authorize - Returning user object:', user);
           return user;
         } catch (error) {
           console.error('Authorize - Error:', error);
@@ -66,11 +66,12 @@ export const authOptions = {
   ],
 
   callbacks: {
-    async signIn({ user, account }: { user: User; account: any}) {
+    async signIn({ user, account }: { user: User, account: any | null }) {
       if (account?.provider === "google") {
-        // Store the access token
-        user.accessToken = account.access_token;
         user.provider = 'google';
+        if (account.access_token) {
+            user.accessToken = account.access_token;
+        }
 
         // Check if this is a new user from Google's perspective
         if (!account.isNewUser) {
@@ -89,7 +90,6 @@ export const authOptions = {
           });
 
           const loginResponseData = await loginResponse.json();
-          console.log('Login response data:', loginResponseData);
           
           // Handle Set-Cookie header from login response
           const setCookieHeader = loginResponse.headers.get('Set-Cookie');
@@ -126,7 +126,6 @@ export const authOptions = {
             { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(signupData) }
           );
           const data = await res.json();
-          console.log('Google signup response data:', data);
 
           // Handle Set-Cookie header from signup response
           const setCookieHeader = res.headers.get('Set-Cookie');
@@ -155,42 +154,29 @@ export const authOptions = {
       }
       return true;
     },
-    async jwt({ token, user, account }: { token: any; user: any; account: any }) {
-      if (user) {
-        console.log('JWT Callback - User authType:', user.authType);
-        const mappedToken = {
-          ...token,
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          provider: user.provider || 'form',
-          authType: user.authType,
-          accessToken: account?.access_token || user.accessToken || undefined,
-        };
-        console.log('JWT Callback - Mapped token authType:', mappedToken.authType);
-        return mappedToken;
-      }
-      return token;
+    async jwt({ token, user, account }: { token: JWT, user: User, account: any | null }) {
+        if (account) {
+            token.accessToken = account.access_token;
+        }
+        if (user) {
+            token.id = user.id;
+            token.email = user.email;
+            token.name = user.name;
+            token.provider = user.provider;
+            token.authType = user.authType;
+        }
+        return token;
     },
-    async session({ session, token }: { session: any; token: any }) {
-      console.log('Session Callback - Token authType:', token.authType);
-      const mappedUser = {
-        ...session.user,
-        id: token.id,
-        email: token.email,
-        name: token.name ?? '',
-        provider: token.provider || 'form',
-        authType: token.authType,
-        accessToken: token.accessToken,
-      };
-      console.log('Session Callback - Mapped user authType:', mappedUser.authType);
-
-      const updatedSession = {
-        ...session,
-        user: mappedUser
-      };
-
-      return updatedSession;
+    async session({ session, token }: { session: any; token: JWT }) {
+        if (session.user) {
+            session.user.id = token.id;
+            session.user.name = token.name as string;
+            session.user.email = token.email as string;
+            session.user.provider = token.provider;
+            session.user.authType = token.authType;
+            // Do not expose accessToken to the client-side
+        }
+        return session;
     }
   },
   pages: {
