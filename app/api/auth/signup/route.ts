@@ -18,7 +18,6 @@ export async function POST(request: Request) {
     try {
         // Parse the request body
         const signupData: SignupData = await request.json();
-        console.log('api/auth/signup/route.ts: Signup data:', signupData);
 
         // Check required fields are present
         if (!signupData.email || !signupData.provider) {
@@ -84,12 +83,6 @@ export async function POST(request: Request) {
             );
         }
 
-        // Log all headers from the API response
-        console.log('API Response Headers:');
-        response.headers.forEach((value, key) => {
-            console.log(`${key}: ${value}`);
-        });
-
         // Create response with the session token
         const nextResponse = NextResponse.json({
             success: true,
@@ -115,12 +108,6 @@ export async function POST(request: Request) {
             // Set only the session_id cookie
             nextResponse.headers.set('set-cookie', sessionIdCookie);
         }
-
-        // Log all headers in nextResponse before returning
-        console.log('NextResponse Headers:');
-        nextResponse.headers.forEach((value, key) => {
-            console.log(`${key}: ${value}`);
-        });
 
         return nextResponse;
     } catch (error: any) {
