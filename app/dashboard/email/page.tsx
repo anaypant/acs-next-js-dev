@@ -7,8 +7,8 @@
  */
 
 "use client"
-import { ArrowLeft, Search, Plus, Send, Archive, Trash2, Star } from "lucide-react"
-import { useState } from "react"
+import { ArrowLeft, Search, Plus, Send, Archive, Trash2, Star, AlertCircle } from "lucide-react"
+import { useState, useEffect } from "react"
 
 /**
  * Logo Component
@@ -44,7 +44,9 @@ function Logo({ size = "sm" }: { size?: "sm" | "lg" }) {
  * @returns {JSX.Element} Complete email dashboard view
  */
 export default function EmailPage() {
-  // State management for selected email
+  // State management for selected email and active tab
+  const [activeTab, setActiveTab] = useState<'inbox' | 'junk'>('inbox')
+  const [junkCount, setJunkCount] = useState(0)
   const [selectedEmail, setSelectedEmail] = useState<{
     id: number;
     from: string;
@@ -55,9 +57,12 @@ export default function EmailPage() {
     read: boolean;
     starred: boolean;
     type: string;
+    conversation_id?: string;
+    message_id?: string;
+    account_id?: string;
   } | null>(null)
 
-  // Mock email data structure
+  // Mock email data structure with junk emails
   const emails = [
     {
       id: 1,
@@ -103,7 +108,77 @@ export default function EmailPage() {
       starred: false,
       type: "client",
     },
+    {
+      id: 5,
+      from: "Spam Sender",
+      email: "spam@example.com",
+      subject: "You've won a prize!",
+      preview: "Congratulations! You've been selected to win a million dollars...",
+      time: "1 day ago",
+      read: true,
+      starred: false,
+      type: "junk",
+      conversation_id: "conv_123",
+      message_id: "msg_456",
+      account_id: "acc_789"
+    },
+    {
+      id: 6,
+      from: "Another Spammer",
+      email: "spammer@example.com",
+      subject: "Urgent: Your account needs verification",
+      preview: "Your account has been compromised. Click here to verify...",
+      time: "2 days ago",
+      read: false,
+      starred: false,
+      type: "junk",
+      conversation_id: "conv_124",
+      message_id: "msg_457",
+      account_id: "acc_789"
+    }
   ]
+
+  // Filter emails based on active tab
+  const filteredEmails = emails.filter(email => email.type !== 'junk')
+
+  // Update junk count
+  useEffect(() => {
+    const count = emails.filter(email => email.type === 'junk').length
+    setJunkCount(Math.min(count, 99))
+  }, [emails])
+
+  // Handle marking email as not spam
+  const handleMarkAsNotSpam = async (email: typeof selectedEmail) => {
+    if (!email?.conversation_id || !email?.message_id || !email?.account_id) return
+
+    try {
+      const response = await fetch('/api/lcp/mark_not_spam', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          conversation_id: email.conversation_id,
+          message_id: email.message_id,
+          account_id: email.account_id
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to mark email as not spam')
+      }
+
+      // Update local state to reflect the change
+      const updatedEmails = emails.map(e => 
+        e.id === email.id ? { ...e, type: 'lead' } : e
+      )
+      // In a real app, you would update the emails state here
+      // setEmails(updatedEmails)
+    } catch (error) {
+      console.error('Error marking email as not spam:', error)
+      // Handle error (show toast notification, etc.)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1]">
@@ -163,7 +238,7 @@ export default function EmailPage() {
 
             {/* Email List */}
             <div className="divide-y">
-              {emails.map((email) => (
+              {filteredEmails.map((email) => (
                 <div
                   key={email.id}
                   className={`p-4 hover:bg-[#0e6537]/5 cursor-pointer ${!email.read ? "bg-[#e6f5ec]" : ""}`}
@@ -184,17 +259,30 @@ export default function EmailPage() {
                       <p className={`text-sm truncate mb-1 ${!email.read ? "font-semibold" : ""}`}>{email.subject}</p>
                       <p className="text-xs text-gray-600 truncate">{email.preview}</p>
                       <div className="flex items-center gap-2 mt-2">
-                        <span
-                          className={`px-2 py-1 text-xs rounded ${
-                            email.type === "hot-lead"
-                              ? "bg-red-100 text-red-800"
-                              : email.type === "lead"
-                                ? "bg-[#e6f5ec] text-[#002417]"
-                                : "bg-[#0e6537]/20 text-[#002417]"
-                          }`}
-                        >
-                          {email.type.replace("-", " ").toUpperCase()}
-                        </span>
+                        {email.type === 'junk' ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleMarkAsNotSpam(email)
+                            }}
+                            className="flex items-center gap-1 px-2 py-1 text-xs bg-red-50 text-red-700 rounded hover:bg-red-100"
+                          >
+                            <AlertCircle className="h-3 w-3" />
+                            Mark as Not Spam
+                          </button>
+                        ) : (
+                          <span
+                            className={`px-2 py-1 text-xs rounded ${
+                              email.type === "hot-lead"
+                                ? "bg-red-100 text-red-800"
+                                : email.type === "lead"
+                                  ? "bg-[#e6f5ec] text-[#002417]"
+                                  : "bg-[#0e6537]/20 text-[#002417]"
+                            }`}
+                          >
+                            {email.type.replace("-", " ").toUpperCase()}
+                          </span>
+                        )}
                         {!email.read && <div className="w-2 h-2 bg-blue-600 rounded-full"></div>}
                       </div>
                     </div>

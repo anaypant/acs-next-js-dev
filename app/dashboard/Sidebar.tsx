@@ -7,9 +7,11 @@
  */
 
 "use client"
-import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, PanelLeft } from "lucide-react"
+import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, PanelLeft, Trash2 } from "lucide-react"
 import type React from "react"
-import { useState, createContext, useContext } from "react"
+import { useState, createContext, useContext, useEffect } from "react"
+import { useSession } from "next-auth/react"
+import type { Session } from "next-auth"
 
 /**
  * SidebarContext
@@ -272,6 +274,50 @@ const mainNavigation = [
  */
 function AppSidebar() {
   const { isOpen } = useSidebar()
+  const [unreadSpamCount, setUnreadSpamCount] = useState(0)
+  const { data: session } = useSession() as { data: Session & { user?: { id: string } } | null }
+
+  useEffect(() => {
+    const fetchUnreadSpamCount = async () => {
+      if (!session?.user?.id) return
+
+      try {
+        const response = await fetch('/api/lcp/get_all_threads', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: session.user.id })
+        })
+        
+        if (!response.ok) throw new Error('Failed to fetch threads')
+        
+        const { data } = await response.json()
+        const unreadSpamThreads = data.filter((item: any) => 
+          item.thread.spam === 'true' && item.thread.read === 'false'
+        )
+        setUnreadSpamCount(unreadSpamThreads.length)
+      } catch (error) {
+        console.error('Error fetching unread spam count:', error)
+      }
+    }
+
+    // Add event listener for junk email count updates
+    const handleJunkEmailCountUpdate = (event: CustomEvent<number>) => {
+      setUnreadSpamCount(event.detail)
+    }
+
+    // Add the event listener
+    window.addEventListener('junkEmailCountUpdated', handleJunkEmailCountUpdate as EventListener)
+
+    fetchUnreadSpamCount()
+    // Refresh count every minute
+    const interval = setInterval(fetchUnreadSpamCount, 60000)
+
+    // Cleanup function
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('junkEmailCountUpdated', handleJunkEmailCountUpdate as EventListener)
+    }
+  }, [session?.user?.id])
 
   return (
     <Sidebar>
@@ -290,6 +336,22 @@ function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
+            {/* Junk tab */}
+            <SidebarMenuItem key="Junk">
+              <SidebarMenuButton href="/dashboard/junk">
+                <Trash2 className="h-4 w-4" style={{ color: 'white' }} />
+                {isOpen && (
+                  <div className="flex items-center justify-between w-full">
+                    <span>Junk</span>
+                    {unreadSpamCount > 0 && (
+                      <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                        {unreadSpamCount}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
 

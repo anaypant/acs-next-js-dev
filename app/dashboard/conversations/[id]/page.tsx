@@ -265,6 +265,7 @@ export default function ConversationDetailPage() {
   const [updatingOverride, setUpdatingOverride] = useState(false);
   const [unflagging, setUnflagging] = useState(false);
   const [flagReason, setFlagReason] = useState("");
+  const [updatingSpam, setUpdatingSpam] = useState(false);
 
   // Fetch user signature on component mount
   useEffect(() => {
@@ -330,6 +331,7 @@ export default function ConversationDetailPage() {
           busy: rawThread?.busy === true || rawThread?.busy === 'true',
           read: rawThread?.read === true || rawThread?.read === 'true',
           flag_for_review: rawThread?.flag_for_review === true || rawThread?.flag_for_review === 'true',
+          spam: rawThread?.spam === true || rawThread?.spam === 'true',
         };
         setThread(normalizedThread);
         setMessages(data.data.messages);
@@ -967,6 +969,47 @@ export default function ConversationDetailPage() {
     }
   };
 
+  // Function to handle marking as not spam
+  const handleMarkAsNotSpam = async () => {
+    if (!thread?.conversation_id || !thread?.associated_account) return;
+    
+    try {
+      setUpdatingSpam(true);
+      
+      // Get the latest message from the conversation
+      const latestMessage = messages[messages.length - 1];
+      if (!latestMessage?.message_id) {
+        throw new Error('Missing message ID');
+      }
+      
+      const response = await fetch('/api/lcp/mark_not_spam', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          conversation_id: thread.conversation_id,
+          message_id: latestMessage.message_id,
+          account_id: thread.associated_account
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to mark as not spam');
+      }
+
+      // Update local state
+      setThread(prev => prev ? { ...prev, spam: false } : null);
+      
+      // Reload the conversation to get updated data
+      await reloadConversation();
+    } catch (error) {
+      console.error('Error marking as not spam:', error);
+    } finally {
+      setUpdatingSpam(false);
+    }
+  };
+
   // Add NotesWidget component with proper type definitions
   const NotesWidget = ({ notes, onSave }: { notes: string; onSave: (notes: string) => Promise<void> }): ReactNode => {
     const [isEditing, setIsEditing] = useState(false);
@@ -1301,6 +1344,33 @@ export default function ConversationDetailPage() {
                 onUnflag={handleUnflag}
                 updating={unflagging}
               />
+
+              {/* Spam Status Widget */}
+              {thread?.spam && (
+                <div className="bg-white rounded-2xl border shadow-lg p-6 flex flex-col items-center text-center min-h-[170px]">
+                  <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mb-2">
+                    <AlertTriangle className="h-7 w-7 text-red-500" />
+                  </div>
+                  <div className="mb-1 font-bold text-lg text-red-700">Marked as Spam</div>
+                  <div className="text-gray-500 text-sm mb-4">
+                    This conversation has been marked as spam
+                  </div>
+                  <button
+                    onClick={handleMarkAsNotSpam}
+                    disabled={updatingSpam}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {updatingSpam ? (
+                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <Shield className="w-4 h-4 text-green-500" />
+                        <span>Mark as Not Spam</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
 
               {/* AI Insights */}
               {thread && (() => {
