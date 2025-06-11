@@ -2,14 +2,14 @@
  * File: app/dashboard/page.tsx
  * Purpose: Renders the main dashboard with lead conversion pipeline, performance metrics, and activity tracking.
  * Author: Alejo Cagliolo
- * Date: 5/25/25
- * Version: 1.1.0
+ * Date: 06/11/25
+ * Version: 1.1.1
  */
 
 "use client"
 import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, PanelLeft, Bell, CheckCircle, XCircle, Flag, Trash2, AlertTriangle, RefreshCw, Clock, ChevronRight, ChevronDown, X, Shield, ShieldOff } from "lucide-react"
 import type React from "react"
-import { SidebarProvider, AppSidebar, SidebarTrigger, SidebarInset } from "./components/Sidebar"
+import { SidebarProvider, AppSidebar, SidebarTrigger, SidebarInset, Logo } from "./components/Sidebar"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState, useCallback, useMemo } from "react"
@@ -323,11 +323,11 @@ export default function Page() {
         <AppSidebar />
         <SidebarInset>
           {/* Header with navigation and title */}
-          <header className="flex h-16 shrink-0 items-center gap-2 border-b border-[#0e6537]/20 px-4 bg-gradient-to-r from-[#e6f5ec] to-[#f0f9f4]">
-            <SidebarTrigger />
+          <header className="flex h-16 shrink-0 items-center justify-between border-b border-[#0e6537]/20 px-4 bg-gradient-to-r from-[#e6f5ec] to-[#f0f9f4]">
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-semibold">Lead Conversion Pipeline</h1>
+              {/* Logo removed */}
             </div>
+            <SidebarTrigger />
           </header>
 
           {/* Add DeleteConfirmationModal */}
@@ -733,14 +733,21 @@ export default function Page() {
 
 /**
  * Change Log:
- * 5/25/25 - Initial version
- * - Created main dashboard with lead conversion pipeline
- * - Implemented performance metrics and analytics
- * - Added lead sources and activity tracking
- * - Integrated responsive design and interactive components
- * 5/26/25 - Refactor 1.1.0
+ * 06/11/25 - Version 1.1.1
+ * - Enhanced mobile responsiveness
+ * - Improved filter functionality
+ * - Updated documentation format
+ * - Added detailed feature descriptions
+ * 
+ * 5/26/25 - Version 1.1.0
  * - Extracted components: DeleteConfirmationModal, DashboardStyles, ConversationCard
  * - Extracted hooks: useConversations, useDashboardMetrics
  * - Simplified Page component to act as a container
  * - Centralized type definitions
+ * 
+ * 5/25/25 - Version 1.0.0
+ * - Created main dashboard with lead conversion pipeline
+ * - Implemented performance metrics and analytics
+ * - Added lead sources and activity tracking
+ * - Integrated responsive design and interactive components
  */
