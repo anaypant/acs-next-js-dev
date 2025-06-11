@@ -33,47 +33,100 @@ export const useConversations = (session: Session | null, mounted: boolean, rout
         }));
     }, [rawThreads]);
 
-    const fetchThreads = useCallback(async () => {
-        if (!mounted || !session?.user?.id) return;
+    const MAX_RETRIES = 3;
+    const INITIAL_RETRY_DELAY = 1000; // 1 second
+
+    const fetchThreads = useCallback(async (retryCount = 0): Promise<void> => {
+        if (!mounted || !session?.user?.id) {
+            console.log('fetchThreads early return:', { mounted, sessionId: session?.user?.id });
+            return;
+        }
 
         try {
             setLoadingConversations(true);
+            console.log('Making API request with userId:', session.user.id);
+            const requestBody = JSON.stringify({ userId: session.user.id });
+            console.log('Request body:', requestBody);
+            
             const response = await fetch('/api/lcp/get_all_threads', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: session.user.id }),
+                body: requestBody,
             });
-
-            if (!response.ok) throw new Error('Failed to fetch threads');
 
             const data = await response.json();
 
-            if (data.success && Array.isArray(data.data)) {
-                const sortedData = data.data.sort((a: any, b: any) => {
-                    const aMessages = a.messages || [];
-                    const bMessages = b.messages || [];
-                    const aLatestTimestamp = aMessages.length > 0 ? new Date(aMessages[0].timestamp).getTime() : 0;
-                    const bLatestTimestamp = bMessages.length > 0 ? new Date(bMessages[0].timestamp).getTime() : 0;
-                    return bLatestTimestamp - aLatestTimestamp;
-                });
-                
-                setRawThreads(sortedData);
-
-                try {
-                    const spamCount = sortedData.filter((thread: { thread?: { spam?: boolean | string } }) =>
-                        thread.thread?.spam === true || thread.thread?.spam === 'true'
-                    ).length;
-                    localStorage.setItem('junkEmailCount', spamCount.toString());
-                    window.dispatchEvent(new CustomEvent('junkEmailCountUpdated', { detail: spamCount }));
-                } catch (error) {
-                    console.error('Error updating junk email count:', error);
+            if (!response.ok) {
+                // If the error is retryable and we haven't exceeded max retries, try again
+                if (data.retryable && retryCount < MAX_RETRIES) {
+                    console.log(`Retrying fetch... (${retryCount + 1}/${MAX_RETRIES})`);
+                    await new Promise(resolve => setTimeout(resolve, INITIAL_RETRY_DELAY * Math.pow(2, retryCount)));
+                    return fetchThreads(retryCount + 1);
                 }
-            } else {
-                setRawThreads([]);
+                throw new Error(data.error || `Failed to fetch threads: ${response.statusText}`);
             }
+
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to fetch threads');
+            }
+
+            if (!Array.isArray(data.data)) {
+                console.error('Invalid response format:', data);
+                throw new Error('Invalid response format from server');
+            }
+
+            // Handle any warnings about failed threads
+            if (data.warnings?.failedThreads?.length > 0) {
+                console.warn('Some threads failed to load:', data.warnings.failedThreads);
+            }
+
+            // Sort threads by most recent message timestamp
+            const sortedData = [...data.data].sort((a: any, b: any) => {
+                const aMessages = a.messages || [];
+                const bMessages = b.messages || [];
+                const aLatestTimestamp = aMessages.length > 0 ? new Date(aMessages[aMessages.length - 1].timestamp).getTime() : 0;
+                const bLatestTimestamp = bMessages.length > 0 ? new Date(bMessages[bMessages.length - 1].timestamp).getTime() : 0;
+                return bLatestTimestamp - aLatestTimestamp;
+            });
+
+            const conversations = sortedData.map((item: any) => ({
+                conversation_id: item.thread?.conversation_id || '',
+                associated_account: item.thread?.associated_account || '',
+                lcp_enabled: item.thread?.lcp_enabled === true || item.thread?.lcp_enabled === 'true',
+                read: item.thread?.read === true || item.thread?.read === 'true',
+                source: item.thread?.source || '',
+                source_name: item.thread?.source_name || '',
+                lcp_flag_threshold: typeof item.thread?.lcp_flag_threshold === 'number' ? item.thread.lcp_flag_threshold : Number(item.thread?.lcp_flag_threshold) || 0,
+                ai_summary: item.thread?.ai_summary || '',
+                budget_range: item.thread?.budget_range || '',
+                preferred_property_types: item.thread?.preferred_property_types || '',
+                timeline: item.thread?.timeline || '',
+                busy: item.thread?.busy === 'true',
+                flag_for_review: item.thread?.flag_for_review === 'true',
+                spam: item.thread?.spam === true || item.thread?.spam === 'true',
+            }));
+
+            setRawThreads(sortedData);
+
+            // Update spam count if needed
+            const spamCount = sortedData.filter((thread: { thread?: { spam?: boolean | string } }) =>
+                thread.thread?.spam === true || thread.thread?.spam === 'true'
+            ).length;
+
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('junkEmailCount', spamCount.toString());
+                window.dispatchEvent(new CustomEvent('junkEmailCountUpdated', { detail: spamCount }));
+            }
+
         } catch (error) {
             console.error('Error fetching threads:', error);
             setRawThreads([]);
+            // If it's a retryable error and we haven't exceeded max retries, try again
+            if (error instanceof Error && error.message.includes('fetch') && retryCount < MAX_RETRIES) {
+                console.log(`Retrying fetch after error... (${retryCount + 1}/${MAX_RETRIES})`);
+                await new Promise(resolve => setTimeout(resolve, INITIAL_RETRY_DELAY * Math.pow(2, retryCount)));
+                return fetchThreads(retryCount + 1);
+            }
         } finally {
             setLoadingConversations(false);
         }

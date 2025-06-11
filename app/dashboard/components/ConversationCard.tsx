@@ -28,9 +28,11 @@ const ConversationCard = ({
     const sortedMessages = [...messages].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     const latestMessage = sortedMessages[0];
 
-    const evMessage = sortedMessages
-        .filter((msg: Message): msg is MessageWithResponseId => Boolean(msg.response_id))
-        .sort((a: MessageWithResponseId, b: MessageWithResponseId) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+    // Find the most recent message with an EV score
+    const evMessage = sortedMessages.find((msg: Message) => {
+        const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
+        return score !== undefined && score !== null && !isNaN(score);
+    });
 
     const ev_score = evMessage ? (typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score) : -1;
 

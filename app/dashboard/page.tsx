@@ -225,40 +225,68 @@ export default function Page() {
     };
     const timeLimit = now.getTime() - (timeRanges[timeRange] || timeRanges.week);
 
-    return rawThreads.filter((thread: any) => {
+    console.log('Filtering leads for time range:', timeRange, 'Time limit:', new Date(timeLimit));
+    const filtered = rawThreads.filter((thread: any) => {
       const firstMessage = thread.messages?.[0];
-      if (!firstMessage) return false;
+      if (!firstMessage) {
+        console.log('No messages found for thread:', thread.thread?.conversation_id);
+        return false;
+      }
       const messageDate = new Date(firstMessage.timestamp);
-      return messageDate.getTime() >= timeLimit;
+      const isInRange = messageDate.getTime() >= timeLimit;
+      console.log('Thread:', thread.thread?.conversation_id, 'Date:', messageDate, 'In range:', isInRange);
+      return isInRange;
     });
+    console.log('Filtered leads count:', filtered.length);
+    return filtered;
   }, [rawThreads, timeRange]);
 
   const averageEvScore = useMemo(() => {
     if (recentLeads.length === 0) return 0;
     
     const threadsWithScores = recentLeads.map((thread: any) => {
-      const highestEv = thread.messages?.reduce((max: number, msg: Message) => {
-        const ev = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
-        return typeof ev === 'number' && !isNaN(ev) ? Math.max(max, ev) : max;
-      }, -1) || -1;
-      return highestEv;
-    }).filter((score: number) => score > -1);
+      const messages = thread.messages || [];
+      // Get the most recent message with any EV score
+      const evMessage = messages
+        .sort((a: Message, b: Message) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()) // Sort by newest first
+        .find((msg: Message) => {
+          const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
+          console.log('Message EV score:', msg.ev_score, 'Parsed:', score, 'Thread:', thread.thread?.conversation_id);
+          return score !== undefined && score !== null && !isNaN(score);
+        });
 
+      if (!evMessage) {
+        console.log('No EV score found for thread:', thread.thread?.conversation_id);
+        return null;
+      }
+      const score = typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score;
+      console.log('Found EV score:', score, 'for thread:', thread.thread?.conversation_id);
+      return score;
+    }).filter((score): score is number => score !== null);
+
+    console.log('Threads with scores:', threadsWithScores);
     if (threadsWithScores.length === 0) return 0;
 
     const totalEv = threadsWithScores.reduce((sum, score) => sum + score, 0);
-    return Math.round(totalEv / threadsWithScores.length);
+    const average = Math.round(totalEv / threadsWithScores.length);
+    console.log('Final average EV score:', average);
+    return average;
   }, [recentLeads]);
 
   const conversionRate = useMemo(() => {
     if (recentLeads.length === 0) return 0;
 
     const flaggedLeads = recentLeads.filter((thread: any) => {
-      const highestEv = thread.messages?.reduce((max: number, msg: Message) => {
-        const ev = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
-        return typeof ev === 'number' && !isNaN(ev) ? Math.max(max, ev) : max;
-      }, -1) || 0;
-      return highestEv > (thread.thread?.lcp_flag_threshold || 70);
+      const messages = thread.messages || [];
+      const evMessage = messages
+        .sort((a: Message, b: Message) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .find((msg: Message) => {
+          const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
+          return typeof score === 'number' && !isNaN(score) && score >= 0 && score <= 100;
+        });
+
+      const evScore = evMessage ? (typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score) : 0;
+      return evScore > (thread.thread?.lcp_flag_threshold || 70);
     });
 
     return Math.round((flaggedLeads.length / recentLeads.length) * 100);
@@ -268,14 +296,16 @@ export default function Page() {
     const conversionTimes = recentLeads.map((thread: any) => {
       const messages = thread.messages || [];
       const firstMessage = messages[0];
-      const flaggedMessage = messages.find((msg: Message) => {
-        const ev = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
-        return typeof ev === 'number' && !isNaN(ev) && ev > (thread.thread?.lcp_flag_threshold || 70);
-      });
+      const evMessage = messages
+        .sort((a: Message, b: Message) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .find((msg: Message) => {
+          const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
+          return typeof score === 'number' && !isNaN(score) && score > (thread.thread?.lcp_flag_threshold || 70);
+        });
 
-      if (!firstMessage || !flaggedMessage) return null;
+      if (!firstMessage || !evMessage) return null;
       const startTime = new Date(firstMessage.timestamp);
-      const endTime = new Date(flaggedMessage.timestamp);
+      const endTime = new Date(evMessage.timestamp);
       return (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60); // Convert to hours
     }).filter((time): time is number => time !== null);
 

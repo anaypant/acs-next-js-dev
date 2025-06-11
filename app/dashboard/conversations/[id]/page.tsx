@@ -256,7 +256,11 @@ export default function ConversationDetailPage() {
   const [copySuccess, setCopySuccess] = useState(false)
   const [generatingPdf, setGeneratingPdf] = useState(false)
   const [feedback, setFeedback] = useState<Record<string, 'like' | 'dislike' | null>>({});
+  const [evFeedback, setEvFeedback] = useState<Record<string, 'like' | 'dislike' | null>>({});
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [evFeedbackLoading, setEvFeedbackLoading] = useState(false);
+  const [updatingFeedbackId, setUpdatingFeedbackId] = useState<string | null>(null);
+  const [updatingEvFeedbackId, setUpdatingEvFeedbackId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [emailPreview, setEmailPreview] = useState<{ subject: string; body: string; signature: string } | null>(null);
   const [userSignature, setUserSignature] = useState<string>("");
@@ -348,42 +352,71 @@ export default function ConversationDetailPage() {
     reloadConversation();
   }, [conversationId]);
 
-  // Fetch feedback for all user messages on load
+  // Fetch feedback for all messages on load
   useEffect(() => {
     const fetchFeedback = async () => {
       if (!conversationId || !messages.length) return;
       setFeedbackLoading(true);
+      setEvFeedbackLoading(true);
       try {
-        // Get all feedback for this conversation
-        const res = await fetch('/api/db/select', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            table_name: 'EVDataCollection',
-            index_name: 'conversation_id-index',
-            key_name: 'conversation_id',
-            key_value: conversationId,
+        // Get all feedback for this conversation from both tables
+        const [llmResponse, evResponse] = await Promise.all([
+          fetch('/api/db/select', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              table_name: 'LLMDataCollection',
+              index_name: 'conversation_id-index',
+              key_name: 'conversation_id',
+              key_value: conversationId,
+            })
+          }),
+          fetch('/api/db/select', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              table_name: 'EVDataCollection',
+              index_name: 'conversation_id-index',
+              key_name: 'conversation_id',
+              key_value: conversationId,
+            })
           })
-        });
-        const data = await res.json();
-        if (data.success && Array.isArray(data.items)) {
-          // Map message_id to flag
+        ]);
+
+        const [llmData, evData] = await Promise.all([
+          llmResponse.json(),
+          evResponse.json()
+        ]);
+
+        // Process LLM feedback
+        if (llmData.success && Array.isArray(llmData.items)) {
           const fb: Record<string, 'like' | 'dislike' | null> = {};
-          data.items.forEach((item: any) => {
-            if (item.message_id && item.flag) {
-              fb[item.message_id] = item.flag;
+          llmData.items.forEach((item: any) => {
+            if (item.response_id && item.flag) {
+              fb[item.response_id] = item.flag;
             }
           });
           setFeedback(fb);
+        }
+
+        // Process EV feedback
+        if (evData.success && Array.isArray(evData.items)) {
+          const evFb: Record<string, 'like' | 'dislike' | null> = {};
+          evData.items.forEach((item: any) => {
+            if (item.message_id && item.flag) {
+              evFb[item.message_id] = item.flag;
+            }
+          });
+          setEvFeedback(evFb);
         }
       } catch (err) {
         console.error('Error fetching feedback:', err);
       } finally {
         setFeedbackLoading(false);
+        setEvFeedbackLoading(false);
       }
     };
     fetchFeedback();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId, messages.length]);
 
   // Find client email from the first inbound message or thread
@@ -696,26 +729,68 @@ export default function ConversationDetailPage() {
     }));
   };
 
-  // Handle thumbs up/down click
-  const handleFeedback = async (messageId: string, flag: 'like' | 'dislike') => {
+  // Handle response feedback (thumbs up/down for any message)
+  const handleResponseFeedback = async (messageId: string, flag: 'like' | 'dislike') => {
     setFeedback(prev => ({ ...prev, [messageId]: flag }));
+    setUpdatingFeedbackId(messageId);
+    try {
+      // Find the matching message to get its llm_email_type
+      const matchingMessage = messages.find(msg => msg.response_id === messageId);
+      const llmEmailType = matchingMessage?.llm_email_type || 'unknown';
+
+      await fetch('/api/db/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table_name: 'LLMDataCollection',
+          index_name: "conversation_id-index",
+          key_name: 'conversation_id',
+          key_value: conversationId,
+          update_data: {
+            response_id: messageId,
+            flag,
+            conversation: getConversationToMessage(messageId),
+            associated_account: user?.id || "",
+            llm_email_type: llmEmailType
+          }
+        })
+      });
+    } catch (err) {
+      console.error('Error updating response feedback:', err);
+      // Revert the feedback state on error
+      setFeedback(prev => ({ ...prev, [messageId]: null }));
+    } finally {
+      setUpdatingFeedbackId(null);
+    }
+  };
+
+  // Handle EV score feedback (thumbs up/down for EV scores)
+  const handleEvFeedback = async (messageId: string, flag: 'like' | 'dislike') => {
+    setEvFeedback(prev => ({ ...prev, [messageId]: flag }));
+    setUpdatingEvFeedbackId(messageId);
     try {
       await fetch('/api/db/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           table_name: 'EVDataCollection',
+          index_name: "conversation_id-index",
           key_name: 'conversation_id',
           key_value: conversationId,
           update_data: {
             message_id: messageId,
             flag,
             conversation: getConversationToMessage(messageId),
+            feedback_type: 'ev_score'
           }
         })
       });
     } catch (err) {
-      console.error('Error updating feedback:', err);
+      console.error('Error updating EV feedback:', err);
+      // Revert the feedback state on error
+      setEvFeedback(prev => ({ ...prev, [messageId]: null }));
+    } finally {
+      setUpdatingEvFeedbackId(null);
     }
   };
 
@@ -727,6 +802,7 @@ export default function ConversationDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           table_name: 'Threads',
+          index_name: "conversation_id-index",
           key_name: 'conversation_id',
           key_value: conversationId,
           update_data: { context_notes: newNotes }
@@ -753,6 +829,7 @@ export default function ConversationDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           table_name: 'Threads',
+          index_name: "conversation_id-index",
           key_name: 'conversation_id',
           key_value: conversationId,
           update_data: { flag_review_override: thread?.flag_review_override === 'true' ? 'false' : 'true' }
@@ -950,6 +1027,7 @@ export default function ConversationDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           table_name: 'Threads',
+          index_name: "conversation_id-index",
           key_name: 'conversation_id',
           key_value: thread.conversation_id,
           update_data: { flag_for_review: 'false' }
@@ -1219,27 +1297,70 @@ export default function ConversationDetailPage() {
                           <span>{msg.type === "inbound-email" ? clientEmail : "You"}</span>
                           <span>·</span>
                           <span>{msg.timestamp ? new Date(msg.timestamp).toLocaleString() : ""}</span>
+                          {/* Feedback section: Only one set per message type */}
                           {msg.type === "inbound-email" && typeof msg.ev_score === 'string' && Number(msg.ev_score) >= 0 && Number(msg.ev_score) <= 100 && (
                             <span className="ml-2 flex items-center gap-1">
                               <span className="font-semibold text-green-700">EV {msg.ev_score}</span>
-                              {!feedbackLoading && (
+                              {!evFeedbackLoading && (
                                 <>
                                   <button
-                                    className={`ml-1 p-0.5 rounded-full ${feedback[msg.response_id] === 'like' ? 'bg-green-100 text-green-700' : 'hover:bg-gray-100 text-gray-400'}`}
-                                    onClick={() => handleFeedback(msg.response_id, 'like')}
-                                    aria-label="Thumbs up"
+                                    className={`p-0.5 rounded-full ${evFeedback[msg.response_id] === 'like' ? 'bg-green-100 text-green-700' : 'hover:bg-gray-100 text-gray-400'}`}
+                                    onClick={() => handleEvFeedback(msg.response_id, 'like')}
+                                    disabled={updatingEvFeedbackId === msg.response_id}
+                                    aria-label="Thumbs up EV score"
+                                    title="Rate the accuracy of the AI's EV score for this message."
                                   >
-                                    <ThumbsUp className="w-4 h-4" fill={feedback[msg.response_id] === 'like' ? '#22c55e' : 'none'} />
+                                    {updatingEvFeedbackId === msg.response_id ? (
+                                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                      <ThumbsUp className="w-4 h-4" fill={evFeedback[msg.response_id] === 'like' ? '#22c55e' : 'none'} />
+                                    )}
                                   </button>
                                   <button
-                                    className={`ml-1 p-0.5 rounded-full ${feedback[msg.response_id] === 'dislike' ? 'bg-red-100 text-red-700' : 'hover:bg-gray-100 text-gray-400'}`}
-                                    onClick={() => handleFeedback(msg.response_id, 'dislike')}
-                                    aria-label="Thumbs down"
+                                    className={`p-0.5 rounded-full ${evFeedback[msg.response_id] === 'dislike' ? 'bg-red-100 text-red-700' : 'hover:bg-gray-100 text-gray-400'}`}
+                                    onClick={() => handleEvFeedback(msg.response_id, 'dislike')}
+                                    disabled={updatingEvFeedbackId === msg.response_id}
+                                    aria-label="Thumbs down EV score"
+                                    title="Rate the accuracy of the AI's EV score for this message."
                                   >
-                                    <ThumbsDown className="w-4 h-4" fill={feedback[msg.response_id] === 'dislike' ? '#ef4444' : 'none'} />
+                                    {updatingEvFeedbackId === msg.response_id ? (
+                                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                      <ThumbsDown className="w-4 h-4" fill={evFeedback[msg.response_id] === 'dislike' ? '#ef4444' : 'none'} />
+                                    )}
                                   </button>
                                 </>
                               )}
+                            </span>
+                          )}
+                          {msg.type === "outbound-email" && !feedbackLoading && (
+                            <span className="ml-2 flex items-center gap-1">
+                              <button
+                                className={`p-0.5 rounded-full ${feedback[msg.response_id] === 'like' ? 'bg-green-100 text-green-700' : 'hover:bg-gray-100 text-gray-400'}`}
+                                onClick={() => handleResponseFeedback(msg.response_id, 'like')}
+                                disabled={updatingFeedbackId === msg.response_id}
+                                aria-label="Thumbs up response"
+                                title="Rate the helpfulness of the AI-generated response."
+                              >
+                                {updatingFeedbackId === msg.response_id ? (
+                                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                  <ThumbsUp className="w-4 h-4" fill={feedback[msg.response_id] === 'like' ? '#22c55e' : 'none'} />
+                                )}
+                              </button>
+                              <button
+                                className={`p-0.5 rounded-full ${feedback[msg.response_id] === 'dislike' ? 'bg-red-100 text-red-700' : 'hover:bg-gray-100 text-gray-400'}`}
+                                onClick={() => handleResponseFeedback(msg.response_id, 'dislike')}
+                                disabled={updatingFeedbackId === msg.response_id}
+                                aria-label="Thumbs down response"
+                                title="Rate the helpfulness of the AI-generated response."
+                              >
+                                {updatingFeedbackId === msg.response_id ? (
+                                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                  <ThumbsDown className="w-4 h-4" fill={feedback[msg.response_id] === 'dislike' ? '#ef4444' : 'none'} />
+                                )}
+                              </button>
                             </span>
                           )}
                         </div>

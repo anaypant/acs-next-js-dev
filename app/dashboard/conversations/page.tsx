@@ -147,7 +147,7 @@ export default function ConversationsPage() {
       }
 
       const data = await response.json();
-      console.log('Threads data:', data);
+      console.log('Raw API response:', data);
 
       // Map threads to Thread type and set as conversations
       if (Array.isArray(data.data)) {
@@ -156,11 +156,20 @@ export default function ConversationsPage() {
           const aMessages = a.messages || [];
           const bMessages = b.messages || [];
           
+          console.log('Thread messages:', {
+            threadA: a.thread?.conversation_id,
+            messagesA: aMessages,
+            threadB: b.thread?.conversation_id,
+            messagesB: bMessages
+          });
+          
           const aLatestTimestamp = aMessages.length > 0 ? new Date(aMessages[0].timestamp).getTime() : 0;
           const bLatestTimestamp = bMessages.length > 0 ? new Date(bMessages[0].timestamp).getTime() : 0;
           
           return bLatestTimestamp - aLatestTimestamp; // Descending order (newest first)
         });
+
+        console.log('Sorted threads data:', sortedData);
 
         const parsedConversations = sortedData.map((item: any) => ({
           conversation_id: item.thread?.conversation_id || '',
@@ -225,6 +234,9 @@ export default function ConversationsPage() {
   // Filter and sort conversations
   const filteredAndSortedConversations = rawThreads
     .filter((threadData) => {
+      console.log('Processing thread:', threadData.thread?.conversation_id);
+      console.log('Thread messages:', threadData.messages);
+      
       const thread = threadData.thread;
       const messages = threadData.messages || [];
       const latestMessage = messages[0];
@@ -244,17 +256,18 @@ export default function ConversationsPage() {
       }
 
       // Find the most recent message with a valid ev_score
+      console.log('Messages for thread:', messages);
       const evMessage = messages
-        .filter((msg: Message) => {
+        .sort((a: Message, b: Message) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()) // Sort by most recent first
+        .find((msg: Message) => {
           const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
+          console.log('Checking message:', msg.timestamp, 'EV Score:', msg.ev_score, 'Parsed score:', score);
           return typeof score === 'number' && !isNaN(score) && score >= 0 && score <= 100;
-        })
-        .reduce((latest: Message | undefined, msg: Message) => {
-          if (!latest) return msg;
-          return new Date(msg.timestamp) > new Date(latest.timestamp) ? msg : latest;
-        }, undefined as Message | undefined);
+        });
 
+      console.log('Found EV message:', evMessage);
       const evScore = evMessage ? (typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score) : 0;
+      console.log('Final EV score:', evScore);
       const conversationStatus = calculateStatus(evScore);
 
       // Status filter
@@ -271,16 +284,16 @@ export default function ConversationsPage() {
       const latestMessage = messages[0];
       
       const evMessage = messages
-        .filter((msg: Message) => {
+        .sort((a: Message, b: Message) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()) // Sort by most recent first
+        .find((msg: Message) => {
           const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
+          console.log('Checking message:', msg.timestamp, 'EV Score:', msg.ev_score, 'Parsed score:', score);
           return typeof score === 'number' && !isNaN(score) && score >= 0 && score <= 100;
-        })
-        .reduce((latest: Message | undefined, msg: Message) => {
-          if (!latest) return msg;
-          return new Date(msg.timestamp) > new Date(latest.timestamp) ? msg : latest;
-        }, undefined as Message | undefined);
+        });
 
+      console.log('Found EV message:', evMessage);
       const evScore = evMessage ? (typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score) : 0;
+      console.log('Final EV score:', evScore);
       const status = calculateStatus(evScore);
 
       return {
@@ -530,7 +543,7 @@ export default function ConversationsPage() {
                                 : "bg-red-100 text-red-800"
                           }`}
                         >
-                          {conversation.aiScore}
+                          {typeof conversation.aiScore === 'number' && !isNaN(conversation.aiScore) ? conversation.aiScore : 'N/A'}
                         </span>
                       </td>
                       {/* Summary and last message cells */}
