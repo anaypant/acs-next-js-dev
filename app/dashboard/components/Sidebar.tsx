@@ -7,7 +7,7 @@
  */
 
 "use client"
-import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, PanelLeft, Trash2 } from "lucide-react"
+import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, PanelLeft, Trash2, CreditCard } from "lucide-react"
 import type React from "react"
 import { useState, createContext, useContext, useEffect } from "react"
 import { useSession } from "next-auth/react"
@@ -229,11 +229,11 @@ const mainNavigation = [
     icon: Home,
     url: "/dashboard",
   },
-  {
-    title: "Leads",
-    icon: Users,
-    url: "/dashboard/leads",
-  },
+  // {
+  //   title: "Leads",
+  //   icon: Users,
+  //   url: "/dashboard/leads",
+  // },
   {
     title: "Conversations",
     icon: MessageSquare,
@@ -244,20 +244,30 @@ const mainNavigation = [
     icon: BarChart3,
     url: "/dashboard/analytics",
   },
+  // {
+  //   title: "Calendar",
+  //   icon: Calendar,
+  //   url: "/dashboard/calendar",
+  // },
+  // {
+  //   title: "Contacts",
+  //   icon: Phone,
+  //   url: "/dashboard/contacts",
+  // },
+  // {
+  //   title: "Email",
+  //   icon: Mail,
+  //   url: "/dashboard/email",
+  // },
   {
-    title: "Calendar",
-    icon: Calendar,
-    url: "/dashboard/calendar",
+    title: "Junk",
+    icon: Trash2,
+    url: "/dashboard/junk",
   },
   {
-    title: "Contacts",
-    icon: Phone,
-    url: "/dashboard/contacts",
-  },
-  {
-    title: "Email",
-    icon: Mail,
-    url: "/dashboard/email",
+    title: "Usage & Billing",
+    icon: CreditCard,
+    url: "/dashboard/usage",
   },
   {
     title: "Settings",
@@ -332,26 +342,19 @@ function AppSidebar() {
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton href={item.url}>
                   <item.icon className="h-4 w-4" style={{ color: 'white' }} />
-                  {isOpen && <span style={{ color: 'white' }}>{item.title}</span>}
+                  {isOpen && (
+                    <div className="flex items-center justify-between w-full">
+                      <span style={{ color: 'white' }}>{item.title}</span>
+                      {item.title === "Junk" && unreadSpamCount > 0 && (
+                        <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                          {unreadSpamCount}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
-            {/* Junk tab */}
-            <SidebarMenuItem key="Junk">
-              <SidebarMenuButton href="/dashboard/junk">
-                <Trash2 className="h-4 w-4" style={{ color: 'white' }} />
-                {isOpen && (
-                  <div className="flex items-center justify-between w-full">
-                    <span>Junk</span>
-                    {unreadSpamCount > 0 && (
-                      <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                        {unreadSpamCount}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </SidebarMenuButton>
-            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
 
