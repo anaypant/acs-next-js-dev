@@ -100,7 +100,7 @@ function SidebarProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarContext.Provider value={{ isOpen, toggle }}>
-      <div className="flex min-h-screen relative">
+      <div className="relative">
         {isMobile && isOpen && (
           <div 
             className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300" 
@@ -139,7 +139,7 @@ function Sidebar({ children }: { children: React.ReactNode }) {
     <div
       className={`${
         isOpen ? "w-64" : isMobile ? "w-0" : "w-16"
-      } transition-all duration-300 bg-gradient-to-b from-[#0a5a2f] via-[#0e6537] to-[#157a42] border-r border-[#0e6537]/20 fixed md:relative h-screen z-50 ${
+      } transition-all duration-300 bg-gradient-to-b from-[#0a5a2f] via-[#0e6537] to-[#157a42] border-r border-[#0e6537]/20 fixed h-screen z-50 ${
         isMobile && !isOpen ? "translate-x-[-100%]" : ""
       }`}
     >
@@ -259,8 +259,28 @@ function SidebarTrigger() {
  * @returns {JSX.Element} Content wrapper
  */
 function SidebarInset({ children }: { children: React.ReactNode }) {
+  const { isOpen } = useSidebar()
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
   return (
-    <div className="flex-1 bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1] min-h-screen pt-16 md:pt-0">
+    <div 
+      className={`bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1] h-screen overflow-y-auto ${
+        isMobile 
+          ? "ml-0" 
+          : isOpen 
+            ? "ml-64" 
+            : "ml-16"
+      } transition-all duration-300`}
+    >
       {children}
     </div>
   )

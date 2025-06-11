@@ -265,7 +265,7 @@ const Step2EmailSetup: React.FC<Step2EmailSetupProps> = ({
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => setStep(1)}
+                        onClick={() => setStep(2)}
           className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
         >
           Back
@@ -273,7 +273,7 @@ const Step2EmailSetup: React.FC<Step2EmailSetupProps> = ({
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => setStep(3)}
+          onClick={() => setStep(4)}
           className="px-4 py-2 text-yellow-400 border border-yellow-400 rounded-lg font-semibold transition-all duration-200 bg-transparent hover:bg-yellow-400/10"
         >
           Skip for now
