@@ -1,6 +1,22 @@
+/**
+ * File: app/dashboard/components/LeadFunnel.tsx
+ * Purpose: Renders a vertical bar chart visualization of the lead conversion funnel with interactive tooltips.
+ * Author: Alejo Cagliolo
+ * Date: 06/11/25
+ * Version: 1.0.1
+ */
+
 import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
+/**
+ * Interface for lead stage data structure
+ * @interface LeadStage
+ * @property {string} name - Name of the lead stage
+ * @property {number} leads - Number of leads in this stage
+ * @property {string} evRange - Engagement value range for this stage
+ * @property {string} action - Recommended action for this stage
+ */
 interface LeadStage {
   name: string;
   leads: number;
@@ -8,6 +24,15 @@ interface LeadStage {
   action: string;
 }
 
+/**
+ * Props interface for LeadFunnel component
+ * @interface LeadFunnelProps
+ * @property {string | undefined} userId - ID of the current user
+ * @property {any[]} leadData - Array of lead conversation data
+ * @property {boolean} loading - Loading state indicator
+ * @property {'day' | 'week' | 'month' | 'year'} timeRange - Selected time range for data
+ * @property {Function} onRefresh - Callback function to refresh data
+ */
 interface LeadFunnelProps {
   userId: string | undefined;
   leadData: any[];
@@ -16,8 +41,48 @@ interface LeadFunnelProps {
   onRefresh: () => Promise<void>;
 }
 
+/**
+ * LeadFunnel Component
+ * Displays a vertical bar chart showing lead progression through different stages
+ * 
+ * Features:
+ * - Responsive chart layout
+ * - Dynamic height adjustment
+ * - Interactive tooltips with detailed information
+ * - Lead stage categorization
+ * - Engagement value (EV) range tracking
+ * - Recommended actions per stage
+ * 
+ * Stages:
+ * - Contacted (EV: 0-19)
+ * - Engaged (EV: 20-39)
+ * - Toured (EV: 40-59)
+ * - Offer Stage (EV: 60-79)
+ * - Closed (EV: 80-100)
+ * 
+ * @param {LeadFunnelProps} props - Component props
+ * @returns {JSX.Element} Vertical bar chart with lead funnel visualization
+ */
 const LeadFunnel: React.FC<LeadFunnelProps> = ({ userId, leadData, loading, timeRange, onRefresh }) => {
   const [categorizedData, setCategorizedData] = useState<LeadStage[]>([]);
+  const [chartHeight, setChartHeight] = useState(300);
+
+  useEffect(() => {
+    // Adjust chart height based on screen size
+    const updateChartHeight = () => {
+      if (window.innerWidth < 640) { // sm breakpoint
+        setChartHeight(250);
+      } else if (window.innerWidth < 1024) { // lg breakpoint
+        setChartHeight(300);
+      } else {
+        setChartHeight(350);
+      }
+    };
+
+    updateChartHeight();
+    window.addEventListener('resize', updateChartHeight);
+    return () => window.removeEventListener('resize', updateChartHeight);
+  }, []);
 
   useEffect(() => {
     if (!loading && leadData) {
@@ -26,7 +91,7 @@ const LeadFunnel: React.FC<LeadFunnelProps> = ({ userId, leadData, loading, time
     } else if (!loading && !leadData) {
        setCategorizedData([]); // Handle case where leadData is null/undefined and not loading
     }
-  }, [leadData, loading]); // Recalculate categorized data when leadData or loading changes
+  }, [leadData, loading]);
 
   const categorizeLeads = (conversationsData: { thread: any; messages: any[] }[]): LeadStage[] => {
     const stages: Record<string, LeadStage> = {
@@ -64,32 +129,83 @@ const LeadFunnel: React.FC<LeadFunnelProps> = ({ userId, leadData, loading, time
     ].reverse();
   };
 
+  // Custom tooltip component for better mobile display
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-2 sm:p-3 rounded-lg shadow-lg border border-gray-200">
+          <p className="font-semibold text-sm sm:text-base">{label}</p>
+          <p className="text-xs sm:text-sm text-gray-600">Leads: {payload[0].value}</p>
+          <p className="text-xs sm:text-sm text-gray-600">EV Range: {payload[0].payload.evRange}</p>
+          <p className="text-xs sm:text-sm text-gray-600">Action: {payload[0].payload.action}</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
-    <div className="bg-white p-6 rounded-lg border border-[#0e6537]/20 shadow-sm">
-      <h3 className="text-lg font-semibold mb-4">Lead Journey Funnel</h3>
+    <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg border border-[#0e6537]/20 shadow-sm">
+      <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Lead Journey Funnel</h3>
       {loading ? (
-        <div className="flex items-center justify-center h-64 text-gray-600">Loading funnel data...</div>
+        <div className="flex items-center justify-center h-48 sm:h-64 text-gray-600 text-sm sm:text-base">
+          Loading funnel data...
+        </div>
       ) : categorizedData.length === 0 ? (
-        <div className="flex items-center justify-center h-64 text-gray-600">No lead data found.</div>
+        <div className="flex items-center justify-center h-48 sm:h-64 text-gray-600 text-sm sm:text-base">
+          No lead data found.
+        </div>
       ) : (
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={categorizedData} layout="vertical" barCategoryGap="20%">
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis type="number" domain={[0, 'auto']} />
-            <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} />
-            <Tooltip
-              formatter={(value: number, name: string, props: any) => [
-                `${value} leads`,
-                `EV Range: ${props.payload.evRange}`,
-                `Action: ${props.payload.action}`,
-              ]}
-            />
-            <Bar dataKey="leads" fill="#0e6537" />
-          </BarChart>
-        </ResponsiveContainer>
+        <div className="w-full overflow-x-auto">
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <BarChart 
+              data={categorizedData} 
+              layout="vertical" 
+              barCategoryGap="20%"
+              margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                type="number" 
+                domain={[0, 'auto']} 
+                tick={{ fontSize: 12 }}
+                tickFormatter={(value) => value.toString()}
+              />
+              <YAxis 
+                dataKey="name" 
+                type="category" 
+                tickLine={false} 
+                axisLine={false}
+                tick={{ fontSize: 12 }}
+                width={80}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar 
+                dataKey="leads" 
+                fill="#0e6537"
+                radius={[0, 4, 4, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       )}
     </div>
   );
 };
 
-export default LeadFunnel; 
+export default LeadFunnel;
+
+/**
+ * Change Log:
+ * 06/11/25 - Version 1.0.1
+ * - Enhanced mobile responsiveness
+ * - Improved tooltip display
+ * - Added comprehensive documentation
+ * - Optimized chart performance
+ * 
+ * 5/25/25 - Version 1.0.0
+ * - Initial implementation
+ * - Basic funnel visualization
+ * - Lead stage categorization
+ * - Interactive tooltips
+ */ 

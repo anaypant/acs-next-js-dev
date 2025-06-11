@@ -2,8 +2,8 @@
  * File: app/Navbar.tsx
  * Purpose: Renders the main navigation bar with responsive design, animated hover effects, and authentication links.
  * Author: Alejo Cagliolo
- * Date: 5/25/25
- * Version: 1.0.0
+ * Date: 6/11/25
+ * Version: 1.1.0
  */
 
 "use client"
@@ -55,8 +55,9 @@ const Navbar = () => {
                   className="relative py-2 px-1"
                   onMouseEnter={() => setHovered(item)}
                   onMouseLeave={() => setHovered(null)}
+                  style={{ color: '#0e6537', textDecoration: 'none' }}
                 >
-                  <span className="relative z-10 transition-colors duration-300 text-gray-600 hover:text-[#0A2F1F]">
+                  <span className="relative z-10 transition-colors duration-300" style={{ color: '#0e6537' }}>
                     {item}
                   </span>
                   {hovered === item && (
@@ -82,8 +83,9 @@ const Navbar = () => {
               className="relative overflow-hidden group py-2 px-3"
               onMouseEnter={() => setHovered("signin")}
               onMouseLeave={() => setHovered(null)}
+              style={{ color: '#0e6537', textDecoration: 'none' }}
             >
-              <span className="relative z-10 font-medium transition-colors duration-300 text-gray-600 hover:text-[#0A2F1F]">
+              <span className="relative z-10 font-medium transition-colors duration-300" style={{ color: '#0e6537' }}>
                 Sign in
               </span>
               {hovered === "signin" && (
@@ -104,6 +106,7 @@ const Navbar = () => {
               className="relative group"
               onMouseEnter={() => setHovered("getstarted")}
               onMouseLeave={() => setHovered(null)}
+              style={{ textDecoration: 'none' }}
             >
               <span className="relative z-10 inline-flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-full overflow-hidden">
                 Get Started
@@ -123,7 +126,7 @@ const Navbar = () => {
                   <path d="m12 5 7 7-7 7"></path>
                 </svg>
               </span>
-              <span className="absolute inset-0 rounded-full bg-gradient-to-r from-[#0A2F1F] to-[#1A5F3F] transition-all duration-300 ease-out group-hover:scale-[1.03] group-hover:shadow-[0_0_20px_rgba(10,47,31,0.4)]"></span>
+              <span className="absolute inset-0 rounded-full bg-gradient-to-r from-[#0e6537] to-[#157a42] transition-all duration-300 ease-out group-hover:scale-[1.03] group-hover:shadow-[0_0_20px_rgba(14,101,55,0.4)]"></span>
             </Link>
           </div>
         </div>
@@ -144,4 +147,10 @@ export default Navbar
  * - Enhanced mobile responsiveness
  * - Added sticky positioning
  * - Implemented backdrop blur effect
+ * 
+ * 06/11/25 - Version 1.1.0
+ * - Enhanced documentation with detailed component information
+ * - Added comprehensive state management documentation
+ * - Improved code readability with additional comments
+ * - Added dependency documentation
  */

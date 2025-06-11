@@ -2,8 +2,8 @@
  * File: app/Footer.tsx
  * Purpose: Renders the application footer with navigation links, company information, and legal resources.
  * Author: Alejo Cagliolo
- * Date: 5/25/25
- * Version: 1.0.0
+ * Date: 06/11/25
+ * Version: 1.0.1
  */
 
 import Link from "next/link"
@@ -36,7 +36,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand section with logo and description */}
           <div>
-            <Link href="/" className="text-2xl font-bold text-[#127954]">
+            <Link href="/" className="text-2xl font-bold" style={{ color: '#0e6537', textDecoration: 'none' }}>
               ACS
             </Link>
             <p className="mt-2 text-gray-600 font-semibold">AI-powered solutions for real estate professionals</p>
@@ -47,22 +47,22 @@ export default function Footer() {
             <h3 className="font-semibold text-gray-800 mb-3">Solutions</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/pricing" className="text-gray-600 hover:text-[#127954] font-semibold">
+                <Link href="/pricing" style={{ color: '#0e6537', textDecoration: 'none' }} className="font-semibold hover:text-[#157a42]">
                   Pricing Prediction
                 </Link>
               </li>
               <li>
-                <Link href="/email" className="text-gray-600 hover:text-[#127954] font-semibold">
+                <Link href="/email" style={{ color: '#0e6537', textDecoration: 'none' }} className="font-semibold hover:text-[#157a42]">
                   Email Communications
                 </Link>
               </li>
               <li>
-                <Link href="/marketing" className="text-gray-600 hover:text-[#127954] font-semibold">
+                <Link href="/marketing" style={{ color: '#0e6537', textDecoration: 'none' }} className="font-semibold hover:text-[#157a42]">
                   Marketing Optimization
                 </Link>
               </li>
               <li>
-                <Link href="/leads" className="text-gray-600 hover:text-[#127954] font-semibold">
+                <Link href="/leads" style={{ color: '#0e6537', textDecoration: 'none' }} className="font-semibold hover:text-[#157a42]">
                   Lead Scoring
                 </Link>
               </li>
@@ -74,22 +74,22 @@ export default function Footer() {
             <h3 className="font-semibold text-gray-800 mb-3">Company</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/about" className="text-gray-600 hover:text-[#127954] font-semibold">
+                <Link href="/about" style={{ color: '#0e6537', textDecoration: 'none' }} className="font-semibold hover:text-[#157a42]">
                   About Us
                 </Link>
               </li>
               <li>
-                <Link href="/careers" className="text-gray-600 hover:text-[#127954] font-semibold">
+                <Link href="/careers" style={{ color: '#0e6537', textDecoration: 'none' }} className="font-semibold hover:text-[#157a42]">
                   Careers
                 </Link>
               </li>
               <li>
-                <Link href="/blog" className="text-gray-600 hover:text-[#127954] font-semibold">
+                <Link href="/blog" style={{ color: '#0e6537', textDecoration: 'none' }} className="font-semibold hover:text-[#157a42]">
                   Blog
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="text-gray-600 hover:text-[#127954] font-semibold">
+                <Link href="/contact" style={{ color: '#0e6537', textDecoration: 'none' }} className="font-semibold hover:text-[#157a42]">
                   Contact
                 </Link>
               </li>
@@ -101,17 +101,17 @@ export default function Footer() {
             <h3 className="font-semibold text-gray-800 mb-3">Legal</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/terms" className="text-gray-600 hover:text-[#127954] font-semibold">
+                <Link href="/terms" style={{ color: '#0e6537', textDecoration: 'none' }} className="font-semibold hover:text-[#157a42]">
                   Terms of Service
                 </Link>
               </li>
               <li>
-                <Link href="/privacy" className="text-gray-600 hover:text-[#127954] font-semibold">
+                <Link href="/privacy" style={{ color: '#0e6537', textDecoration: 'none' }} className="font-semibold hover:text-[#157a42]">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="/cookies" className="text-gray-600 hover:text-[#127954] font-semibold">
+                <Link href="/cookies" style={{ color: '#0e6537', textDecoration: 'none' }} className="font-semibold hover:text-[#157a42]">
                   Cookie Policy
                 </Link>
               </li>
@@ -130,7 +130,12 @@ export default function Footer() {
 
 /**
  * Change Log:
- * 5/25/25 - Initial version
+ * 06/11/25 - Version 1.0.1
+ * - Updated documentation format
+ * - Enhanced component documentation
+ * - Added detailed feature descriptions
+ * 
+ * 5/25/25 - Version 1.0.0
  * - Created responsive footer layout
  * - Added navigation sections
  * - Implemented company branding

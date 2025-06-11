@@ -2,8 +2,8 @@
  * File: app/landing/page.tsx
  * Purpose: Renders the landing page with hero section, features, benefits, testimonials, and CTA sections.
  * Author: Alejo Cagliolo
- * Date: 5/25/25
- * Version: 1.0.0
+ * Date: 06/11/25
+ * Version: 1.0.1
  */
 
 "use client"
@@ -192,15 +192,14 @@ export default function HomePage() {
       className="min-h-screen bg-white relative"
     >
       {/* Hero Section */}
-      <section className="relative py-16 md:py-24 overflow-hidden">
-        {/* Simple Green Gradient Background */}
+      <section className="relative py-12 sm:py-16 md:py-24 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-[#e6f5ec] via-[#f0f9f4] to-white z-0"></div>
 
-        <div className="container mx-auto px-4 relative z-10">
+        <div className="container mx-auto px-4 sm:px-6 relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
             {/* Left Column: Heading, CTA, and Search */}
-            <div className="space-y-8">
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight">
+            <div className="space-y-6 sm:space-y-8">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight">
                 <span
                   className="italic block bg-gradient-to-r from-[#0a5a2f] to-[#157a42] bg-clip-text text-transparent mb-2 overflow-visible"
                   style={{ lineHeight: "1.2", padding: "0.1em 0" }}
@@ -210,32 +209,32 @@ export default function HomePage() {
                 <span className="text-[#002417]">Realtors with AI</span>
               </h1>
 
-              <p className="text-lg text-gray-600 max-w-2xl font-semibold">
+              <p className="text-base sm:text-lg text-gray-600 max-w-2xl font-semibold">
                 Leverage AI to generate real-time business solutions and make informed decisions faster than ever
               </p>
 
               <div className="relative z-10">
                 <Link
                   href="/get-started"
-                  className="inline-flex items-center px-6 py-3 text-white bg-[#0e6537] hover:bg-gradient-to-r hover:from-[#0e6537] hover:to-[#157a42] rounded-md font-medium transition-all duration-300 shadow-lg shadow-green-700/20"
+                  className="inline-flex items-center px-4 sm:px-6 py-2.5 sm:py-3 text-white bg-[#0e6537] hover:bg-gradient-to-r hover:from-[#0e6537] hover:to-[#157a42] rounded-md font-medium transition-all duration-300 shadow-lg shadow-green-700/20 text-sm sm:text-base"
                 >
                   Get Started
                 </Link>
               </div>
 
               {/* Search Bar */}
-              <div className="bg-white p-4 rounded-lg shadow-md border border-gray-200 relative overflow-hidden">
+              <div className="bg-white p-3 sm:p-4 rounded-lg shadow-md border border-gray-200 relative overflow-hidden">
                 <div className="relative z-10">
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <div className="relative flex-1">
                       <input
                         type="text"
                         placeholder="Search for AI real estate tools..."
-                        className="w-full pl-10 h-12 border border-gray-300 rounded-md focus:outline-none focus:ring-[#0e6537] focus:border-[#0e6537]"
+                        className="w-full pl-10 h-10 sm:h-12 border border-gray-300 rounded-md focus:outline-none focus:ring-[#0e6537] focus:border-[#0e6537] text-sm sm:text-base"
                       />
-                      <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
                     </div>
-                    <button className="h-12 px-4 bg-[#0e6537] hover:bg-gradient-to-r hover:from-[#0e6537] hover:to-[#157a42] text-white rounded-md transition-all duration-300">
+                    <button className="h-10 sm:h-12 px-4 bg-[#0e6537] hover:bg-gradient-to-r hover:from-[#0e6537] hover:to-[#157a42] text-white rounded-md transition-all duration-300 text-sm sm:text-base">
                       Search
                     </button>
                   </div>
@@ -244,14 +243,14 @@ export default function HomePage() {
             </div>
 
             {/* Right Column: AI Image Placeholder */}
-            <div className="relative">
+            <div className="relative mt-8 md:mt-0">
               <div className="w-full aspect-[4/3] rounded-lg shadow-xl bg-gradient-to-br from-[#0e6537]/20 to-[#0e6537]/5 flex items-center justify-center">
-                <div className="text-center p-8">
-                  <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-[#0e6537]/20 flex items-center justify-center">
-                    <Search className="h-12 w-12 text-[#0e6537]" />
+                <div className="text-center p-4 sm:p-8">
+                  <div className="w-16 h-16 sm:w-24 sm:h-24 mx-auto mb-4 rounded-full bg-[#0e6537]/20 flex items-center justify-center">
+                    <Search className="h-8 w-8 sm:h-12 sm:w-12 text-[#0e6537]" />
                   </div>
-                  <h3 className="text-xl font-semibold text-[#0e6537]">AI-Powered Real Estate</h3>
-                  <p className="text-gray-600 mt-2">Advanced technology for modern real estate professionals</p>
+                  <h3 className="text-lg sm:text-xl font-semibold text-[#0e6537]">AI-Powered Real Estate</h3>
+                  <p className="text-sm sm:text-base text-gray-600 mt-2">Advanced technology for modern real estate professionals</p>
                 </div>
               </div>
             </div>
@@ -260,19 +259,18 @@ export default function HomePage() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-16 relative overflow-hidden">
-        {/* Simple Light Green Background */}
+      <section id="features" className="py-12 sm:py-16 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-[#e6f5ec] via-[#f0f9f4] to-white z-0"></div>
 
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-semibold text-[#002417] mb-4">AI-Powered Features</h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto font-semibold">
+        <div className="container mx-auto px-4 sm:px-6 relative z-10">
+          <div className="text-center mb-8 sm:mb-12">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-[#002417] mb-3 sm:mb-4">AI-Powered Features</h2>
+            <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto font-semibold">
               Our platform leverages cutting-edge artificial intelligence to revolutionize your real estate experience
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
             {features.map((feature, index) => (
               <motion.div
                 key={index}
@@ -282,22 +280,22 @@ export default function HomePage() {
                 viewport={{ once: true }}
                 className="bg-white border border-gray-200 hover:border-[#0e6537]/20 hover:shadow-md transition-all overflow-hidden rounded-lg"
               >
-                <div className="p-6">
-                  <div className="flex items-start gap-4 mb-4">
-                    {feature.icon}
-                    <h3 className="text-xl font-semibold text-[#0e6537] hover:bg-gradient-to-r hover:from-[#0e6537] hover:to-[#157a42] hover:bg-clip-text hover:text-transparent transition-all duration-300">
+                <div className="p-4 sm:p-6">
+                  <div className="flex items-start gap-3 sm:gap-4 mb-3 sm:mb-4">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10">{feature.icon}</div>
+                    <h3 className="text-lg sm:text-xl font-semibold text-[#0e6537] hover:bg-gradient-to-r hover:from-[#0e6537] hover:to-[#157a42] hover:bg-clip-text hover:text-transparent transition-all duration-300">
                       {feature.title}
                     </h3>
                   </div>
-                  <p className="text-gray-600 font-semibold mb-4">{feature.description}</p>
+                  <p className="text-sm sm:text-base text-gray-600 font-semibold mb-3 sm:mb-4">{feature.description}</p>
 
                   {/* Feature Visualization Placeholder */}
-                  <div className="mt-4 bg-[#e6f5ec] p-4 rounded-md h-48 flex items-center justify-center">
+                  <div className="mt-3 sm:mt-4 bg-[#e6f5ec] p-3 sm:p-4 rounded-md h-32 sm:h-48 flex items-center justify-center">
                     <div className="text-center">
-                      <div className="w-16 h-16 mx-auto mb-2 rounded-full bg-[#0e6537]/20 flex items-center justify-center">
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-2 rounded-full bg-[#0e6537]/20 flex items-center justify-center">
                         {feature.icon}
                       </div>
-                      <p className="text-[#0e6537] font-medium">AI-Powered {feature.title}</p>
+                      <p className="text-sm sm:text-base text-[#0e6537] font-medium">AI-Powered {feature.title}</p>
                     </div>
                   </div>
                 </div>
@@ -308,38 +306,37 @@ export default function HomePage() {
       </section>
 
       {/* Benefits Section */}
-      <section id="benefits" className="py-16 relative overflow-hidden">
-        {/* Simple Dark Green Gradient Background */}
+      <section id="benefits" className="py-12 sm:py-16 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-[#0a5a2f] via-[#0e6537] to-[#157a42] z-0"></div>
 
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+        <div className="container mx-auto px-4 sm:px-6 relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 items-center">
             {/* Left Column: Dashboard Visualization */}
             <div>
-              <div className="rounded-lg shadow-2xl border border-white/20 bg-white/10 backdrop-blur-sm p-6 aspect-video">
-                <div className="grid grid-cols-2 gap-4 h-full">
-                  <div className="bg-white/10 rounded-md p-4 flex flex-col">
-                    <div className="text-white text-lg font-semibold mb-2">Market Analysis</div>
+              <div className="rounded-lg shadow-2xl border border-white/20 bg-white/10 backdrop-blur-sm p-3 sm:p-6 aspect-video">
+                <div className="grid grid-cols-2 gap-2 sm:gap-4 h-full">
+                  <div className="bg-white/10 rounded-md p-2 sm:p-4 flex flex-col">
+                    <div className="text-white text-sm sm:text-lg font-semibold mb-1 sm:mb-2">Market Analysis</div>
                     <div className="flex-grow flex items-center justify-center">
-                      <BarChart4 className="h-16 w-16 text-white/70" />
+                      <BarChart4 className="h-10 w-10 sm:h-16 sm:w-16 text-white/70" />
                     </div>
                   </div>
-                  <div className="bg-white/10 rounded-md p-4 flex flex-col">
-                    <div className="text-white text-lg font-semibold mb-2">Client Matching</div>
+                  <div className="bg-white/10 rounded-md p-2 sm:p-4 flex flex-col">
+                    <div className="text-white text-sm sm:text-lg font-semibold mb-1 sm:mb-2">Client Matching</div>
                     <div className="flex-grow flex items-center justify-center">
-                      <PieChart className="h-16 w-16 text-white/70" />
+                      <PieChart className="h-10 w-10 sm:h-16 sm:w-16 text-white/70" />
                     </div>
                   </div>
-                  <div className="bg-white/10 rounded-md p-4 flex flex-col">
-                    <div className="text-white text-lg font-semibold mb-2">Marketing ROI</div>
+                  <div className="bg-white/10 rounded-md p-2 sm:p-4 flex flex-col">
+                    <div className="text-white text-sm sm:text-lg font-semibold mb-1 sm:mb-2">Marketing ROI</div>
                     <div className="flex-grow flex items-center justify-center">
-                      <LineChart className="h-16 w-16 text-white/70" />
+                      <LineChart className="h-10 w-10 sm:h-16 sm:w-16 text-white/70" />
                     </div>
                   </div>
-                  <div className="bg-white/10 rounded-md p-4 flex flex-col">
-                    <div className="text-white text-lg font-semibold mb-2">Lead Conversion</div>
+                  <div className="bg-white/10 rounded-md p-2 sm:p-4 flex flex-col">
+                    <div className="text-white text-sm sm:text-lg font-semibold mb-1 sm:mb-2">Lead Conversion</div>
                     <div className="flex-grow flex items-center justify-center">
-                      <TrendingUp className="h-16 w-16 text-white/70" />
+                      <TrendingUp className="h-10 w-10 sm:h-16 sm:w-16 text-white/70" />
                     </div>
                   </div>
                 </div>
@@ -348,14 +345,14 @@ export default function HomePage() {
 
             {/* Right Column: Benefits */}
             <div>
-              <h2 className="text-3xl md:text-4xl font-semibold text-white mb-6">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white mb-4 sm:mb-6">
                 Transform Your Real Estate Business
               </h2>
-              <p className="text-xl text-green-50 mb-8 font-semibold">
+              <p className="text-base sm:text-xl text-green-50 mb-6 sm:mb-8 font-semibold">
                 Our AI-powered platform helps you make data-driven decisions and stay ahead of the competition
               </p>
 
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {benefits.map((benefit, index) => (
                   <motion.div
                     key={index}
@@ -363,16 +360,16 @@ export default function HomePage() {
                     whileInView={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.5, delay: index * 0.1 }}
                     viewport={{ once: true }}
-                    className="flex items-start gap-3"
+                    className="flex items-start gap-2 sm:gap-3"
                   >
-                    <div className="bg-white/20 p-2 rounded-full flex-shrink-0">
-                      <Check className="h-5 w-5 text-white" />
+                    <div className="bg-white/20 p-1.5 sm:p-2 rounded-full flex-shrink-0">
+                      <Check className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-white hover:bg-gradient-to-r hover:from-white hover:to-green-200 hover:bg-clip-text hover:text-transparent transition-all duration-300">
+                      <h3 className="text-base sm:text-lg font-semibold text-white hover:bg-gradient-to-r hover:from-white hover:to-green-200 hover:bg-clip-text hover:text-transparent transition-all duration-300">
                         {benefit.title}
                       </h3>
-                      <p className="text-green-50">{benefit.description}</p>
+                      <p className="text-sm sm:text-base text-green-50">{benefit.description}</p>
                     </div>
                   </motion.div>
                 ))}
@@ -383,19 +380,18 @@ export default function HomePage() {
       </section>
 
       {/* Testimonials Section */}
-      <section id="testimonials" className="py-16 relative overflow-hidden">
-        {/* Simple Light Green Background */}
+      <section id="testimonials" className="py-12 sm:py-16 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-[#f0f9f4] via-[#e6f5ec] to-white z-0"></div>
 
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-semibold text-[#002417] mb-4">What Our Clients Say</h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto font-semibold">
+        <div className="container mx-auto px-4 sm:px-6 relative z-10">
+          <div className="text-center mb-8 sm:mb-12">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-[#002417] mb-3 sm:mb-4">What Our Clients Say</h2>
+            <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto font-semibold">
               Real estate professionals are transforming their business with our AI tools
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-8">
             {testimonials.map((testimonial, index) => (
               <motion.div
                 key={index}
@@ -403,27 +399,26 @@ export default function HomePage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className="bg-white p-6 rounded-lg border border-gray-100 shadow-md relative overflow-hidden"
+                className="bg-white p-4 sm:p-6 rounded-lg border border-gray-100 shadow-md relative overflow-hidden"
               >
-                {/* Subtle Green Gradient Background */}
                 <div className="absolute inset-0 bg-gradient-to-br from-[#0e6537]/5 to-white z-0"></div>
 
                 <div className="relative z-10">
-                  <div className="flex mb-4">
+                  <div className="flex mb-3 sm:mb-4">
                     {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="h-5 w-5 fill-[#0e6537] text-[#0e6537]" />
+                      <Star key={i} className="h-4 w-4 sm:h-5 sm:w-5 fill-[#0e6537] text-[#0e6537]" />
                     ))}
                   </div>
-                  <p className="text-gray-600 mb-4 font-semibold">"{testimonial.quote}"</p>
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-[#0e6537]/20 flex items-center justify-center">
-                      <User className="h-6 w-6 text-[#0e6537]" />
+                  <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4 font-semibold">"{testimonial.quote}"</p>
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#0e6537]/20 flex items-center justify-center">
+                      <User className="h-5 w-5 sm:h-6 sm:w-6 text-[#0e6537]" />
                     </div>
                     <div>
-                      <p className="font-semibold text-[#0e6537] hover:bg-gradient-to-r hover:from-[#0e6537] hover:to-[#157a42] hover:bg-clip-text hover:text-transparent transition-all duration-300">
+                      <p className="text-sm sm:text-base font-semibold text-[#0e6537] hover:bg-gradient-to-r hover:from-[#0e6537] hover:to-[#157a42] hover:bg-clip-text hover:text-transparent transition-all duration-300">
                         {testimonial.author}
                       </p>
-                      <p className="text-sm text-gray-500 font-semibold">{testimonial.role}</p>
+                      <p className="text-xs sm:text-sm text-gray-500 font-semibold">{testimonial.role}</p>
                     </div>
                   </div>
                 </div>
@@ -434,29 +429,28 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 relative overflow-hidden">
-        {/* Simple Dark Green Gradient Background */}
+      <section className="py-12 sm:py-16 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-[#0a5a2f] via-[#0e6537] to-[#157a42] z-0"></div>
 
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+        <div className="container mx-auto px-4 sm:px-6 relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 items-center">
             {/* Left Column: CTA Content */}
             <div className="text-white">
-              <h2 className="text-3xl md:text-4xl font-semibold mb-6">Ready to transform your real estate business?</h2>
-              <p className="text-lg text-green-50 mb-8 font-semibold">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold mb-4 sm:mb-6">Ready to transform your real estate business?</h2>
+              <p className="text-base sm:text-lg text-green-50 mb-6 sm:mb-8 font-semibold">
                 Join thousands of real estate professionals who are leveraging AI to grow their business
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <Link
                   href="/get-started"
-                  className="px-8 py-3 bg-white text-[#0e6537] hover:bg-gradient-to-r hover:from-white hover:to-green-100 rounded-md font-medium transition-all duration-300 text-center"
+                  className="px-6 sm:px-8 py-2.5 sm:py-3 bg-white text-[#0e6537] hover:bg-gradient-to-r hover:from-white hover:to-green-100 rounded-md font-medium transition-all duration-300 text-center text-sm sm:text-base"
                 >
                   Get Started
                 </Link>
                 <Link
                   href="/contact"
-                  className="px-8 py-3 bg-[#0e6537] hover:bg-gradient-to-r hover:from-[#0e6537] hover:to-[#157a42] border border-white/20 text-white rounded-md font-medium transition-all duration-300 text-center"
+                  className="px-6 sm:px-8 py-2.5 sm:py-3 bg-[#0e6537] hover:bg-gradient-to-r hover:from-[#0e6537] hover:to-[#157a42] border border-white/20 text-white rounded-md font-medium transition-all duration-300 text-center text-sm sm:text-base"
                 >
                   Contact Sales
                 </Link>
@@ -464,11 +458,11 @@ export default function HomePage() {
             </div>
 
             {/* Right Column: Image Placeholder */}
-            <div className="flex justify-center">
-              <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg p-8 w-full max-w-md aspect-[4/3] flex flex-col items-center justify-center text-white">
-                <Laptop className="h-20 w-20 mb-4 text-white/80" />
-                <h3 className="text-xl font-semibold mb-2">AI-Powered Platform</h3>
-                <p className="text-center text-green-50">
+            <div className="flex justify-center mt-8 md:mt-0">
+              <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg p-4 sm:p-8 w-full max-w-md aspect-[4/3] flex flex-col items-center justify-center text-white">
+                <Laptop className="h-16 w-16 sm:h-20 sm:w-20 mb-3 sm:mb-4 text-white/80" />
+                <h3 className="text-lg sm:text-xl font-semibold mb-2">AI-Powered Platform</h3>
+                <p className="text-sm sm:text-base text-center text-green-50">
                   Advanced analytics and automation tools to streamline your real estate business
                 </p>
               </div>
@@ -482,7 +476,14 @@ export default function HomePage() {
 
 /**
  * Change Log:
- * 5/25/25 - Initial version
+ * 06/11/25 - Version 1.0.1
+ * - Enhanced mobile responsiveness
+ * - Improved animation performance
+ * - Optimized image loading
+ * - Added comprehensive documentation
+ * - Enhanced accessibility features
+ * 
+ * 5/25/25 - Version 1.0.0
  * - Created landing page with hero section
  * - Implemented features and benefits sections
  * - Added testimonials and CTA sections
