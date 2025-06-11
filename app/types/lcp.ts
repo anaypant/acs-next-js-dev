@@ -24,7 +24,7 @@ export interface Thread {
 
 export interface Message {
   conversation_id: string;
-  response_id: string;
+  response_id?: string;
   associated_account: string;
   body: string;
   ev_score: number;
@@ -35,4 +35,8 @@ export interface Message {
   subject: string;
   timestamp: string;
   type: string;
-} 
+}
+
+export type MessageWithResponseId = Message & {
+  response_id: string;
+}; 

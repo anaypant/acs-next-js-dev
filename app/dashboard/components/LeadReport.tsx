@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 
 interface LeadReportProps {
@@ -24,18 +24,110 @@ interface Message {
   [key: string]: any;
 }
 
-const LeadReport: React.FC<LeadReportProps> = ({ userId, leadData, loading, timeRange, onRefresh }) => {
-  const [processedReportData, setProcessedReportData] = useState<LeadData | null>(null);
-  const [loadingReport, setLoadingReport] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+const getTimeRangeDays = (timeRange: 'day' | 'week' | 'month' | 'year') => {
+  switch (timeRange) {
+    case 'day':
+      return 1;
+    case 'week':
+      return 7;
+    case 'month':
+      return 30;
+    case 'year':
+      return 365;
+    default:
+      return 1;
+  }
+};
 
-  useEffect(() => {
-    if (!loading && leadData && Array.isArray(leadData)) {
-      const processedData = processLeadDataForReport(leadData);
-      setProcessedReportData(processedData);
-    } else if (!loading && (!leadData || !Array.isArray(leadData))) {
-      setProcessedReportData(null);
+const processLeadDataForReport = (conversationsData: any[], timeRange: 'day' | 'week' | 'month' | 'year'): LeadData => {
+  const totalLeads = conversationsData.length;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const dailyCounts: Record<string, number> = {};
+  let newLeads = 0;
+
+  // Calculate the start date based on timeRange
+  const days = getTimeRangeDays(timeRange);
+  const startDate = new Date(today);
+  startDate.setDate(today.getDate() - (days - 1));
+
+  conversationsData.forEach(({ messages }) => {
+    if (messages.length > 0) {
+      const firstMessageTimestamp = new Date(messages[0].timestamp);
+      firstMessageTimestamp.setHours(0, 0, 0, 0);
+
+      if (firstMessageTimestamp >= startDate && firstMessageTimestamp <= today) {
+        newLeads++;
+        const dateKey = firstMessageTimestamp.toISOString().split('T')[0];
+        dailyCounts[dateKey] = (dailyCounts[dateKey] || 0) + 1;
+      }
     }
+  });
+
+  // Generate dailyLeadGrowth array based on timeRange
+  const dailyLeadGrowth: { day: string; count: number }[] = [];
+  const daysToShow = days;
+  
+  for (let i = daysToShow - 1; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - i);
+    const dayOfWeek = date.toLocaleString('en-US', { weekday: 'short' });
+    const dateKey = date.toISOString().split('T')[0];
+    dailyLeadGrowth.push({ day: dayOfWeek, count: dailyCounts[dateKey] || 0 });
+  }
+
+  // Rest of your existing processing logic...
+  const leadsByStage = [
+    { name: 'Contacted', count: 0, evRange: '0-19' },
+    { name: 'Engaged', count: 0, evRange: '20-39' },
+    { name: 'Toured', count: 0, evRange: '40-59' },
+    { name: 'Offer Stage', count: 0, evRange: '60-79' },
+    { name: 'Closed', count: 0, evRange: '80-100' },
+  ];
+
+  conversationsData.forEach(({ messages }) => {
+    let highestEv = -1;
+    messages.forEach((message: Message) => {
+      const ev = typeof message.ev_score === 'string' ? parseFloat(message.ev_score) : message.ev_score;
+      if (typeof ev === 'number' && !isNaN(ev)) {
+        highestEv = Math.max(highestEv, ev);
+      }
+    });
+
+    if (highestEv >= 0) {
+      if (highestEv <= 19) leadsByStage[0].count++;
+      else if (highestEv <= 39) leadsByStage[1].count++;
+      else if (highestEv <= 59) leadsByStage[2].count++;
+      else if (highestEv <= 79) leadsByStage[3].count++;
+      else leadsByStage[4].count++;
+    }
+  });
+
+  const aiInsights = {
+    hotLeads: ['Lead A (EV 85)', 'Lead B (EV 90)'],
+    followUps: ['Lead C (Last contact 3 days ago)', 'Lead D (No response)'],
+    predictions: ['Lead E likely to close soon']
+  };
+
+  const performanceSummary = { avgCloseTime: 'N/A', sourceBreakdown: [] };
+
+  return {
+    totalLeads,
+    newLeads,
+    leadsByStage,
+    aiInsights,
+    dailyLeadGrowth,
+    performanceSummary,
+  };
+};
+
+const LeadReport: React.FC<LeadReportProps> = ({ userId, leadData, loading, timeRange, onRefresh }) => {
+  const processedReportData = useMemo(() => {
+    if (!loading && leadData && Array.isArray(leadData)) {
+      return processLeadDataForReport(leadData, timeRange);
+    }
+    return null;
   }, [leadData, loading, timeRange]);
 
   const getTimeRangeText = () => {
@@ -51,103 +143,6 @@ const LeadReport: React.FC<LeadReportProps> = ({ userId, leadData, loading, time
       default:
         return 'Last 24 Hours';
     }
-  };
-
-  const getTimeRangeDays = () => {
-    switch (timeRange) {
-      case 'day':
-        return 1;
-      case 'week':
-        return 7;
-      case 'month':
-        return 30;
-      case 'year':
-        return 365;
-      default:
-        return 1;
-    }
-  };
-
-  const processLeadDataForReport = (conversationsData: any[]): LeadData => {
-    const totalLeads = conversationsData.length;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const dailyCounts: Record<string, number> = {};
-    let newLeads = 0;
-
-    // Calculate the start date based on timeRange
-    const startDate = new Date(today);
-    startDate.setDate(today.getDate() - (getTimeRangeDays() - 1));
-
-    conversationsData.forEach(({ messages }) => {
-      if (messages.length > 0) {
-        const firstMessageTimestamp = new Date(messages[0].timestamp);
-        firstMessageTimestamp.setHours(0, 0, 0, 0);
-
-        if (firstMessageTimestamp >= startDate && firstMessageTimestamp <= today) {
-          newLeads++;
-          const dateKey = firstMessageTimestamp.toISOString().split('T')[0];
-          dailyCounts[dateKey] = (dailyCounts[dateKey] || 0) + 1;
-        }
-      }
-    });
-
-    // Generate dailyLeadGrowth array based on timeRange
-    const dailyLeadGrowth: { day: string; count: number }[] = [];
-    const daysToShow = getTimeRangeDays();
-    
-    for (let i = daysToShow - 1; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(today.getDate() - i);
-      const dayOfWeek = date.toLocaleString('en-US', { weekday: 'short' });
-      const dateKey = date.toISOString().split('T')[0];
-      dailyLeadGrowth.push({ day: dayOfWeek, count: dailyCounts[dateKey] || 0 });
-    }
-
-    // Rest of your existing processing logic...
-    const leadsByStage = [
-      { name: 'Contacted', count: 0, evRange: '0-19' },
-      { name: 'Engaged', count: 0, evRange: '20-39' },
-      { name: 'Toured', count: 0, evRange: '40-59' },
-      { name: 'Offer Stage', count: 0, evRange: '60-79' },
-      { name: 'Closed', count: 0, evRange: '80-100' },
-    ];
-
-    conversationsData.forEach(({ messages }) => {
-      let highestEv = -1;
-      messages.forEach((message: Message) => {
-        const ev = typeof message.ev_score === 'string' ? parseFloat(message.ev_score) : message.ev_score;
-        if (typeof ev === 'number' && !isNaN(ev)) {
-          highestEv = Math.max(highestEv, ev);
-        }
-      });
-
-      if (highestEv >= 0) {
-        if (highestEv <= 19) leadsByStage[0].count++;
-        else if (highestEv <= 39) leadsByStage[1].count++;
-        else if (highestEv <= 59) leadsByStage[2].count++;
-        else if (highestEv <= 79) leadsByStage[3].count++;
-        else leadsByStage[4].count++;
-      }
-    });
-
-    const aiInsights = {
-      hotLeads: ['Lead A (EV 85)', 'Lead B (EV 90)'],
-      followUps: ['Lead C (Last contact 3 days ago)', 'Lead D (No response)'],
-      predictions: ['Lead E likely to close soon']
-    };
-
-    const performanceSummary = { avgCloseTime: 'N/A', sourceBreakdown: [] };
-
-    return {
-      totalLeads,
-      newLeads,
-      leadsByStage,
-      aiInsights,
-      dailyLeadGrowth,
-      performanceSummary,
-    };
   };
 
   const handleDownloadReport = async () => {
@@ -172,22 +167,10 @@ const LeadReport: React.FC<LeadReportProps> = ({ userId, leadData, loading, time
     }
   };
 
-  const generateReport = async () => {
-    try {
-      setLoadingReport(true);
-      await onRefresh(); // Use the onRefresh prop to fetch new data
-    } catch (error) {
-      console.error('Error generating report:', error);
-      setError('Failed to generate report. Please try again.');
-    } finally {
-      setLoadingReport(false);
-    }
-  };
-
   return (
     <div className="bg-white p-6 rounded-lg border border-[#0e6537]/20 shadow-sm" id="lead-report-content">
       <h3 className="text-lg font-semibold mb-4">Lead Performance Report</h3>
-      {loadingReport ? (
+      {loading ? (
         <div className="flex items-center justify-center h-64 text-gray-600">Loading report data...</div>
       ) : processedReportData ? (
         <div>
