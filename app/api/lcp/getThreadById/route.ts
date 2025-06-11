@@ -54,7 +54,6 @@ export async function POST(request: Request) {
     });
 
 
-    console.log('messagesResponse', messagesResponse);
 
     if (!messagesResponse.ok) {
       // log the error

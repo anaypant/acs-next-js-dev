@@ -1,15 +1,7 @@
 import { NextResponse } from 'next/server';
 import { config } from '@/lib/local-api-config';
-import { getServerSession } from "next-auth/next"
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
     const body = await request.json();
     const { table_name, index_name, key_name, key_value } = body;
@@ -39,7 +31,7 @@ export async function POST(request: Request) {
       }),
       credentials: 'include',
     });
-    const data = await response.json();
+    
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Response not ok:', {
@@ -50,7 +42,9 @@ export async function POST(request: Request) {
       throw new Error(`API request failed with status ${response.status}: ${errorText}`);
     }
 
-    // The data is already parsed from response.json(), no need to parse again
+    const data = await response.json();
+    
+    // Handle the response which is an array directly
     if (!Array.isArray(data)) {
       console.error('Expected array response but got:', typeof data);
       return NextResponse.json(
