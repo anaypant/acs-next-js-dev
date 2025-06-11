@@ -142,11 +142,18 @@ const ConversationCard = ({
             )}
             <div className="flex flex-row sm:flex-col items-center justify-start gap-2 sm:gap-0 sm:w-10 md:w-12 pt-1">
                 {!conv.read && !updatingRead && (
-                    <span className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 bg-red-100 text-red-800 text-xs rounded-full font-semibold shadow-md z-10">
+                    <button
+                        className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 bg-red-100 text-red-800 text-xs rounded-full font-semibold shadow-md z-10 hover:bg-red-200 transition-colors cursor-pointer"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleMarkAsRead(conv.conversation_id);
+                        }}
+                        title="Click to mark as read"
+                    >
                         <Bell className="w-3 h-3 sm:w-4 sm:h-4" /> 
                         <span className="hidden xs:inline">Unread</span>
                         <span className="xs:hidden">New</span>
-                    </span>
+                    </button>
                 )}
                 <div 
                     className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shadow-sm"
@@ -184,8 +191,8 @@ const ConversationCard = ({
                         EV: {ev_score >= 0 ? ev_score : 'N/A'}
                     </span>
                     {ev_score > conv.lcp_flag_threshold && !conv.flag_for_review && (
-                        <span className="flex items-center gap-1 text-green-600 font-bold" title="Flagged for completion">
-                            <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" /> 
+                        <span className="flex items-center gap-1 text-green-600 font-bold">
+                            <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" title="Flagged for completion" /> 
                             <span className="hidden xs:inline">Flagged</span>
                         </span>
                     )}

@@ -18,7 +18,7 @@ import 'react-circular-progressbar/dist/styles.css';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import 'jspdf-autotable';
-import type { User } from "@/types/auth"
+import type { User } from "next-auth"
 
 // Add type declaration for jsPDF with autoTable
 declare module 'jspdf' {
@@ -64,7 +64,7 @@ function getEvColor(score: number) {
 function LoadingSkeleton() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1]">
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="max-w-[1600px] mx-auto p-6">
         {/* Header skeleton */}
         <div className="flex items-center gap-4 mb-6">
           <Logo />
@@ -72,9 +72,9 @@ function LoadingSkeleton() {
           <div className="h-8 w-64 bg-white/50 rounded-lg animate-pulse" />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" style={{ gridTemplateColumns: '1fr 1fr 320px' }}>
           {/* Messages section skeleton */}
-          <div className="lg:col-span-2 bg-white rounded-lg border shadow-sm flex flex-col relative h-[50rem]">
+          <div className="bg-white rounded-lg border shadow-sm flex flex-col relative h-[50rem]">
             <div className="p-4 border-b">
               <div className="h-6 w-24 bg-gray-200 rounded animate-pulse" />
             </div>
@@ -89,21 +89,37 @@ function LoadingSkeleton() {
             </div>
           </div>
 
-          {/* Sidebar skeleton */}
+          {/* AI Response section skeleton */}
           <div className="space-y-6">
-            {/* Client info skeleton */}
+            {/* AI Response skeleton */}
             <div className="bg-white p-6 rounded-lg border shadow-sm">
               <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-4" />
               <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse" />
-                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
-                </div>
-                <div className="h-4 w-40 bg-gray-200 rounded animate-pulse" />
-                <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+                <div className="h-32 w-full bg-gray-100 rounded animate-pulse" />
+                <div className="h-8 w-32 bg-gray-200 rounded animate-pulse" />
               </div>
             </div>
 
+            {/* Client info and flags skeleton - in one row */}
+            <div className="grid grid-cols-2 gap-6">
+              <div className="bg-white p-6 rounded-lg border shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse" />
+                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+                </div>
+                <div className="h-4 w-40 bg-gray-200 rounded animate-pulse mb-2" />
+                <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+              </div>
+              <div className="bg-white p-6 rounded-lg border shadow-sm">
+                <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-4" />
+                <div className="h-4 w-full bg-gray-200 rounded animate-pulse mb-4" />
+                <div className="h-8 w-32 bg-gray-200 rounded animate-pulse" />
+              </div>
+            </div>
+          </div>
+
+          {/* Right sidebar skeleton */}
+          <div className="space-y-6">
             {/* AI Summary skeleton */}
             <div className="bg-white p-6 rounded-lg border shadow-sm">
               <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-4" />
@@ -114,7 +130,7 @@ function LoadingSkeleton() {
               </div>
             </div>
 
-            {/* EV Score Threshold skeleton */}
+            {/* Notes skeleton */}
             <div className="bg-white p-6 rounded-lg border shadow-sm">
               <div className="h-6 w-40 bg-gray-200 rounded animate-pulse mb-4" />
               <div className="h-4 w-full bg-gray-200 rounded animate-pulse mb-4" />
@@ -317,6 +333,28 @@ export default function ConversationDetailPage() {
     };
   }, []);
 
+  // Add function to mark thread as read
+  const markAsRead = async () => {
+    if (!conversationId) return;
+    try {
+      await fetch('/api/db/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table_name: 'Threads',
+          index_name: "conversation_id-index",
+          key_name: 'conversation_id',
+          key_value: conversationId,
+          update_data: { read: 'true' }
+        })
+      });
+      // Update local state
+      setThread(prev => prev ? { ...prev, read: true } : null);
+    } catch (error) {
+      console.error('Error marking as read:', error);
+    }
+  };
+
   // Add reloadConversation function
   const reloadConversation = async () => {
     setLoading(true);
@@ -333,13 +371,18 @@ export default function ConversationDetailPage() {
           ...rawThread,
           lcp_enabled: rawThread?.lcp_enabled === true || rawThread?.lcp_enabled === 'true',
           busy: rawThread?.busy === true || rawThread?.busy === 'true',
-          read: rawThread?.read === true || rawThread?.read === 'true',
+          read: rawThread?.read === 'true',
           flag_for_review: rawThread?.flag_for_review === true || rawThread?.flag_for_review === 'true',
           spam: rawThread?.spam === true || rawThread?.spam === 'true',
         };
         setThread(normalizedThread);
         setMessages(data.data.messages);
         setNotes(rawThread?.context_notes || "");
+        
+        // Mark as read if not already read
+        if (!normalizedThread.read) {
+          await markAsRead();
+        }
       }
     } catch (error) {
       console.error('Error reloading conversation:', error);
@@ -506,6 +549,23 @@ export default function ConversationDetailPage() {
     setShowPreview(true);
   }
 
+  // Add function to reload only messages
+  const reloadMessages = async () => {
+    try {
+      const res = await fetch("/api/lcp/getThreadById", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation_id: conversationId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessages(data.data.messages);
+      }
+    } catch (error) {
+      console.error('Error reloading messages:', error);
+    }
+  };
+
   // Add function to handle actual email sending
   const handleConfirmSend = async () => {
     if (!thread || !messageInput.trim()) return;
@@ -534,8 +594,8 @@ export default function ConversationDetailPage() {
         setMessageInput('');
         setShowPreview(false);
         setEmailPreview(null);
-        // Reload all conversation data
-        await reloadConversation();
+        // Reload only messages instead of full conversation
+        await reloadMessages();
       } else {
         throw new Error(data.error || 'Failed to send email');
       }
@@ -813,7 +873,9 @@ export default function ConversationDetailPage() {
         throw new Error('Failed to save notes');
       }
 
+      // Update local state and thread context_notes
       setNotes(newNotes);
+      setThread(prev => prev ? { ...prev, context_notes: newNotes } : null);
     } catch (error) {
       console.error('Error saving notes:', error);
       throw error;
@@ -824,6 +886,7 @@ export default function ConversationDetailPage() {
   const handleOverride = async () => {
     setUpdatingOverride(true);
     try {
+      const newOverrideValue = thread?.flag_review_override === 'true' ? 'false' : 'true';
       const response = await fetch('/api/db/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -832,7 +895,7 @@ export default function ConversationDetailPage() {
           index_name: "conversation_id-index",
           key_name: 'conversation_id',
           key_value: conversationId,
-          update_data: { flag_review_override: thread?.flag_review_override === 'true' ? 'false' : 'true' }
+          update_data: { flag_review_override: newOverrideValue }
         })
       });
 
@@ -841,8 +904,8 @@ export default function ConversationDetailPage() {
       }
 
       setShowFlaggedModal(false);
-      // Reload the conversation to get updated state
-      await reloadConversation();
+      // Update local state instead of full reload
+      setThread(prev => prev ? { ...prev, flag_review_override: newOverrideValue } : null);
     } catch (error) {
       console.error('Error updating override status:', error);
     } finally {
@@ -1038,8 +1101,8 @@ export default function ConversationDetailPage() {
         throw new Error('Failed to unflag conversation');
       }
 
-      // Reload the conversation to get updated state
-      await reloadConversation();
+      // Update local state instead of full reload
+      setThread(prev => prev ? { ...prev, flag_for_review: false } : null);
     } catch (error) {
       console.error('Error unflagging conversation:', error);
     } finally {
@@ -1076,11 +1139,8 @@ export default function ConversationDetailPage() {
         throw new Error('Failed to mark as not spam');
       }
 
-      // Update local state
+      // Update local state only
       setThread(prev => prev ? { ...prev, spam: false } : null);
-      
-      // Reload the conversation to get updated data
-      await reloadConversation();
     } catch (error) {
       console.error('Error marking as not spam:', error);
     } finally {
@@ -1218,10 +1278,10 @@ export default function ConversationDetailPage() {
         </div>
       )}
 
-      <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1]">
-        <div className="max-w-[1400px] mx-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-10 h-[calc(100vh-48px)]">
+      <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1] pb-10">
+        <div className="max-w-[1600px] mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6" style={{ gridTemplateColumns: '1fr 1fr 320px' }}>
           {/* Left: Conversation History */}
-          <div className="flex flex-col flex-1">
+          <div className="flex flex-col">
             {/* Header */}
             <div className="flex items-center gap-4 mb-2">
               <Logo />
@@ -1233,8 +1293,8 @@ export default function ConversationDetailPage() {
               </button>
               <h1 className="text-2xl font-bold">Conversation with {leadName}</h1>
             </div>
-            <div className="bg-white rounded-2xl border shadow-lg p-0 overflow-hidden flex-1">
-              <div className="px-8 py-4 border-b bg-[#f7faf9] flex items-center justify-between">
+            <div className="bg-white rounded-2xl border shadow-lg p-0 overflow-hidden h-[calc(100vh-200px)] max-h-[800px] flex flex-col">
+              <div className="px-8 py-4 border-b bg-[#f7faf9] flex items-center justify-between flex-shrink-0">
                 <h2 className="text-xl font-semibold">Conversation History</h2>
                 <div className="flex gap-2">
                   <button
@@ -1274,7 +1334,7 @@ export default function ConversationDetailPage() {
                   </button>
                 </div>
               </div>
-              <div className="max-h-[calc(100vh-250px)] overflow-y-auto px-8 py-6 space-y-8">
+              <div className="px-8 py-6 space-y-8 overflow-y-auto flex-1">
                 {loading ? (
                   <div className="space-y-4">
                     {[...Array(3)].map((_, i) => (
@@ -1373,7 +1433,7 @@ export default function ConversationDetailPage() {
           </div>
 
           {/* Right: AI Response and widgets grid below */}
-          <div className="flex flex-col flex-1">
+          <div className="flex flex-col">
             <div className="bg-white rounded-2xl border shadow-lg p-0 overflow-hidden w-full mt-11">
               <div className="px-8 py-4 border-b bg-[#f7faf9] flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-[#0e6537]" />
@@ -1447,7 +1507,7 @@ export default function ConversationDetailPage() {
             </div>
 
             {/* Widgets grid below AI Response */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full mb-10 mt-6">
+            <div className="grid grid-cols-2 gap-6 w-full mt-6">
               {/* Client Information */}
               <div className="bg-white rounded-2xl border shadow-lg p-6 flex flex-col items-center text-center min-h-[170px]">
                 <div className="w-14 h-14 bg-[#0e6537]/10 rounded-full flex items-center justify-center mb-2">
@@ -1466,66 +1526,70 @@ export default function ConversationDetailPage() {
                 updating={unflagging}
               />
 
-              {/* Spam Status Widget */}
-              {thread?.spam && (
-                <div className="bg-white rounded-2xl border shadow-lg p-6 flex flex-col items-center text-center min-h-[170px]">
-                  <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mb-2">
-                    <AlertTriangle className="h-7 w-7 text-red-500" />
-                  </div>
-                  <div className="mb-1 font-bold text-lg text-red-700">Marked as Spam</div>
-                  <div className="text-gray-500 text-sm mb-4">
-                    This conversation has been marked as spam
-                  </div>
-                  <button
-                    onClick={handleMarkAsNotSpam}
-                    disabled={updatingSpam}
-                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {updatingSpam ? (
-                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        <Shield className="w-4 h-4 text-green-500" />
-                        <span>Mark as Not Spam</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
-
-              {/* AI Insights */}
-              {thread && (() => {
-                const aiSummary = thread.ai_summary?.trim();
-                const budgetRange = thread.budget_range?.trim();
-                const propertyTypes = thread.preferred_property_types?.trim();
-                const timeline = thread.timeline?.trim();
-                const isEmpty = [aiSummary, budgetRange, propertyTypes, timeline].every((val) => !val || val === 'UNKNOWN');
-                if (isEmpty) return null;
-                return (
-                  <div className="bg-white rounded-2xl border shadow-lg p-6 text-left min-h-[170px] flex flex-col justify-center">
-                    <h3 className="text-lg font-semibold mb-2">AI Insights</h3>
-                    {aiSummary && aiSummary !== 'UNKNOWN' && (
-                      <div className="mb-2 text-gray-700"><span className="font-medium">Summary:</span> {aiSummary}</div>
-                    )}
-                    {budgetRange && budgetRange !== 'UNKNOWN' && (
-                      <div className="mb-2 text-gray-700"><span className="font-medium">Budget:</span> {budgetRange}</div>
-                    )}
-                    {propertyTypes && propertyTypes !== 'UNKNOWN' && (
-                      <div className="mb-2 text-gray-700"><span className="font-medium">Property Types:</span> {propertyTypes}</div>
-                    )}
-                    {timeline && timeline !== 'UNKNOWN' && (
-                      <div className="mb-2 text-gray-700"><span className="font-medium">Timeline:</span> {timeline}</div>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {/* Add Notes Widget */}
-              <NotesWidget
-                notes={notes}
-                onSave={saveNotes}
-              />
             </div>
+
+            {/* Spam Status Widget - separate row when needed */}
+            {thread?.spam && (
+              <div className="bg-white rounded-2xl border shadow-lg p-6 flex flex-col items-center text-center min-h-[170px] mt-6">
+                <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mb-2">
+                  <AlertTriangle className="h-7 w-7 text-red-500" />
+                </div>
+                <div className="mb-1 font-bold text-lg text-red-700">Marked as Spam</div>
+                <div className="text-gray-500 text-sm mb-4">
+                  This conversation has been marked as spam
+                </div>
+                <button
+                  onClick={handleMarkAsNotSpam}
+                  disabled={updatingSpam}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {updatingSpam ? (
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Shield className="w-4 h-4 text-green-500" />
+                      <span>Mark as Not Spam</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Right: Context Notes and AI Insights */}
+          <div className="flex flex-col gap-6 mt-11">
+            {/* AI Insights */}
+            {thread && (() => {
+              const aiSummary = thread.ai_summary?.trim();
+              const budgetRange = thread.budget_range?.trim();
+              const propertyTypes = thread.preferred_property_types?.trim();
+              const timeline = thread.timeline?.trim();
+              const isEmpty = [aiSummary, budgetRange, propertyTypes, timeline].every((val) => !val || val === 'UNKNOWN');
+              if (isEmpty) return null;
+              return (
+                <div className="bg-white rounded-2xl border shadow-lg p-6 text-left min-h-[170px] flex flex-col justify-center">
+                  <h3 className="text-lg font-semibold mb-2">AI Insights</h3>
+                  {aiSummary && aiSummary !== 'UNKNOWN' && (
+                    <div className="mb-2 text-gray-700"><span className="font-medium">Summary:</span> {aiSummary}</div>
+                  )}
+                  {budgetRange && budgetRange !== 'UNKNOWN' && (
+                    <div className="mb-2 text-gray-700"><span className="font-medium">Budget:</span> {budgetRange}</div>
+                  )}
+                  {propertyTypes && propertyTypes !== 'UNKNOWN' && (
+                    <div className="mb-2 text-gray-700"><span className="font-medium">Property Types:</span> {propertyTypes}</div>
+                  )}
+                  {timeline && timeline !== 'UNKNOWN' && (
+                    <div className="mb-2 text-gray-700"><span className="font-medium">Timeline:</span> {timeline}</div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Context Notes Widget */}
+            <NotesWidget
+              notes={notes}
+              onSave={saveNotes}
+            />
           </div>
         </div>
       </div>

@@ -277,11 +277,11 @@ export default function UsagePage() {
         <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-lg">
           <p className="font-medium mb-2">{label}</p>
           {payload.map((entry: any, index: number) => {
-            const thread = entry.payload.conversation
+            const thread = entry.payload
             return (
               <div key={index} className="mb-1">
                 <p className="text-sm">
-                  {thread.conversationUrl ? (
+                  {thread?.conversationUrl ? (
                     <Link
                       href={thread.conversationUrl}
                       className="text-[#0a5a2f] hover:underline"
@@ -289,7 +289,7 @@ export default function UsagePage() {
                       {thread.threadName}
                     </Link>
                   ) : (
-                    thread.threadName
+                    thread?.threadName || 'Unknown Thread'
                   )}: {entry.value} invocations
                 </p>
               </div>

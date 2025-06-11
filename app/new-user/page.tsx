@@ -12,9 +12,10 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Globe, CheckCircle2, ArrowRight, XCircle, AlertTriangle, Info } from 'lucide-react';
 import Step1Welcome from './steps/Step1Welcome';
-import Step2EmailSetup from './steps/Step2EmailSetup';
-import Step3Complete from './steps/Step3Complete';
-import Step4Settings from './steps/Step4Settings';
+import Step2Profile from './steps/Step2Profile';
+import Step3EmailSetup from './steps/Step2EmailSetup';
+import Step4Complete from './steps/Step3Complete';
+import Step5Settings from './steps/Step4Settings';
 
 interface SessionUser {
   id: string;
@@ -69,6 +70,15 @@ export default function NewUserPage() {
     tone: "professional",
     style: "concise",
     samplePrompt: ""
+  });
+  const [profileData, setProfileData] = useState({
+    bio: '',
+    location: '',
+    state: '',
+    country: '',
+    zipcode: '',
+    company: '',
+    jobTitle: ''
   });
 
   // List of unsupported public email domains
@@ -382,7 +392,7 @@ export default function NewUserPage() {
 
   // Fetch default signature from Users table when entering settings step
   useEffect(() => {
-    if (step === 4 && data) {
+    if (step === 5 && data) {
       setSignature(data.email_signature || '');
       setSmsEnabled(data.smsEnabled || false);
       setPhone(data.phone ? String(data.phone).replace(/[-()\s]/g, '') : '');
@@ -399,6 +409,7 @@ export default function NewUserPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           table_name: 'Users',
+          index_name: 'id-index',
           key_name: 'id',
           key_value: session?.user?.id,
           update_data: {
@@ -464,6 +475,7 @@ export default function NewUserPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             table_name: 'Users',
+            index_name: 'id-index',
             key_name: 'id',
             key_value: session?.user?.id,
             update_data: {
@@ -481,6 +493,7 @@ export default function NewUserPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             table_name: 'Users',
+            index_name: 'id-index',
             key_name: 'id',
             key_value: session?.user?.id,
             update_data: {
@@ -500,6 +513,7 @@ export default function NewUserPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           table_name: 'Users',
+          index_name: 'id-index',
           key_name: 'id',
           key_value: session?.user?.id,
           update_data: {
@@ -516,10 +530,47 @@ export default function NewUserPage() {
       }
 
       // Success: proceed to next step
-      setStep(3);
+      setStep(4);
     } catch (error) {
       console.error('Error updating settings:', error);
       showError(error instanceof Error ? error.message : 'Failed to update settings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleProfileSubmit = async () => {
+    try {
+      setLoading(true);
+      // Update profile data in the database
+      const updateRes = await fetch('/api/db/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table_name: 'Users',
+          index_name: 'id-index',
+          key_name: 'id',
+          key_value: session?.user?.id,
+          update_data: {
+            bio: profileData.bio,
+            location: profileData.location,
+            state: profileData.state,
+            country: profileData.country,
+            zipcode: profileData.zipcode,
+            company: profileData.company || null,
+            job_title: profileData.jobTitle || null,
+          }
+        }),
+      });
+      if (!updateRes.ok) {
+        throw new Error('Failed to save profile information');
+      }
+
+      // Proceed to next step (email setup)
+      setStep(3);
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      showError(error instanceof Error ? error.message : 'Failed to save profile information');
     } finally {
       setLoading(false);
     }
@@ -534,6 +585,7 @@ export default function NewUserPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           table_name: 'Users',
+          index_name: 'id-index',
           key_name: 'id',
           key_value: session?.user?.id,
           update_data: {
@@ -549,7 +601,7 @@ export default function NewUserPage() {
       }
 
       // Proceed to next step
-      setStep(4);
+      setStep(5);
     } catch (error) {
       console.error('Error updating LCP settings:', error);
       showError(error instanceof Error ? error.message : 'Failed to update LCP settings');
@@ -607,7 +659,15 @@ export default function NewUserPage() {
         ) : step === 1 ? (
           <Step1Welcome setStep={setStep} />
         ) : step === 2 ? (
-          <Step2EmailSetup
+          <Step2Profile
+            profileData={profileData}
+            setProfileData={setProfileData}
+            handleProfileSubmit={handleProfileSubmit}
+            loading={loading}
+            setStep={setStep}
+          />
+        ) : step === 3 ? (
+          <Step3EmailSetup
             emailOption={emailOption}
             setEmailOption={setEmailOption}
             responseEmail={responseEmail}
@@ -634,15 +694,15 @@ export default function NewUserPage() {
             loading={loading}
             setStep={setStep}
           />
-        ) : step === 3 ? (
-          <Step3Complete
+        ) : step === 4 ? (
+          <Step4Complete
             lcpSettings={lcpSettings}
             setLcpSettings={setLcpSettings}
             handleComplete={handleCompleteSetup}
             loading={loading}
           />
-        ) : step === 4 ? (
-          <Step4Settings
+        ) : step === 5 ? (
+          <Step5Settings
             signature={signature}
             setSignature={setSignature}
             smsEnabled={smsEnabled}
