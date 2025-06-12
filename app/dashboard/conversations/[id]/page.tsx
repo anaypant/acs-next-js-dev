@@ -19,6 +19,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import 'jspdf-autotable';
 import type { User } from "next-auth"
+import { v4 as uuidv4 } from 'uuid';
 
 // Add type declaration for jsPDF with autoTable
 declare module 'jspdf' {
@@ -286,6 +287,12 @@ export default function ConversationDetailPage() {
   const [unflagging, setUnflagging] = useState(false);
   const [flagReason, setFlagReason] = useState("");
   const [updatingSpam, setUpdatingSpam] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportMessageId, setReportMessageId] = useState<string | null>(null);
+  const [reportExplanation, setReportExplanation] = useState("");
+  const [submittingReport, setSubmittingReport] = useState(false);
+  const [previewMessageId, setPreviewMessageId] = useState<string | null>(null);
+  const [reportSuccess, setReportSuccess] = useState(false);
 
   // Fetch user signature on component mount
   useEffect(() => {
@@ -515,10 +522,13 @@ export default function ConversationDetailPage() {
           body: result.data.response,
           signature: userSignature
         });
+        // set the llm email type
+        setLlmEmailType(result.data.llm_email_type);
+        // Always set a preview message ID: use backend-provided or generate a UUID
+        setPreviewMessageId(result.data.response_id || uuidv4());
       }
     } catch (error) {
       console.error('Error generating AI response:', error);
-      // You might want to show an error toast here
     } finally {
       setGeneratingResponse(false);
     }
@@ -1070,13 +1080,19 @@ export default function ConversationDetailPage() {
 
   // Add new function to handle opening email preview
   const handleOpenEmailPreview = () => {
-    if (!messageInput.trim()) return;
-    setShowPreview(true);
-    setEmailPreview({
-      subject: lastMessage?.subject || 'Re: ' + (lastMessage?.subject || 'Your Message'),
+    // Find the last inbound message for the subject
+    const lastInboundMessage = [...messages].filter(msg => msg.type === 'inbound-email').pop();
+    const originalSubject = lastInboundMessage?.subject || 'Conversation';
+    // Only add "Re:" if it's not already present
+    const subject = originalSubject.startsWith('Re:') ? originalSubject : `Re: ${originalSubject}`;
+    const preview = {
+      subject,
       body: messageInput,
-      signature: userSignature
-    });
+      signature: userSignature || `Best regards,\nACS Team\n\n---\nThis email was sent from ACS Conversation Platform`
+    };
+    setShowPreview(true);
+    setEmailPreview(preview);
+    setPreviewMessageId(null); // Clear the preview message ID for manual previews
   };
 
   // Add handleUnflag function
@@ -1209,6 +1225,109 @@ export default function ConversationDetailPage() {
     );
   };
 
+  // Add report handler
+  const handleReportResponse = async () => {
+    if (!reportMessageId || !user?.id) return;
+    setSubmittingReport(true);
+    try {
+      const reportId = uuidv4();
+      const matchingMessage = messages.find(msg => msg.response_id === reportMessageId);
+      await fetch('/api/db/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table_name: 'LLMReportData',
+          index_name: "report_id-index",
+          key_name: 'report_id',
+          key_value: reportId,
+          update_data: {
+            report_id: reportId,
+            associated_account: user.id,
+            conversation_id: conversationId,
+            message_id: reportMessageId,
+            report: reportExplanation,
+            llm_email_type: matchingMessage?.llm_email_type || 'unknown',
+            timestamp: new Date().toISOString()
+          }
+        })
+      });
+      setReportSuccess(true);
+      setTimeout(() => {
+        setReportSuccess(false);
+        setReportExplanation("");
+        setReportMessageId(null);
+        setShowReportModal(false);
+      }, 2000);
+    } catch (err) {
+      console.error('Error submitting report:', err);
+    } finally {
+      setSubmittingReport(false);
+    }
+  };
+
+  // Add ReportModal component
+  const ReportModal = () => {
+    if (!showReportModal) return null;
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-lg w-full mx-4">
+          <div className="flex items-center gap-3 mb-4">
+            <AlertTriangle className="w-6 h-6 text-yellow-500" />
+            <h3 className="text-lg font-semibold text-gray-900">Report AI Response</h3>
+          </div>
+          {reportSuccess && (
+            <div className="mb-4 p-3 rounded-lg bg-green-100 text-green-800 text-sm font-medium text-center">
+              Message successfully reported
+            </div>
+          )}
+          <div className="mb-6">
+            <p className="text-gray-600 mb-4">
+              Please provide details about why you're reporting this AI response. This helps us improve our system.
+            </p>
+            <textarea
+              value={reportExplanation}
+              onChange={(e) => setReportExplanation(e.target.value)}
+              placeholder="Enter your explanation (optional)"
+              className="w-full h-32 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0e6537] resize-none text-base"
+              disabled={submittingReport || reportSuccess}
+            />
+          </div>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => {
+                setShowReportModal(false);
+                setReportExplanation("");
+                setReportMessageId(null);
+                setReportSuccess(false);
+              }}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              disabled={submittingReport}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleReportResponse}
+              disabled={submittingReport || reportSuccess}
+              className="px-4 py-2 text-sm font-medium text-white bg-[#0e6537] rounded-lg hover:bg-[#157a42] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {submittingReport ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  <span>Submitting...</span>
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="w-4 h-4" />
+                  <span>Submit Report</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return <LoadingSkeleton />
   }
@@ -1222,15 +1341,30 @@ export default function ConversationDetailPage() {
           <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
             <div className="px-6 py-4 border-b flex items-center justify-between">
               <h3 className="text-lg font-semibold">Review Email</h3>
-              <button
-                onClick={() => {
-                  setShowPreview(false);
-                  setEmailPreview(null);
-                }}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                {previewMessageId && (
+                  <button
+                    onClick={() => {
+                      setReportMessageId(previewMessageId);
+                      setShowReportModal(true);
+                    }}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
+                    title="Report this AI response"
+                  >
+                    <AlertTriangle className="h-5 w-5" />
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setShowPreview(false);
+                    setEmailPreview(null);
+                    setPreviewMessageId(null);
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
             <div className="p-6 overflow-y-auto flex-1">
               <div className="space-y-4">
@@ -1251,6 +1385,7 @@ export default function ConversationDetailPage() {
                 onClick={() => {
                   setShowPreview(false);
                   setEmailPreview(null);
+                  setPreviewMessageId(null);
                 }}
                 className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
               >
@@ -1420,6 +1555,17 @@ export default function ConversationDetailPage() {
                                 ) : (
                                   <ThumbsDown className="w-4 h-4" fill={feedback[msg.response_id] === 'dislike' ? '#ef4444' : 'none'} />
                                 )}
+                              </button>
+                              <button
+                                className="p-0.5 rounded-full hover:bg-gray-100 text-gray-400"
+                                onClick={() => {
+                                  setReportMessageId(msg.response_id);
+                                  setShowReportModal(true);
+                                }}
+                                aria-label="Report response"
+                                title="Report this AI response"
+                              >
+                                <AlertTriangle className="w-4 h-4" />
                               </button>
                             </span>
                           )}
@@ -1593,6 +1739,7 @@ export default function ConversationDetailPage() {
           </div>
         </div>
       </div>
+      <ReportModal />
     </>
   )
 }

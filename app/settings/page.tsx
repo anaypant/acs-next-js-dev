@@ -286,6 +286,7 @@ export default function SettingsPage() {
         },
         body: JSON.stringify({
           table_name: 'Users',
+          index_name: 'id-index',
           key_name: 'id',
           key_value: session.user.id,
           update_data: {
@@ -369,6 +370,7 @@ export default function SettingsPage() {
         },
         body: JSON.stringify({
           table_name: 'Users',
+          index_name: 'id-index',
           key_name: 'id',
           key_value: session.user.id,
           update_data: {
@@ -411,6 +413,7 @@ export default function SettingsPage() {
         },
         body: JSON.stringify({
           table_name: 'Users',
+          index_name: 'id-index',
           key_name: 'id',
           key_value: session.user.id,
           update_data: {
@@ -503,6 +506,7 @@ export default function SettingsPage() {
         },
         body: JSON.stringify({
           table_name: 'Users',
+          index_name: 'id-index',
           key_name: 'id',
           key_value: session.user.id,
           update_data: {
