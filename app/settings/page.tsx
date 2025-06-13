@@ -126,11 +126,6 @@ export default function SettingsPage() {
   const [lcpError, setLcpError] = useState<string | null>(null)
   const [lcpSuccess, setLcpSuccess] = useState(false)
 
-  // Debug log for signature form state changes
-  useEffect(() => {
-    console.log('Signature form state updated:', signatureForm);
-  }, [signatureForm]);
-
   // Initialize profile form with session data
   useEffect(() => {
     if (session?.user) {
@@ -601,8 +596,22 @@ export default function SettingsPage() {
    * Handles account deletion initiation
    * Opens the confirmation dialog
    */
-  const handleDeleteAccount = () => {
-    setOpenDialog(true)
+  const handleDeleteAccount = async () => {
+    try {
+        const response = await fetch('/api/user/delete', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: session?.user?.id })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to delete account');
+        }
+
+        await signOut({ callbackUrl: '/' });
+    } catch (error) {
+        setError('Error deleting account');
+    }
   }
 
   /**
@@ -629,7 +638,6 @@ export default function SettingsPage() {
 
     const user = session.user
     if (user) {
-      console.log("session:", user.email)
     }
 
     setLoading(true)
@@ -689,18 +697,9 @@ export default function SettingsPage() {
    */
   const handleLogout = async () => {
     try {
-      // Clear session_id cookie
-      if (typeof document !== "undefined") {
-        document.cookie = "session_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"
-      }
-
-      // Sign out from NextAuth
-      await signOut({
-        callbackUrl: "/",
-        redirect: true,
-      })
+        await signOut({ callbackUrl: '/' });
     } catch (error) {
-      console.error("Logout error:", error)
+        setError('Error logging out');
     }
   }
 

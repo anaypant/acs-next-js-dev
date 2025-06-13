@@ -1,9 +1,21 @@
 import { NextResponse } from 'next/server';
 import { config } from '@/lib/local-api-config';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/types/auth';
+import { Session } from 'next-auth';
 
 export async function POST(request: Request) {
   try {
     const { conversation_id } = await request.json();
+
+    // Get session
+    const session = await getServerSession(authOptions) as Session & { user: { id: string } };
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'No authenticated user found' },
+        { status: 404 }
+      );
+    }
 
     if (!conversation_id) {
       return NextResponse.json(
@@ -22,7 +34,8 @@ export async function POST(request: Request) {
         table_name: 'Threads',
         index_name: 'conversation_id-index',
         key_name: 'conversation_id',
-        key_value: conversation_id
+        key_value: conversation_id,
+        account_id: session.user.id
       }),
     });
 
@@ -49,7 +62,8 @@ export async function POST(request: Request) {
         table_name: 'Conversations',
         index_name: 'conversation_id-index',
         key_name: 'conversation_id',
-        key_value: conversation_id
+        key_value: conversation_id,
+        account_id: session.user.id
       }),
     });
 
@@ -57,9 +71,6 @@ export async function POST(request: Request) {
 
     if (!messagesResponse.ok) {
       // log the error
-      console.log('messagesResponse error', messagesResponse);
-      console.log('messagesResponse error', messagesResponse.statusText);
-      console.log('messagesResponse error', messagesResponse.body);
       throw new Error(`Failed to fetch messages for thread ${conversation_id}`);
     }
 

@@ -20,6 +20,7 @@ import autoTable from 'jspdf-autotable';
 import 'jspdf-autotable';
 import type { User } from "next-auth"
 import { v4 as uuidv4 } from 'uuid';
+import { ensureMessageFields } from "@/app/dashboard/lib/dashboard-utils";
 
 // Add type declaration for jsPDF with autoTable
 declare module 'jspdf' {
@@ -293,6 +294,19 @@ export default function ConversationDetailPage() {
   const [submittingReport, setSubmittingReport] = useState(false);
   const [previewMessageId, setPreviewMessageId] = useState<string | null>(null);
   const [reportSuccess, setReportSuccess] = useState(false);
+  const [llmEmailType, setLlmEmailType] = useState<string>('');
+
+  // Add logging for thread state changes
+  useEffect(() => {
+    if (thread) {
+      console.log('[ConversationDetail] Thread updated:', {
+        conversation_id: thread.conversation_id,
+        has_ai_summary: !!thread.ai_summary,
+        ai_summary_length: thread.ai_summary?.length,
+        ai_summary_value: thread.ai_summary || 'UNKNOWN'
+      });
+    }
+  }, [thread]);
 
   // Fetch user signature on component mount
   useEffect(() => {
@@ -362,7 +376,50 @@ export default function ConversationDetailPage() {
     }
   };
 
-  // Add reloadConversation function
+  // Replace the reloadConversation useEffect with a single initial fetch
+  useEffect(() => {
+    const fetchInitialThread = async () => {
+      if (!conversationId) return;
+      
+      setLoading(true);
+      try {
+        const res = await fetch("/api/lcp/getThreadById", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversation_id: conversationId }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          const rawThread = data.data.thread;
+          const normalizedThread = {
+            ...rawThread,
+            lcp_enabled: rawThread?.lcp_enabled === true || rawThread?.lcp_enabled === 'true',
+            busy: rawThread?.busy === true || rawThread?.busy === 'true',
+            read: rawThread?.read === 'true',
+            flag_for_review: rawThread?.flag_for_review === true || rawThread?.flag_for_review === 'true',
+            spam: rawThread?.spam === true || rawThread?.spam === 'true',
+            flag_review_override: rawThread?.flag_review_override === 'true',
+          };
+          setThread(normalizedThread);
+          setMessages(data.data.messages);
+          setNotes(rawThread?.context_notes || "");
+          
+          // Mark as read if not already read
+          if (!normalizedThread.read) {
+            await markAsRead();
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching initial thread:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInitialThread();
+  }, [conversationId]); // Only fetch on mount or conversationId change
+
+  // Update reloadConversation to be called only when explicitly needed
   const reloadConversation = async () => {
     setLoading(true);
     try {
@@ -381,15 +438,11 @@ export default function ConversationDetailPage() {
           read: rawThread?.read === 'true',
           flag_for_review: rawThread?.flag_for_review === true || rawThread?.flag_for_review === 'true',
           spam: rawThread?.spam === true || rawThread?.spam === 'true',
+          flag_review_override: rawThread?.flag_review_override === 'true',
         };
         setThread(normalizedThread);
         setMessages(data.data.messages);
         setNotes(rawThread?.context_notes || "");
-        
-        // Mark as read if not already read
-        if (!normalizedThread.read) {
-          await markAsRead();
-        }
       }
     } catch (error) {
       console.error('Error reloading conversation:', error);
@@ -516,9 +569,16 @@ export default function ConversationDetailPage() {
       // Continue with normal response handling
       if (result.data?.response) {
         setMessageInput(result.data.response);
+        
+        // Get the subject from the last inbound message, using the same logic as handleOpenEmailPreview
+        const lastInboundMessage = [...messages].filter(msg => msg.type === 'inbound-email').pop();
+        const originalSubject = lastInboundMessage?.subject || 'Conversation';
+        // Only add "Re:" if it's not already present
+        const subject = originalSubject.startsWith('Re:') ? originalSubject : `Re: ${originalSubject}`;
+
         setShowPreview(true);
         setEmailPreview({
-          subject: result.data.subject || '',
+          subject,
           body: result.data.response,
           signature: userSignature
         });
@@ -559,7 +619,7 @@ export default function ConversationDetailPage() {
     setShowPreview(true);
   }
 
-  // Add function to reload only messages
+  // Update reloadMessages to be used only when explicitly needed
   const reloadMessages = async () => {
     try {
       const res = await fetch("/api/lcp/getThreadById", {
@@ -576,7 +636,7 @@ export default function ConversationDetailPage() {
     }
   };
 
-  // Add function to handle actual email sending
+  // Update handleConfirmSend to use local state updates where possible
   const handleConfirmSend = async () => {
     if (!thread || !messageInput.trim()) return;
 
@@ -604,8 +664,19 @@ export default function ConversationDetailPage() {
         setMessageInput('');
         setShowPreview(false);
         setEmailPreview(null);
-        // Reload only messages instead of full conversation
-        await reloadMessages();
+        
+        // Update local state with the new message
+        if (data.message) {
+          setMessages(prev => [...prev, data.message]);
+        }
+        
+        // Update thread busy status locally
+        setThread(prev => prev ? { ...prev, busy: true } : null);
+        
+        // Start a timeout to check status after a delay
+        setTimeout(async () => {
+          await reloadConversation(); // Only reload after sending to get final state
+        }, 5000); // Wait 5 seconds before checking final status
       } else {
         throw new Error(data.error || 'Failed to send email');
       }
@@ -615,7 +686,7 @@ export default function ConversationDetailPage() {
     } finally {
       setSendingEmail(false);
     }
-  }
+  };
 
   // Add function to format conversation
   const formatConversation = () => {
@@ -896,7 +967,7 @@ export default function ConversationDetailPage() {
   const handleOverride = async () => {
     setUpdatingOverride(true);
     try {
-      const newOverrideValue = thread?.flag_review_override === 'true' ? 'false' : 'true';
+      const newOverrideValue = thread?.flag_review_override ? false : true;
       const response = await fetch('/api/db/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -905,7 +976,7 @@ export default function ConversationDetailPage() {
           index_name: "conversation_id-index",
           key_name: 'conversation_id',
           key_value: conversationId,
-          update_data: { flag_review_override: newOverrideValue }
+          update_data: { flag_review_override: String(newOverrideValue) }
         })
       });
 
@@ -1289,7 +1360,7 @@ export default function ConversationDetailPage() {
               onChange={(e) => setReportExplanation(e.target.value)}
               placeholder="Enter your explanation (optional)"
               className="w-full h-32 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0e6537] resize-none text-base"
-              disabled={submittingReport || reportSuccess}
+              disabled={Boolean(submittingReport || reportSuccess)}
             />
           </div>
           <div className="flex justify-end gap-3">
@@ -1605,7 +1676,7 @@ export default function ConversationDetailPage() {
                   <h3 className="font-medium text-gray-900">AI Response</h3>
                   <div className="flex items-center gap-3">
                     <OverrideStatus 
-                      isEnabled={thread?.flag_review_override === 'true'} 
+                      isEnabled={Boolean(thread?.flag_review_override)} 
                       onToggle={handleOverride}
                       updating={updatingOverride}
                     />
@@ -1711,6 +1782,15 @@ export default function ConversationDetailPage() {
               const propertyTypes = thread.preferred_property_types?.trim();
               const timeline = thread.timeline?.trim();
               const isEmpty = [aiSummary, budgetRange, propertyTypes, timeline].every((val) => !val || val === 'UNKNOWN');
+              
+              console.log('[ConversationDetail] Rendering AI Insights:', {
+                conversation_id: thread.conversation_id,
+                has_ai_summary: !!aiSummary,
+                ai_summary_length: aiSummary?.length,
+                ai_summary_value: aiSummary || 'UNKNOWN',
+                is_empty: isEmpty
+              });
+
               if (isEmpty) return null;
               return (
                 <div className="bg-white rounded-2xl border shadow-lg p-6 text-left min-h-[170px] flex flex-col justify-center">

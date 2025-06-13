@@ -31,7 +31,6 @@ export async function POST(request: Request) {
     });
 
     const data = await response.json();
-    console.log('LLM response:', data);
 
     // Check if the response is flagged for review first
     if (data.status === 'flagged_for_review') {

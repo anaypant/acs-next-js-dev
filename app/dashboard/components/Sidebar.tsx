@@ -7,10 +7,10 @@
  */
 
 "use client"
-import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, Menu, Trash2, CreditCard } from "lucide-react"
+import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, Menu, Trash2, CreditCard, LogOut } from "lucide-react"
 import type React from "react"
-import { useState, createContext, useContext, useEffect } from "react"
-import { useSession } from "next-auth/react"
+import { useState, createContext, useContext, useEffect, useRef } from "react"
+import { useSession, signOut } from "next-auth/react"
 import type { Session } from "next-auth"
 
 /**
@@ -344,67 +344,113 @@ const mainNavigation = [
 ]
 
 /**
+ * LogoutButton Component
+ * Button to handle user logout
+ * 
+ * @returns {JSX.Element} Logout button with icon and text
+ */
+function LogoutButton() {
+  const { isOpen } = useSidebar()
+  const handleLogout = async () => {
+    await signOut({ callbackUrl: '/' })
+  }
+
+  return (
+    <button
+      onClick={handleLogout}
+      className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors w-full text-white hover:text-white hover:bg-[#0e6537]/30`}
+    >
+      <LogOut className="h-4 w-4" style={{ color: 'white' }} />
+      {isOpen && <span>Logout</span>}
+    </button>
+  )
+}
+
+/**
  * AppSidebar Component
  * Main sidebar implementation with navigation and footer
  * 
  * @returns {JSX.Element} Complete sidebar with navigation
  */
 function AppSidebar() {
-  const { isOpen } = useSidebar()
-  const [unreadSpamCount, setUnreadSpamCount] = useState(0)
-  const [isMobile, setIsMobile] = useState(false)
-  const { data: session } = useSession() as { data: Session & { user?: { id: string } } | null }
+  const { data: session, status } = useSession() as { data: (Session & { user?: { id: string } }) | null, status: string };
+  const [isOpen, setIsOpen] = useState(true);
+  const [unreadSpamCount, setUnreadSpamCount] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+  const mounted = useRef(false);
 
   useEffect(() => {
+    mounted.current = true;
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => {
+      mounted.current = false;
+      window.removeEventListener('resize', checkMobile);
+    };
+  }, []);
 
   useEffect(() => {
-    const fetchUnreadSpamCount = async () => {
-      if (!session?.user?.id) return
+    if (!mounted.current || status !== 'authenticated' || !session?.user?.id) return;
 
+    const fetchUnreadSpamCount = async () => {
       try {
+
         const response = await fetch('/api/lcp/get_all_threads', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: session.user.id })
-        })
+        });
         
-        if (!response.ok) throw new Error('Failed to fetch threads')
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[AppSidebar] Failed to fetch threads:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorText
+          });
+          throw new Error(`Failed to fetch threads: ${response.status} ${response.statusText}`);
+        }
         
-        const { data } = await response.json()
-        const unreadSpamThreads = data.filter((item: any) => 
-          item.thread.spam === 'true' && item.thread.read === 'false'
-        )
-        setUnreadSpamCount(unreadSpamThreads.length)
+        const responseData = await response.json();
+
+        
+        if (!responseData.success || !Array.isArray(responseData.data)) {
+          console.error('[AppSidebar] Invalid response format:', responseData);
+          throw new Error('Invalid response format from threads fetch');
+        }
+
+        const unreadSpamThreads = responseData.data.filter((item: any) => 
+          item.thread && 
+          (item.thread.spam === true || item.thread.spam === 'true') && 
+          (item.thread.read === false || item.thread.read === 'false')
+        );
+        
+
+        setUnreadSpamCount(unreadSpamThreads.length);
       } catch (error) {
-        console.error('Error fetching unread spam count:', error)
+        console.error('[AppSidebar] Error fetching unread spam count:', error);
+        // Don't throw the error, just log it and keep the current count
       }
-    }
+    };
 
     // Add event listener for junk email count updates
     const handleJunkEmailCountUpdate = (event: CustomEvent<number>) => {
-      setUnreadSpamCount(event.detail)
-    }
+      setUnreadSpamCount(event.detail);
+    };
 
-    // Add the event listener
-    window.addEventListener('junkEmailCountUpdated', handleJunkEmailCountUpdate as EventListener)
+    window.addEventListener('junkEmailCountUpdated', handleJunkEmailCountUpdate as EventListener);
 
-    fetchUnreadSpamCount()
-    // Refresh count every minute
-    const interval = setInterval(fetchUnreadSpamCount, 60000)
+    fetchUnreadSpamCount();
+    const interval = setInterval(fetchUnreadSpamCount, 60000); // Check every minute
 
-    // Cleanup function
     return () => {
-      clearInterval(interval)
-      window.removeEventListener('junkEmailCountUpdated', handleJunkEmailCountUpdate as EventListener)
-    }
-  }, [session?.user?.id])
+      clearInterval(interval);
+      window.removeEventListener('junkEmailCountUpdated', handleJunkEmailCountUpdate as EventListener);
+    };
+  }, [session?.user?.id, status]);
 
   return (
     <Sidebar>
@@ -434,6 +480,11 @@ function AppSidebar() {
             ))}
           </SidebarMenu>
         </SidebarGroup>
+
+        {/* Logout button */}
+        <div className="px-3 py-2">
+          <LogoutButton />
+        </div>
 
         {/* Footer section */}
         <div className={`mt-auto px-3 py-4 border-t border-white/20 ${!isOpen && isMobile ? 'hidden' : ''}`}>

@@ -7,7 +7,6 @@ export async function POST(req: NextRequest) {
     const { domain } = body;
 
     if (!domain) {
-      console.log('Domain name is required');
       return NextResponse.json(
         { error: 'Domain name is required' },
         { status: 400 }
@@ -22,7 +21,6 @@ export async function POST(req: NextRequest) {
     });
 
     const data = await res.json();
-    console.log(data);
     return NextResponse.json(data, { status: res.status });
   } catch (error: any) {
     console.error('Error in verify-dkim route:', error);

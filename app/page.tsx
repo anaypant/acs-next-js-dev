@@ -43,21 +43,6 @@ export default function Home() {
         }
     }, [status, session, router]);
 
-    // Debug logging for session information
-    useEffect(() => {
-        console.log('Homepage Session Information:');
-        console.log('-------------------');
-        console.log('Status:', status);
-        console.log('Full Session:', session);
-        if (session?.user) {
-            console.log('User Details:');
-            console.log('email:', session.user.email);
-            console.log('name:', session.user.name);
-            console.log('image:', session.user.image);
-        }
-        console.log('-------------------');
-    }, [session, status]);
-
     return (
         <div className="min-h-screen">
             <main style={{ paddingTop: '0px' }}>

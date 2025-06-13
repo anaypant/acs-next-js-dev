@@ -17,14 +17,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
     }
 
-    console.log("api/auth/delete email:", email);
 
     const apiUrl = `${config.API_URL}/users/auth/delete`;
-    console.log("api/auth/delete apiUrl:", apiUrl);
 
     // Forward only essential cookies for authorization
     const cookie = request.headers.get('cookie');
-    console.log("Original cookies:", cookie);
     
     // Extract only the session_id cookie if it exists
     let sessionCookie = '';
@@ -35,7 +32,6 @@ export async function POST(request: Request) {
         sessionCookie = sessionIdCookie.trim();
       }
     }
-    console.log("Forwarding cookie:", sessionCookie);
 
     // First, revoke Google OAuth access if the user signed in with Google
     if (session.user.provider === 'google') {
@@ -44,7 +40,6 @@ export async function POST(request: Request) {
         const token = session.user.accessToken; // You'll need to store this in your session
         
         if (token) {
-          console.log("api/auth/delete token:", token);
           await fetch(googleRevokeUrl, {
             method: 'POST',
             headers: {
@@ -59,7 +54,6 @@ export async function POST(request: Request) {
       }
     }
 
-    console.log("api/auth/delete package:", );
 
     const res = await fetch(apiUrl, {
       method: 'POST',
@@ -73,14 +67,11 @@ export async function POST(request: Request) {
       }),
       credentials: 'include',
     });
-    console.log("api/auth/delete res:", res);
 
     // Log response for debugging
     const contentType = res.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
-      console.log("api/auth/delete response:", await res.clone().json());
     } else {
-      console.log("api/auth/delete response:", await res.clone().text());
     }
 
     if (!res.ok) {

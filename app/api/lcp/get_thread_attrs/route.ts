@@ -14,7 +14,6 @@ export async function POST(request: Request) {
       );
     }
     const url = `${config.API_URL}/lcp/get-thread-attrs`;
-    console.log('Fetching from:', url);
     const response = await fetch(url, {
       method: 'POST',
       headers: {

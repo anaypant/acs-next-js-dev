@@ -1,8 +1,7 @@
 "use client";
 import React from 'react';
 
-const DashboardStyles = () => (
-  <style>{`
+const dashboardStyles = `
     /* Icon Animation */
     @keyframes icon-slide-scale {
       0% { transform: scale(1) translateX(0); color: #166534; }
@@ -83,7 +82,6 @@ const DashboardStyles = () => (
       border: 2px solid #0e6537;
       background-color: rgba(14, 101, 55, 0.05);
     }
-  `}</style>
-);
+`;
 
-export default DashboardStyles; 
+export default dashboardStyles; 

@@ -320,7 +320,6 @@ export default function NewUserPage() {
         }
 
         const result = await response.json();
-        console.log(result);
         const items = result.items || [];
         if (Array.isArray(items) && items.length > 1) {
           goto404('500', 'Multiple entries found for this user', router);
@@ -330,7 +329,6 @@ export default function NewUserPage() {
         
         // Get their default email from the database
         const defaultEmail = items[0]?.acsMail;
-        console.log(defaultEmail);
         if (!defaultEmail) {
           // If no email exists, create one based on their name
           const name = session.user.name || '';

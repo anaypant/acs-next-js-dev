@@ -43,7 +43,6 @@ export async function POST(request: Request) {
     }
 
     const updateData = await updateResponse.json();
-    console.log('Update thread response:', updateData);
     
 
 
@@ -73,7 +72,6 @@ export async function POST(request: Request) {
     }
 
     const data = await response.json();
-    console.log('Send Email response:', data);
     return NextResponse.json({
       success: true,
       data

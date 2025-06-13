@@ -6,9 +6,6 @@ export async function POST(request: Request) {
     const { conversation_id, message_id, account_id } = await request.json();
 
     if (!conversation_id || !message_id || !account_id) {
-        console.log("conversation_id", conversation_id)
-        console.log("response_id", message_id)
-        console.log("account_id", account_id)
         return NextResponse.json(
         { error: 'Conversation ID, Response ID, and Account ID are required' },
         { status: 400 }
@@ -31,7 +28,8 @@ export async function POST(request: Request) {
           update_data: {
             spam: 'false',
             ttl: Math.floor(Date.now() / 1000) + (1000 * 365 * 24 * 60 * 60) // 1000 years from now in Unix timestamp
-          }
+          },
+          account_id: account_id
         }),
         credentials: 'include',
       }),
@@ -49,7 +47,8 @@ export async function POST(request: Request) {
           update_data: {
             spam: 'false',
             ttl: Math.floor(Date.now() / 1000) + (1000 * 365 * 24 * 60 * 60) // 1000 years from now in Unix timestamp
-          }
+          },
+          account_id: account_id
         }),
         credentials: 'include',
       })
@@ -58,7 +57,6 @@ export async function POST(request: Request) {
     // Wait for both updates to complete
     const [threadsResponse, conversationsResponse] = await Promise.all(updatePromises);
     // log the bodies of the responses
-    console.log("conversationsResponse", await conversationsResponse.json())
 
     // Check if either update failed
     if (!threadsResponse.ok || !conversationsResponse.ok) {

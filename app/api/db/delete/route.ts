@@ -38,7 +38,6 @@ export async function POST(request: Request) {
 
     // Get the response text first
     const responseText = await response.text();
-    console.log('Raw response:', responseText);
 
     // Parse the response text
     let proxyResponse;
@@ -49,7 +48,6 @@ export async function POST(request: Request) {
       throw new Error('Invalid response format from API');
     }
     
-    console.log('Parsed response:', proxyResponse);
 
     // Return the success status and deleted item info
     return NextResponse.json({

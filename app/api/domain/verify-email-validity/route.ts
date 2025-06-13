@@ -24,7 +24,6 @@ export async function POST(req: NextRequest) {
     });
 
     const data = await res.json();
-    console.log(data);
     return NextResponse.json(data, { status: res.status });
   } catch (error: any) {
     console.error('Error in verify-email-validity route:', error);

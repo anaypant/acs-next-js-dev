@@ -1,10 +1,28 @@
 import { NextResponse } from 'next/server';
 import { config } from '@/lib/local-api-config';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/types/auth';
+import { Session } from 'next-auth';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { table_name, index_name, key_name, key_value, update_data } = body;
+
+    // Get session
+    const session = await getServerSession(authOptions) as Session & { user: { id: string } };
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'No authenticated user found' },
+        { status: 404 }
+      );
+    }
+
+    console.log('[db/update] table_name:', table_name);
+    console.log('[db/update] index_name:', index_name);
+    console.log('[db/update] key_name:', key_name);
+    console.log('[db/update] key_value:', key_value);
+    console.log('[db/update] update_data:', update_data);
 
     // Validate required parameters
     if (!table_name || !index_name || !key_name || !key_value || !update_data) {
@@ -29,6 +47,7 @@ export async function POST(request: Request) {
         key_name,
         key_value,
         update_data,
+        account_id: session.user.id
       }),
       credentials: 'include',
     });
@@ -44,7 +63,6 @@ export async function POST(request: Request) {
     }
 
     const responseText = await response.text();
-    console.log('Raw response:', responseText);
 
     // Parse the response text
     let proxyResponse;
@@ -55,7 +73,6 @@ export async function POST(request: Request) {
       throw new Error('Invalid response format from API');
     }
     
-    console.log('Parsed response:', proxyResponse);
 
     // Return the updated_item from the response
     return NextResponse.json({

@@ -1,55 +1,43 @@
 import { NextResponse } from 'next/server';
 import { config } from '@/lib/local-api-config';
 
-const MAX_RETRIES = 3;
-const INITIAL_RETRY_DELAY = 1000; // 1 second
-
-async function fetchWithRetry(url: string, options: RequestInit, retries = MAX_RETRIES, delay = INITIAL_RETRY_DELAY): Promise<Response> {
-  try {
-    const response = await fetch(url, options);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return response;
-  } catch (error) {
-    if (retries > 0) {
-      console.log(`Retrying fetch... (${retries} attempts remaining)`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-      return fetchWithRetry(url, options, retries - 1, delay * 2);
-    }
-    throw error;
-  }
-}
-
 export async function POST(request: Request) {
   try {
-    console.log('get_all_threads API called');
-    const requestText = await request.text();
-    console.log('Raw request body:', requestText);
-    
-    let userId;
+    // Get raw body text first for debugging
+    const rawBody = await request.text();
+
+    if (!rawBody) {
+      console.error('[get_all_threads] Empty request body received');
+      return NextResponse.json(
+        { error: 'Empty request body' },
+        { status: 400 }
+      );
+    }
+
+    // Parse the body
+    let body;
     try {
-      const parsedBody = JSON.parse(requestText);
-      userId = parsedBody.userId;
-      console.log('Parsed userId:', userId);
-    } catch (parseError) {
-      console.error('Error parsing request body:', parseError);
+      body = JSON.parse(rawBody);
+    } catch (e) {
+      console.error('[get_all_threads] Failed to parse request body:', e);
       return NextResponse.json(
         { error: 'Invalid JSON in request body' },
         { status: 400 }
       );
     }
 
+    const { userId } = body;
+
     if (!userId) {
-      console.error('No userId provided in request');
+      console.error('[get_all_threads] No userId provided in request body:', body);
       return NextResponse.json(
         { error: 'User ID is required' },
         { status: 400 }
       );
     }
 
-    // First, get all threads for the user with retry logic
-    const threadsResponse = await fetchWithRetry(`${config.API_URL}/db/select`, {
+    // Get all threads for the user
+    const threadsResponse = await fetch(`${config.API_URL}/db/select`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -58,25 +46,39 @@ export async function POST(request: Request) {
         table_name: 'Threads',
         index_name: 'associated_account-index',
         key_name: 'associated_account',
-        key_value: userId
+        key_value: userId,
+        account_id: userId
       }),
     });
 
-    const threads = await threadsResponse.json();
 
+    if (!threadsResponse.ok) {
+      const errorText = await threadsResponse.text();
+      console.error('[get_all_threads] Failed to fetch threads:', {
+        status: threadsResponse.status,
+        statusText: threadsResponse.statusText,
+        error: errorText
+      });
+      return NextResponse.json(
+        { error: 'Failed to fetch threads', details: errorText },
+        { status: 500 }
+      );
+    }
+
+    const threads = await threadsResponse.json();
     if (!Array.isArray(threads)) {
-      console.error('Invalid threads response format:', threads);
+      console.error('[get_all_threads] Invalid response format from threads fetch:', threads);
       return NextResponse.json(
         { error: 'Invalid response format from threads fetch' },
         { status: 500 }
       );
     }
 
-    // For each thread, fetch its associated messages with retry logic
+    // Get messages for each thread
     const conversationsWithMessages = await Promise.all(
-      threads.map(async (thread: any) => {
+      threads.map(async (thread) => {
         try {
-          const messagesResponse = await fetchWithRetry(`${config.API_URL}/db/select`, {
+          const messagesResponse = await fetch(`${config.API_URL}/db/select`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -85,63 +87,35 @@ export async function POST(request: Request) {
               table_name: 'Conversations',
               index_name: 'conversation_id-index',
               key_name: 'conversation_id',
-              key_value: thread.conversation_id
+              key_value: thread.conversation_id,
+              account_id: userId
             }),
           });
 
-          const messages = await messagesResponse.json();
-          
-          if (!Array.isArray(messages)) {
-            console.error('Invalid messages response format for thread:', thread.conversation_id);
-            return {
-              thread,
-              messages: [],
-              error: 'Invalid messages format'
-            };
-          }
-
+          const messages = messagesResponse.ok ? await messagesResponse.json() : [];
           return {
             thread,
-            messages,
+            messages: Array.isArray(messages) ? messages : []
           };
         } catch (error) {
-          console.error('Error fetching messages for thread:', thread.conversation_id, error);
+          console.error(`[get_all_threads] Error fetching messages for thread ${thread.conversation_id}:`, error);
           return {
             thread,
-            messages: [],
-            error: error instanceof Error ? error.message : 'Unknown error'
+            messages: []
           };
         }
       })
     );
 
-    // Filter out any conversations that had errors
-    const validConversations = conversationsWithMessages.filter(conv => !conv.error);
-    const failedConversations = conversationsWithMessages.filter(conv => conv.error);
-
-    if (failedConversations.length > 0) {
-      console.warn(`Failed to fetch messages for ${failedConversations.length} threads`);
-    }
-
     return NextResponse.json({
       success: true,
-      data: validConversations,
-      warnings: failedConversations.length > 0 ? {
-        failedThreads: failedConversations.map(conv => ({
-          conversation_id: conv.thread.conversation_id,
-          error: conv.error
-        }))
-      } : undefined
+      data: conversationsWithMessages
     });
 
-  } catch (error: any) {
-    console.error('Error in get_all_threads route:', error);
+  } catch (error) {
+    console.error('[get_all_threads] Unexpected error:', error);
     return NextResponse.json(
-      { 
-        success: false,
-        error: error.message || 'Internal server error',
-        retryable: error.message?.includes('fetch') || false
-      },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
