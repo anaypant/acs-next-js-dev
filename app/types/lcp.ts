@@ -1,42 +1,83 @@
-// Types for Lead Conversion Pipeline (LCP)
-// Easily extensible for future attributes
+/**
+ * File: app/types/lcp.ts
+ * Purpose: Type definitions for the Lead Conversion Pipeline (LCP)
+ * Author: Gemini
+ * Date: 07/19/2024
+ * Version: 2.0.0
+ */
 
-export interface Thread {
-  conversation_id: string;
-  associated_account: string;
-  lcp_enabled: boolean;
-  read: boolean;
-  source: string;
-  source_name: string;
-  lcp_flag_threshold: number;
-  ai_summary: string;
-  budget_range: string;
-  preferred_property_types: string;
-  timeline: string;
-  phone?: string;
-  location?: string;
-  busy?: boolean; // true if LCP is busy, false otherwise
-  flag_for_review?: boolean; // true if conversation is flagged for review
-  flag_review_override?: string; // 'true' if review check is disabled, undefined or 'false' if enabled
-  spam?: boolean; // true if email is marked as spam
-  // [key: string]: any; // Uncomment to allow arbitrary extension
-}
+export type TimeRange = 'day' | 'week' | 'month' | 'year';
+
+export type MessageType = 'inbound-email' | 'outbound-email' | 'inbound-sms' | 'outbound-sms';
 
 export interface Message {
-  conversation_id: string;
-  response_id?: string;
-  associated_account: string;
-  body: string;
-  ev_score: number;
-  in_reply_to: string | null;
-  is_first_email: boolean;
-  receiver: string;
-  sender: string;
-  subject: string;
-  timestamp: string;
-  type: string;
+    id: string;
+    conversation_id: string;
+    response_id?: string;
+    type: MessageType;
+    content: string;
+    body: string;
+    subject: string;
+    timestamp: string;
+    sender: string;
+    recipient: string;
+    receiver: string;
+    associated_account: string;
+    ev_score?: number;
+    in_reply_to: string | null;
+    is_first_email: boolean;
+    metadata: Record<string, any>;
+}
+
+export interface Thread {
+    conversation_id: string;
+    associated_account: string;
+    lcp_enabled: boolean;
+    read: boolean;
+    source: string;
+    source_name: string;
+    lcp_flag_threshold: number;
+    ai_summary: string;
+    budget_range: string;
+    preferred_property_types: string;
+    timeline: string;
+    phone?: string;
+    location?: string;
+    busy: boolean;
+    spam: boolean;
+    flag_for_review: boolean;
+    flag_review_override: boolean;
+    messages: Message[];
+    last_updated: string;
+    created_at: string;
+}
+
+export interface ThreadMetrics {
+    newLeads: number;
+    pendingReplies: number;
+    unopenedLeads: number;
+}
+
+export interface ThreadOperationResult {
+    success: boolean;
+    data?: any;
+    error?: string;
+}
+
+export interface DashboardFilters {
+    unread: boolean;
+    review: boolean;
+    completion: boolean;
+}
+
+export interface LeadPerformanceData {
+    threadId: string;
+    score: number;
+    timestamp: string;
+    source: string;
+    sourceName: string;
 }
 
 export type MessageWithResponseId = Message & {
-  response_id: string;
+    response_id: string;
 }; 

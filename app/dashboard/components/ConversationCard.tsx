@@ -12,7 +12,7 @@ import GradientText from './GradientText';
 import OverrideStatus from './OverrideStatus';
 import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, PanelLeft, AlertTriangle, RefreshCw, ChevronDown, X, Shield, ShieldOff } from "lucide-react"
 import { useRouter } from "next/navigation";
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 /**
  * Props interface for ConversationCard component
@@ -93,28 +93,63 @@ const ConversationCard = ({
     handleDeleteThread,
 }: ConversationCardProps) => {
     const router = useRouter();
+    // Add local state for LCP status
+    const [localLcpEnabled, setLocalLcpEnabled] = useState(conv.lcp_enabled);
+    const [isUpdatingLcp, setIsUpdatingLcp] = useState(false);
+
+    // Update local state when prop changes
+    useEffect(() => {
+        setLocalLcpEnabled(conv.lcp_enabled);
+    }, [conv.lcp_enabled]);
+
+    // Handle LCP toggle with local state management
+    const handleLocalLcpToggle = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (isUpdatingLcp) return;
+
+        setIsUpdatingLcp(true);
+        try {
+            // Optimistically update UI
+            setLocalLcpEnabled(!localLcpEnabled);
+            // Call the parent handler
+            await handleLcpToggle(conv.conversation_id, localLcpEnabled);
+        } catch (error) {
+            // Revert on error
+            setLocalLcpEnabled(localLcpEnabled);
+            console.error('Error toggling LCP:', error);
+        } finally {
+            setIsUpdatingLcp(false);
+        }
+    };
+
+    console.log(rawThread);
     const messages: Message[] = rawThread?.messages || [];
     const sortedMessages = [...messages].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    const latestMessage = sortedMessages[0];
 
-    // Find the most recent message with an EV score
+    // Find the earliest message for subject
+    const earliestMessage = messages.length > 0
+        ? [...messages].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())[0]
+        : undefined;
+    const subject = earliestMessage?.subject || 'No subject';
+
+    // Find the most recent evaluable message for EV score
     const evMessage = sortedMessages.find((msg: Message) => {
         const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
         return score !== undefined && score !== null && !isNaN(score);
     });
-
     const ev_score = evMessage ? (typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score) : -1;
+    const score = typeof ev_score === 'number' && !isNaN(ev_score) ? ev_score : -1;
 
     let evColor = 'bg-gray-200 text-gray-700';
-    if (ev_score >= 0 && ev_score <= 39) evColor = 'bg-red-100 text-red-800';
-    else if (ev_score >= 40 && ev_score <= 69) evColor = 'bg-yellow-100 text-yellow-800';
-    else if (ev_score >= 70 && ev_score <= 100) evColor = 'bg-green-100 text-green-800';
+    if (score >= 0 && score <= 39) evColor = 'bg-red-100 text-red-800';
+    else if (score >= 40 && score <= 69) evColor = 'bg-yellow-100 text-yellow-800';
+    else if (score >= 70 && score <= 100) evColor = 'bg-green-100 text-green-800';
 
-    const isPendingReply = latestMessage?.type === 'inbound-email';
+    const isPendingReply = earliestMessage?.type === 'inbound-email';
 
     // Get the color for this conversation
     const circleColor = getConversationColor(conv.conversation_id);
-    const initials = (latestMessage?.sender || latestMessage?.receiver || 'C')
+    const initials = (earliestMessage?.sender || earliestMessage?.receiver || 'C')
         .split(' ')
         .map((n: string) => n[0].toUpperCase())
         .join('');
@@ -134,7 +169,7 @@ const ConversationCard = ({
             className={`flex flex-col sm:flex-row items-stretch gap-2 sm:gap-3 md:gap-4 p-2 sm:p-3 md:p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors relative ${
                 conv.flag_for_review
                     ? 'flagged-review'
-                    : ev_score > conv.lcp_flag_threshold
+                    : score > conv.lcp_flag_threshold
                     ? 'flagged-completion'
                     : 'border-[#0e6537]/20'
             }`}
@@ -147,7 +182,7 @@ const ConversationCard = ({
                     <span className="xs:hidden">Review</span>
                 </div>
             )}
-            {!conv.flag_for_review && ev_score > conv.lcp_flag_threshold && (
+            {!conv.flag_for_review && score > conv.lcp_flag_threshold && (
                 <div className="absolute -top-2 -right-2 bg-green-400 text-green-900 px-2 py-0.5 rounded-full text-xs font-semibold shadow-sm flex items-center gap-1">
                     <CheckCircle className="w-3 h-3" />
                     <span className="hidden xs:inline">Flagged for Completion</span>
@@ -181,7 +216,7 @@ const ConversationCard = ({
             <div className="flex-1 flex flex-col min-w-0 justify-between">
                 <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
                     <div className="flex items-center gap-1">
-                        <p className="font-medium text-xs sm:text-sm truncate max-w-[150px] xs:max-w-[200px] sm:max-w-none">{conv.source_name || latestMessage?.sender || latestMessage?.receiver || 'Unknown'}</p>
+                        <p className="font-medium text-xs sm:text-sm truncate max-w-[150px] xs:max-w-[200px] sm:max-w-none">{conv.source_name || earliestMessage?.sender || earliestMessage?.receiver || 'Unknown'}</p>
                         {isPendingReply && (
                             <span className="flex items-center gap-1 text-amber-600" title="Awaiting your reply">
                                 <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
@@ -202,35 +237,32 @@ const ConversationCard = ({
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                     <span className={`px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-xs font-medium whitespace-nowrap ${evColor}`} title="Engagement Value (0=bad, 100=good)">
-                        EV: {ev_score >= 0 ? ev_score : 'N/A'}
+                        EV: {score >= 0 ? score.toString() : 'N/A'}
                     </span>
-                    {ev_score > conv.lcp_flag_threshold && !conv.flag_for_review && (
+                    {score > conv.lcp_flag_threshold && !conv.flag_for_review && (
                         <span className="flex items-center gap-1 text-green-600 font-bold" title="Flagged for completion">
                             <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" /> 
                             <span className="hidden xs:inline">Flagged</span>
                         </span>
                     )}
-                    <OverrideStatus isEnabled={conv.flag_review_override === 'true'} />
+                    <OverrideStatus isEnabled={Boolean(conv.flag_review_override)} />
                     <button
                         className={`flex items-center gap-1 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-xs font-semibold transition-colors duration-200 shadow-sm whitespace-nowrap
-                            ${conv.lcp_enabled ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}
-                            ${updatingLcp === conv.conversation_id ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        onClick={e => {
-                            e.stopPropagation();
-                            handleLcpToggle(conv.conversation_id, conv.lcp_enabled);
-                        }}
-                        disabled={updatingLcp === conv.conversation_id}
-                        title={conv.lcp_enabled ? 'Disable LCP' : 'Enable LCP'}
+                            ${localLcpEnabled ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}
+                            ${isUpdatingLcp ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        onClick={handleLocalLcpToggle}
+                        disabled={isUpdatingLcp}
+                        title={localLcpEnabled ? 'Disable LCP' : 'Enable LCP'}
                     >
-                        {updatingLcp === conv.conversation_id ? (
+                        {isUpdatingLcp ? (
                             <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                        ) : conv.lcp_enabled ? (
+                        ) : localLcpEnabled ? (
                             <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
                         ) : (
                             <XCircle className="w-3 h-3 sm:w-4 sm:h-4" />
                         )}
-                        <span className="hidden xs:inline">{conv.lcp_enabled ? 'LCP On' : 'LCP Off'}</span>
-                        <span className="xs:hidden">{conv.lcp_enabled ? 'On' : 'Off'}</span>
+                        <span className="hidden xs:inline">{localLcpEnabled ? 'LCP On' : 'LCP Off'}</span>
+                        <span className="xs:hidden">{localLcpEnabled ? 'On' : 'Off'}</span>
                     </button>
                     <button
                         className={`flex items-center gap-1 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-xs font-semibold transition-colors duration-200 shadow-sm whitespace-nowrap
@@ -240,7 +272,7 @@ const ConversationCard = ({
                             e.stopPropagation();
                             handleDeleteThread(
                                 conv.conversation_id,
-                                conv.source_name || latestMessage?.sender || latestMessage?.receiver || 'Unknown'
+                                conv.source_name || earliestMessage?.sender || earliestMessage?.receiver || 'Unknown'
                             );
                         }}
                         disabled={deletingThread === conv.conversation_id}
@@ -254,7 +286,7 @@ const ConversationCard = ({
                         <span className="hidden xs:inline">Delete</span>
                     </button>
                 </div>
-                <p className="text-xs text-gray-600 mb-0.5 sm:mb-1 truncate">{latestMessage?.subject || 'No subject'}</p>
+                <p className="text-xs text-gray-600 mb-0.5 sm:mb-1 truncate">{subject}</p>
                 <p className="text-xs text-gray-500 italic mb-0.5 sm:mb-1 line-clamp-1">
                     Summary: <span className="not-italic text-gray-700">
                         {(() => {
@@ -269,13 +301,13 @@ const ConversationCard = ({
                         })()}
                     </span>
                 </p>
-                <p className="text-xs text-gray-400">{latestMessage?.timestamp ? new Date(latestMessage.timestamp).toLocaleString() : ''}</p>
+                <p className="text-xs text-gray-400">{earliestMessage?.timestamp ? new Date(earliestMessage.timestamp).toLocaleString() : ''}</p>
             </div>
             <div className="flex-[1.2] flex items-center justify-center min-w-0 pl-6">
                 <GradientText
-                    text={latestMessage?.body || ''}
+                    text={earliestMessage?.body || ''}
                     isPending={isPendingReply}
-                    messageType={latestMessage?.type}
+                    messageType={earliestMessage?.type}
                 />
             </div>
             <div className="flex flex-col justify-center items-end w-full sm:w-24 md:w-28 pl-2">

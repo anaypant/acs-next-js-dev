@@ -9,7 +9,6 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { ThreadsProvider } from './context/ThreadsContext';
 import type { Session } from 'next-auth';
 
 interface DashboardLayoutProps {
@@ -20,8 +19,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const { data: session } = useSession() as { data: Session | null };
   
   return (
-    <ThreadsProvider session={session}>
+    <>
       {children}
-    </ThreadsProvider>
+    </>
   );
 } 

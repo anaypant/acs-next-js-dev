@@ -180,6 +180,11 @@ export default function ConversationsPage() {
         timeline: item.thread?.timeline || '',
         busy: parseBoolean(item.thread?.busy),
         spam: parseBoolean(item.thread?.spam),
+        flag_for_review: parseBoolean(item.thread?.flag_for_review),
+        flag_review_override: parseBoolean(item.thread?.flag_review_override),
+        messages: item.messages || [],
+        last_updated: item.thread?.last_updated || new Date().toISOString(),
+        created_at: item.thread?.created_at || new Date().toISOString()
       }));
       setConversations(parsedConversations);
       setRawThreads(sortedData);

@@ -11,7 +11,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts"
-import { useSession } from "next-auth/react"
+import { useSession, Session } from "next-auth/react"
 import { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
 import { format, subHours, subDays, subMonths, parse } from 'date-fns';
@@ -53,7 +53,7 @@ const DATE_RANGES = [
   { label: "Last Year", value: "1y" },
 ];
 
-function filterByDateRange(invocations, range) {
+function filterByDateRange(invocations: UsageStats['invocations'], range: string) {
   if (!range) return invocations;
   const now = new Date();
   let fromDate;
@@ -73,7 +73,7 @@ function filterByDateRange(invocations, range) {
     default:
       return invocations;
   }
-  return invocations.filter(inv => new Date(inv.timestamp) >= fromDate);
+  return invocations.filter((inv: { timestamp: number }) => new Date(inv.timestamp) >= fromDate);
 }
 
 function generateTimeKeys(range: string) {
@@ -103,11 +103,9 @@ function groupInvocations(invocations: { timestamp: number }[], range: string) {
   const counts: Record<string, number> = {};
   invocations.forEach(inv => {
     const localDate = new Date(inv.timestamp);
-    let key: string;
+    let key = format(localDate, 'yyyy-MM-dd'); // Default format
     if (range === '24h') {
       key = format(localDate, 'yyyy-MM-dd HH:00');
-    } else if (range === '7d' || range === '30d') {
-      key = format(localDate, 'yyyy-MM-dd');
     } else if (range === '1y') {
       key = format(localDate, 'yyyy-MM');
     }
@@ -145,7 +143,7 @@ function getXAxisInterval(dateRange: string) {
 }
 
 export default function UsagePage() {
-  const { data: session } = useSession()
+  const { data: session } = useSession() as { data: Session | null }
   const [stats, setStats] = useState<UsageStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState("")
@@ -280,7 +278,7 @@ export default function UsagePage() {
           {payload.map((entry: any, index: number) => {
             const thread = entry.payload
             return (
-              <div key={index} className="mb-1">
+              <div key={`tooltip-${thread?.threadId || index}`} className="mb-1">
                 <p className="text-sm">
                   {thread?.conversationUrl ? (
                     <Link
@@ -349,9 +347,9 @@ export default function UsagePage() {
           <TabsTrigger value="conversations">By Conversation</TabsTrigger>
         </TabsList>
         <div className="flex gap-2 my-2">
-          {DATE_RANGES.map(range => (
+          {DATE_RANGES.map((range, index) => (
             <button
-              key={range.value}
+              key={`date-range-${range.value}`}
               onClick={() => setDateRange(range.value)}
               className={`px-3 py-1 rounded border text-sm ${dateRange === range.value ? 'bg-[#0a5a2f] text-white' : 'bg-white text-black border-gray-300'}`}
             >
@@ -469,7 +467,7 @@ export default function UsagePage() {
                   </thead>
                   <tbody>
                     {filteredThreads.map((thread, index) => (
-                      <tr key={thread.threadId || `thread-${index}`} className="border-b">
+                      <tr key={`thread-${thread.threadId || `unnamed-${index}`}`} className="border-b">
                         <td className="py-2">
                           <input
                             type="checkbox"

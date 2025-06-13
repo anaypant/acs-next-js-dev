@@ -14,64 +14,41 @@ import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState, useCallback, useMemo } from "react"
 import { goto404 } from "../utils/error"
+import type { Thread, Message, MessageWithResponseId, TimeRange } from "@/app/types/lcp"
 import type { Session } from "next-auth"
-import type { Thread as DashboardThread } from './lib/types/threads';
-import type { Thread as LcpThread } from '../types/lcp';
-import type { Message, MessageWithResponseId, MessageType } from '../types/messages';
 import LeadFunnel from './components/LeadFunnel'
 import LeadReport from './components/LeadReport'
 import ConversationProgression from './components/ConversationProgression'
 import DeleteConfirmationModal from "./components/DeleteConfirmationModal"
-import DashboardStyles from "./components/DashboardStyles"
 import ConversationCard from "./components/ConversationCard"
-import { useThreads } from './hooks/useThreads'
-import { threadApi } from './lib/api/threads';
+import { useDashboard } from "./lib/dashboard-client"
+
+// Time range options
+const timeRangeOptions = [
+  { value: 'day' as const, label: 'Last 24 Hours' },
+  { value: 'week' as const, label: 'Last 7 Days' },
+  { value: 'month' as const, label: 'Last 30 Days' },
+  { value: 'year' as const, label: 'Last 12 Months' }
+] as const;
+
+// Helper function to get time range text
+const getTimeRangeText = (range: TimeRange): string => {
+  switch (range) {
+    case 'day': return 'Last 24 Hours';
+    case 'week': return 'Last 7 Days';
+    case 'month': return 'Last 30 Days';
+    case 'year': return 'Last 12 Months';
+    default: return 'Last 24 Hours';
+  }
+};
 
 // Helper function to get the latest message with a response ID
-const getLatestEvaluableMessage = (messages: any[]): MessageWithResponseId | undefined => {
+const getLatestEvaluableMessage = (messages: Message[]): MessageWithResponseId | undefined => {
   if (!messages) return undefined;
   return messages
     .filter((msg): msg is MessageWithResponseId => Boolean(msg.response_id))
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
 };
-
-// Helper function to ensure message has required fields
-const ensureMessageFields = (msg: any): Message => ({
-  id: msg.id || msg.conversation_id,
-  conversation_id: msg.conversation_id,
-  response_id: msg.response_id,
-  type: msg.type as MessageType,
-  content: msg.content || msg.body || '',
-  body: msg.body || msg.content || '',
-  subject: msg.subject || '',
-  timestamp: msg.timestamp,
-  sender: msg.sender,
-  recipient: msg.recipient || msg.receiver,
-  receiver: msg.receiver || msg.recipient,
-  associated_account: msg.associated_account || msg.sender,
-  ev_score: typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score,
-  in_reply_to: msg.in_reply_to || null,
-  is_first_email: msg.is_first_email || false,
-  metadata: msg.metadata || {},
-});
-
-// Helper to flatten API response
-function flattenThreadApiResponse(apiResponse: any[]) {
-  return apiResponse.map(item => {
-    const thread = item.thread || {};
-    const messages = item.messages || [];
-    // Find the latest message (by timestamp)
-    const latestMessage = messages.length > 0
-      ? messages.slice().sort((a: { timestamp: string }, b: { timestamp: string }) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
-      : null;
-    return {
-      ...thread,
-      ai_summary: thread.ai_summary || '',
-      messages,
-      latestMessage,
-    };
-  });
-}
 
 /**
  * Page Component
@@ -87,119 +64,121 @@ function flattenThreadApiResponse(apiResponse: any[]) {
  * @returns {JSX.Element} Complete dashboard view with sidebar integration
  */
 export default function Page() {
-  const { data: session, status } = useSession() as { data: Session | null, status: string }
-  const router = useRouter()
-  const [mounted, setMounted] = useState(false)
-  
   const {
-    threads: conversations,
-    threads: rawThreads,
-    loading: loadingConversations,
+    session,
+    conversations,
+    loadingConversations,
+    updatingLcp,
+    updatingRead,
+    deletingThread,
+    deleteModalOpen,
+    threadToDelete,
+    showFunnel,
+    showProgression,
+    timeRange,
+    showTimeRangeDropdown,
+    leadPerformanceData,
+    loadingLeadPerformance,
+    refreshingLeadPerformance,
+    filters,
     metrics,
-    operations: {
-      fetch: fetchThreads,
-      update: handleMarkAsRead,
-      toggleLcp: handleLcpToggle,
-      delete: handleDeleteThread,
-    },
-  } = useThreads();
+    filteredConversations,
+    setDeleteModalOpen,
+    setThreadToDelete,
+    setShowFunnel,
+    setShowProgression,
+    setTimeRange,
+    setShowTimeRangeDropdown,
+    toggleFilter,
+    loadThreads,
+    handleMarkAsRead,
+    handleLcpToggle,
+    handleDeleteThread,
+    confirmDelete,
+    refreshLeadPerformance,
+  } = useDashboard();
 
-  // Local state for UI
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedThreadToDelete, setSelectedThreadToDelete] = useState<DashboardThread | null>(null);
-  const [updatingLcp, setUpdatingLcp] = useState<string | null>(null);
-  const [updatingRead, setUpdatingRead] = useState<string | null>(null);
-  const [deletingThread, setDeletingThread] = useState<string | null>(null);
-
-  const [showFunnel, setShowFunnel] = useState(true)
-  const [showProgression, setShowProgression] = useState(false)
-  const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month' | 'year'>('week')
-  const [showTimeRangeDropdown, setShowTimeRangeDropdown] = useState(false)
-
-  // Add new state for filters
-  const [filters, setFilters] = useState({
-    unread: false,
-    review: false,
-    completion: false
-  });
+  const [mounted, setMounted] = useState(false);
 
   // Handle mounting state to prevent hydration mismatch
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    setMounted(true);
+  }, []);
 
-  // Fetch threads and lead performance data when session is available
-  useEffect(() => {
-    if (status === 'authenticated' && session?.user?.id) {
-      // Initial fetch when component mounts
-      fetchThreads();
-      
-      // Set up periodic refresh every 5 minutes
-      const refreshInterval = setInterval(() => {
-        if (session?.user?.id) {  // Check again before refresh
-          fetchThreads();
-        }
-      }, 5 * 60 * 1000); // 5 minutes
-
-      // Cleanup interval on unmount
-      return () => {
-        clearInterval(refreshInterval);
-      };
-    }
-  }, [status, session?.user?.id, fetchThreads]); // Added session?.user?.id to dependencies
-
-  // Time range options
-  const timeRangeOptions = [
-    { value: 'day', label: 'Last 24 Hours' },
-    { value: 'week', label: 'Last 7 Days' },
-    { value: 'month', label: 'Last 30 Days' },
-    { value: 'year', label: 'Last 12 Months' }
-  ];
-
-  // Check authentication status
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      goto404("401", "No active session found", router)
-    }
-  }, [status, router])
-
-  // Remove the loadingLeadPerformance state since we're not using it for initial load
-  const [refreshingLeadPerformance, setRefreshingLeadPerformance] = useState(false);
-
-  // Update the refresh function to handle loading state
-  const refreshLeadPerformance = useCallback(async () => {
-    if (!session?.user?.id) return;
-    
-    try {
-      setRefreshingLeadPerformance(true);
-      await fetchThreads();
-    } catch (error) {
-      console.error('Error refreshing lead performance:', error);
-    } finally {
-      setRefreshingLeadPerformance(false);
-    }
-  }, [session?.user?.id, fetchThreads]);
-
-  // Update the time range text based on selection
-  const getTimeRangeText = () => {
-    switch (timeRange) {
-      case 'day':
-        return 'Last 24 Hours';
-      case 'week':
-        return 'Last 7 Days';
-      case 'month':
-        return 'Last 30 Days';
-      case 'year':
-        return 'Last 12 Months';
-      default:
-        return 'Last 24 Hours';
-    }
-  };
-
-  // Add CSS for pulsating glow effect
+  // Add CSS for animations and effects
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
+      /* Icon Animation */
+      @keyframes icon-slide-scale {
+        0% { transform: scale(1) translateX(0); color: #166534; }
+        60% { transform: scale(1.18) translateX(8px); color: #22c55e; }
+        100% { transform: scale(1.12) translateX(6px); color: #16a34a; }
+      }
+      .icon-animate-hover:hover svg {
+        animation: icon-slide-scale 0.5s cubic-bezier(0.4,0,0.2,1) forwards;
+      }
+      .icon-animate-active:active svg {
+        transform: scale(0.92) translateX(0);
+        transition: transform 0.1s;
+      }
+
+      /* Triple Arrow Animation */
+      @keyframes arrow-move {
+        0% { transform: translateX(0); opacity: 1; }
+        60% { transform: translateX(12px); opacity: 1; }
+        100% { transform: translateX(20px); opacity: 0; }
+      }
+      .arrow-animate-hover:hover .arrow-1 {
+        animation: arrow-move 0.4s cubic-bezier(0.4,0,0.2,1) 0s forwards;
+      }
+      .arrow-animate-hover:hover .arrow-2 {
+        animation: arrow-move 0.4s cubic-bezier(0.4,0,0.2,1) 0.08s forwards;
+      }
+      .arrow-animate-hover:hover .arrow-3 {
+        animation: arrow-move 0.4s cubic-bezier(0.4,0,0.2,1) 0.16s forwards;
+      }
+      .arrow-animate-hover .arrow-1,
+      .arrow-animate-hover .arrow-2,
+      .arrow-animate-hover .arrow-3 {
+        transition: transform 0.2s, opacity 0.2s;
+      }
+      .arrow-animate-hover:not(:hover) .arrow-1,
+      .arrow-animate-hover:not(:hover) .arrow-2,
+      .arrow-animate-hover:not(:hover) .arrow-3 {
+        transform: translateX(0); opacity: 1;
+        animation: none;
+      }
+
+      /* Flagged Glow Effects */
+      @keyframes flagged-review-glow {
+        0% { box-shadow: 0 0 5px rgba(234, 179, 8, 0.5), 0 0 10px rgba(234, 179, 8, 0.3); }
+        50% { box-shadow: 0 0 10px rgba(234, 179, 8, 0.7), 0 0 20px rgba(234, 179, 8, 0.5); }
+        100% { box-shadow: 0 0 5px rgba(234, 179, 8, 0.5), 0 0 10px rgba(234, 179, 8, 0.3); }
+      }
+      @keyframes flagged-completion-glow {
+        0% { box-shadow: 0 0 5px rgba(34, 197, 94, 0.3), 0 0 10px rgba(34, 197, 94, 0.2); }
+        50% { box-shadow: 0 0 10px rgba(34, 197, 94, 0.4), 0 0 20px rgba(34, 197, 94, 0.3); }
+        100% { box-shadow: 0 0 5px rgba(34, 197, 94, 0.3), 0 0 10px rgba(34, 197, 94, 0.2); }
+      }
+      .flagged-review {
+        animation: flagged-review-glow 2s infinite;
+        border: 2px solid #eab308;
+        background: linear-gradient(to right, rgba(234, 179, 8, 0.05), rgba(234, 179, 8, 0.02));
+      }
+      .flagged-review:hover {
+        background: linear-gradient(to right, rgba(234, 179, 8, 0.08), rgba(234, 179, 8, 0.04));
+      }
+      .flagged-completion {
+        animation: flagged-completion-glow 2s infinite;
+        border: 2px solid #22c55e;
+        background: linear-gradient(to right, rgba(34, 197, 94, 0.05), rgba(34, 197, 94, 0.02));
+      }
+      .flagged-completion:hover {
+        background: linear-gradient(to right, rgba(34, 197, 94, 0.08), rgba(34, 197, 94, 0.04));
+      }
+
+      /* Pulsating effect for busy cards */
       @keyframes pulsate {
         0% { box-shadow: 0 0 0 0 rgba(14, 101, 55, 0.4); }
         70% { box-shadow: 0 0 0 10px rgba(14, 101, 55, 0); }
@@ -217,48 +196,20 @@ export default function Page() {
     };
   }, []);
 
-  // Add filter toggle function
-  const toggleFilter = (filter: keyof typeof filters) => {
-    setFilters(prev => ({
-      ...prev,
-      [filter]: !prev[filter]
-    }));
-  };
-
   // Memoize filter counts
   const filterCounts = useMemo(() => {
-    const unread = conversations.filter((c: DashboardThread) => !c.read).length;
-    const review = conversations.filter((c: DashboardThread) => c.flag_for_review).length;
-    
-    const completion = conversations.filter((c: DashboardThread) => {
-      const rawThread = rawThreads.find((t: any) => t.thread?.conversation_id === c.conversation_id);
-      const messages = (rawThread?.messages || []).map(ensureMessageFields);
-      const evMessage = getLatestEvaluableMessage(messages);
-      if (!evMessage) return false;
-
-      const ev_score = evMessage.ev_score ?? 0;
-      return ev_score > c.lcp_flag_threshold && !c.flag_for_review;
+    const unread = conversations.filter((c: Thread) => !c.read).length;
+    const review = conversations.filter((c: Thread) => c.flag_for_review).length;
+    const completion = conversations.filter((c: Thread) => {
+      const evMessage = getLatestEvaluableMessage(c.messages);
+      const ev_score = evMessage?.ev_score ?? 0;
+      return ev_score > (c.lcp_flag_threshold ?? 70) && !c.flag_for_review;
     }).length;
 
     return { unread, review, completion };
-  }, [conversations, rawThreads]);
+  }, [conversations]);
 
-  // Update filteredConversations to use threads from context directly
-  const filteredConversations = useMemo(() => {
-    return rawThreads.filter((conv: any) => {
-      if (conv.spam) return false;
-      const messages = (conv.messages || []).map(ensureMessageFields);
-      const evMessage = getLatestEvaluableMessage(messages);
-      const ev_score = evMessage?.ev_score ?? -1;
-      const isFlaggedForCompletion = ev_score > conv.lcp_flag_threshold;
-      if (filters.unread && !conv.read) return true;
-      if (filters.review && conv.flag_for_review) return true;
-      if (filters.completion && isFlaggedForCompletion && !conv.flag_for_review) return true;
-      if (!filters.unread && !filters.review && !filters.completion) return true;
-      return false;
-    });
-  }, [rawThreads, filters]);
-
+  // Memoize recent leads based on time range
   const recentLeads = useMemo(() => {
     const now = new Date();
     const timeRanges = {
@@ -267,72 +218,37 @@ export default function Page() {
       month: 30 * 24 * 60 * 60 * 1000,
       year: 365 * 24 * 60 * 60 * 1000,
     };
-    const timeLimit = now.getTime() - (timeRanges[timeRange] || timeRanges.week);
+    const timeLimit = now.getTime() - (timeRanges[timeRange as TimeRange] || timeRanges.week);
 
-    const filtered = rawThreads.filter((thread: any) => {
-      const firstMessage = thread.messages?.[0];
-      if (!firstMessage) {
-        return false;
-      }
-      const messageDate = new Date(firstMessage.timestamp);
-      const isInRange = messageDate.getTime() >= timeLimit;
-      return isInRange;
+    return leadPerformanceData.filter(lead => {
+      const messageDate = new Date(lead.timestamp);
+      return messageDate.getTime() >= timeLimit;
     });
-    return filtered;
-  }, [rawThreads, timeRange]);
+  }, [leadPerformanceData, timeRange]);
 
+  // Calculate average EV score
   const averageEvScore = useMemo(() => {
     if (recentLeads.length === 0) return 0;
-    
-    const threadsWithScores = recentLeads.map((thread: any) => {
-      const messages = (thread.messages || []).map(ensureMessageFields);
-      const evMessage = messages
-        .sort((a: Message, b: Message) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-        .find((msg: Message) => msg.ev_score !== undefined && msg.ev_score !== null && !isNaN(msg.ev_score));
-
-      return evMessage?.ev_score ?? null;
-    }).filter((score): score is number => score !== null);
-
-    if (threadsWithScores.length === 0) return 0;
-    const totalEv = threadsWithScores.reduce((sum: number, score: number) => sum + score, 0);
-    return Math.round(totalEv / threadsWithScores.length);
+    const totalEv = recentLeads.reduce((sum: number, lead) => sum + (lead.score ?? 0), 0);
+    return Math.round(totalEv / recentLeads.length);
   }, [recentLeads]);
 
+  // Calculate conversion rate
   const conversionRate = useMemo(() => {
     if (recentLeads.length === 0) return 0;
-
-    const flaggedLeads = recentLeads.filter((thread: any) => {
-      const messages = (thread.messages || []).map(ensureMessageFields);
-      const evMessage = messages
-        .sort((a: Message, b: Message) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-        .find((msg: Message) => {
-          const score = msg.ev_score;
-          return typeof score === 'number' && !isNaN(score) && score >= 0 && score <= 100;
-        });
-
-      const evScore = evMessage?.ev_score ?? 0;
-      return evScore > (thread.thread?.lcp_flag_threshold || 70);
-    });
-
+    const flaggedLeads = recentLeads.filter(lead => (lead.score ?? 0) >= 70);
     return Math.round((flaggedLeads.length / recentLeads.length) * 100);
   }, [recentLeads]);
 
+  // Calculate average time to convert
   const avgTimeToConvert = useMemo(() => {
-    const conversionTimes = recentLeads.map((thread: any) => {
-      const messages = (thread.messages || []).map(ensureMessageFields);
-      const firstMessage = messages[0];
-      const evMessage = messages
-        .sort((a: Message, b: Message) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-        .find((msg: Message) => {
-          const score = msg.ev_score;
-          return typeof score === 'number' && !isNaN(score) && score > (thread.thread?.lcp_flag_threshold || 70);
-        });
-
-      if (!firstMessage || !evMessage) return null;
-      const startTime = new Date(firstMessage.timestamp);
-      const endTime = new Date(evMessage.timestamp);
-      return (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60); // Convert to hours
-    }).filter((time): time is number => time !== null);
+    const conversionTimes = recentLeads
+      .filter(lead => (lead.score ?? 0) >= 70)
+      .map(lead => {
+        const startTime = new Date(lead.timestamp);
+        const endTime = new Date(lead.timestamp);
+        return (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60); // Convert to hours
+      });
 
     if (conversionTimes.length === 0) return 'N/A';
     const avgHours = conversionTimes.reduce((sum: number, time: number) => sum + time, 0) / conversionTimes.length;
@@ -341,34 +257,8 @@ export default function Page() {
       : `${Math.round(avgHours / 24)}d`;
   }, [recentLeads]);
 
-  // Wrapper functions to handle type conversion
-  const handleMarkAsReadWrapper = useCallback((conversationId: string) => {
-    console.log('[UI] Mark as read clicked for:', conversationId);
-    handleMarkAsRead(conversationId, { read: true });
-  }, [handleMarkAsRead]);
-
-  const handleLcpToggleWrapper = useCallback((conversationId: string) => {
-    console.log('[UI] Toggle LCP clicked for:', conversationId);
-    handleLcpToggle(conversationId);
-  }, [handleLcpToggle]);
-
-  const handleDeleteThreadWrapper = useCallback((conversationId: string) => {
-    console.log('[UI] Delete thread clicked for:', conversationId);
-    handleDeleteThread(conversationId);
-  }, [handleDeleteThread]);
-
-  // Update DeleteConfirmationModal props
-  const confirmDelete = useCallback(() => {
-    if (selectedThreadToDelete) {
-      handleDeleteThread(selectedThreadToDelete.conversation_id);
-      setIsDeleteModalOpen(false);
-      setSelectedThreadToDelete(null);
-    }
-  }, [selectedThreadToDelete, handleDeleteThread]);
-
   return (
-    <>
-      <DashboardStyles />
+    <div className="min-h-screen bg-gray-50">
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset>
@@ -382,13 +272,13 @@ export default function Page() {
 
           {/* Add DeleteConfirmationModal */}
           <DeleteConfirmationModal
-            isOpen={isDeleteModalOpen}
+            isOpen={deleteModalOpen}
             onClose={() => {
-              setIsDeleteModalOpen(false);
-              setSelectedThreadToDelete(null);
+              setDeleteModalOpen(false);
+              setThreadToDelete(null);
             }}
-            onConfirm={confirmDelete}
-            conversationName={selectedThreadToDelete?.conversation_id || 'Unknown'}
+            onConfirm={() => threadToDelete && confirmDelete(threadToDelete)}
+            conversationName={threadToDelete?.name || 'Unknown'}
             isDeleting={deletingThread !== null}
           />
 
@@ -478,67 +368,42 @@ export default function Page() {
                       {/* Centered filter bar with label */}
                       <div className="flex items-center gap-1 px-3 py-1 bg-gray-50 rounded-lg border border-gray-200 mx-auto">
                         <span className="text-sm font-medium text-gray-700 mr-1">Filters:</span>
-                        <button
-                          onClick={() => toggleFilter('unread')}
-                          className={`p-1.5 rounded-md transition-all duration-200 relative group ${
-                            filters.unread 
-                              ? 'bg-blue-100 text-blue-700' 
-                              : 'text-gray-600 hover:bg-gray-100'
-                          }`}
-                          title="Show unread messages"
-                        >
-                          <Bell className="w-4 h-4" />
-                          {filters.unread && (
-                            <span className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-blue-200 text-blue-700 rounded-full text-xs">
-                              {filterCounts.unread}
-                            </span>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => toggleFilter('review')}
-                          className={`p-1.5 rounded-md transition-all duration-200 relative group ${
-                            filters.review 
-                              ? 'bg-yellow-100 text-yellow-700' 
-                              : 'text-gray-600 hover:bg-gray-100'
-                          }`}
-                          title="Show flagged for review"
-                        >
-                          <Flag className="w-4 h-4" />
-                          {filters.review && (
-                            <span className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-yellow-200 text-yellow-700 rounded-full text-xs">
-                              {filterCounts.review}
-                            </span>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => toggleFilter('completion')}
-                          className={`p-1.5 rounded-md transition-all duration-200 relative group ${
-                            filters.completion 
-                              ? 'bg-green-100 text-green-700' 
-                              : 'text-gray-600 hover:bg-gray-100'
-                          }`}
-                          title="Show flagged for completion"
-                        >
-                          <CheckCircle className="w-4 h-4" />
-                          {filters.completion && (
-                            <span className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-green-200 text-green-700 rounded-full text-xs">
-                              {filterCounts.completion}
-                            </span>
-                          )}
-                        </button>
-                        {(filters.unread || filters.review || filters.completion) && (
+                        <div className="flex flex-wrap gap-2">
                           <button
-                            onClick={() => setFilters({ unread: false, review: false, completion: false })}
-                            className="p-1.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
-                            title="Clear all filters"
+                            onClick={() => toggleFilter('unread')}
+                            className={`px-2 py-1 text-xs sm:text-sm rounded-lg transition-colors ${
+                              filters.unread
+                                ? 'bg-[#0e6537] text-white'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
                           >
-                            <X className="w-4 h-4" />
+                            Unread ({filterCounts.unread})
                           </button>
-                        )}
+                          <button
+                            onClick={() => toggleFilter('review')}
+                            className={`px-2 py-1 text-xs sm:text-sm rounded-lg transition-colors ${
+                              filters.review
+                                ? 'bg-[#0e6537] text-white'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                          >
+                            Review ({filterCounts.review})
+                          </button>
+                          <button
+                            onClick={() => toggleFilter('completion')}
+                            className={`px-2 py-1 text-xs sm:text-sm rounded-lg transition-colors ${
+                              filters.completion
+                                ? 'bg-[#0e6537] text-white'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                          >
+                            Completion ({filterCounts.completion})
+                          </button>
+                        </div>
                       </div>
                       <button
                         className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm flex items-center gap-1 sm:gap-2 text-xs sm:text-sm md:text-base"
-                        onClick={() => fetchThreads()}
+                        onClick={() => loadThreads()}
                         disabled={loadingConversations}
                       >
                         <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${loadingConversations ? 'animate-spin' : ''}`} />
@@ -567,29 +432,23 @@ export default function Page() {
                           : "No conversations found."}
                       </div>
                     ) : (
-                      (() => {
-                        console.log(
-                          "Dashboard ConversationCard ai_summary debug:",
-                          filteredConversations.map((conv, idx) => ({
-                            idx,
-                            id: conv.conversation_id,
-                            ai_summary: conv.ai_summary
-                          }))
-                        );
-                        return filteredConversations.map((conv: any, idx: number) => (
+                      filteredConversations.map((conv: Thread) => {
+                        // Find the original thread data from the conversations array
+                        const rawThread = conversations.find((t: Thread) => t.conversation_id === conv.conversation_id);
+                        return (
                           <ConversationCard
-                            key={conv.conversation_id || idx}
+                            key={conv.conversation_id}
                             conv={conv}
-                            rawThread={conv}
+                            rawThread={rawThread}
                             updatingRead={updatingRead}
                             updatingLcp={updatingLcp}
                             deletingThread={deletingThread}
-                            handleMarkAsRead={handleMarkAsReadWrapper}
-                            handleLcpToggle={handleLcpToggleWrapper}
-                            handleDeleteThread={handleDeleteThreadWrapper}
+                            handleMarkAsRead={handleMarkAsRead}
+                            handleLcpToggle={handleLcpToggle}
+                            handleDeleteThread={handleDeleteThread}
                           />
-                        ));
-                      })()
+                        );
+                      })
                     )}
                   </div>
                 </div>
@@ -603,18 +462,18 @@ export default function Page() {
                     <div className="relative">
                       <button
                         onClick={() => setShowTimeRangeDropdown(!showTimeRangeDropdown)}
-                        className="flex items-center gap-1.5 px-2 py-1 text-xs sm:text-sm bg-[#0e6537]/10 text-[#0e6537] rounded-lg hover:bg-[#0e6537]/20 transition-colors"
+                        className="flex items-center gap-1 text-xs sm:text-sm text-gray-600 hover:text-gray-900"
                       >
-                        {timeRangeOptions.find(opt => opt.value === timeRange)?.label}
-                        <ChevronDown className={`w-3 h-3 sm:w-4 sm:h-4 transition-transform ${showTimeRangeDropdown ? 'rotate-180' : ''}`} />
+                        {getTimeRangeText(timeRange)}
+                        <ChevronDown className="w-4 h-4" />
                       </button>
                       {showTimeRangeDropdown && (
-                        <div className="absolute top-full right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                        <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
                           {timeRangeOptions.map((option) => (
                             <button
                               key={option.value}
                               onClick={() => {
-                                setTimeRange(option.value as 'day' | 'week' | 'month' | 'year');
+                                setTimeRange(option.value);
                                 setShowTimeRangeDropdown(false);
                               }}
                               className={`w-full text-left px-3 py-2 text-xs sm:text-sm hover:bg-gray-50 ${
@@ -637,29 +496,29 @@ export default function Page() {
                     </button>
                   </div>
                 </div>
-                <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4 md:mb-8">Your conversion metrics for {getTimeRangeText().toLowerCase()}</p>
+                <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4 md:mb-8">Your conversion metrics for {getTimeRangeText(timeRange).toLowerCase()}</p>
 
                 {/* Conditionally render Funnel or Report */}
                 {showFunnel ? (
                   <LeadFunnel 
                     userId={session?.user?.id} 
-                    leadData={rawThreads} 
-                    loading={refreshingLeadPerformance} 
+                    leadData={filteredConversations.map(thread => ({ thread, messages: thread.messages }))} 
+                    loading={loadingLeadPerformance} 
                     timeRange={timeRange}
                     onRefresh={refreshLeadPerformance}
                   />
                 ) : showProgression ? (
                   <ConversationProgression 
-                    leadData={rawThreads} 
-                    loading={refreshingLeadPerformance} 
+                    leadData={filteredConversations.map(thread => ({ thread, messages: thread.messages }))} 
+                    loading={loadingLeadPerformance} 
                     timeRange={timeRange}
                     onRefresh={refreshLeadPerformance}
                   />
                 ) : (
                   <LeadReport 
                     userId={session?.user?.id} 
-                    leadData={rawThreads} 
-                    loading={refreshingLeadPerformance} 
+                    leadData={filteredConversations.map(thread => ({ thread, messages: thread.messages }))} 
+                    loading={loadingLeadPerformance} 
                     timeRange={timeRange}
                     onRefresh={refreshLeadPerformance}
                   />
@@ -676,7 +535,8 @@ export default function Page() {
                         onClick: () => {
                           setShowFunnel(true);
                           setShowProgression(false);
-                        }
+                        },
+                        className: "px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm text-xs sm:text-sm md:text-base"
                       },
                       {
                         id: 'conversation-progression',
@@ -684,7 +544,8 @@ export default function Page() {
                         onClick: () => {
                           setShowFunnel(false);
                           setShowProgression(true);
-                        }
+                        },
+                        className: "px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm"
                       },
                       {
                         id: 'generate-report',
@@ -692,12 +553,13 @@ export default function Page() {
                         onClick: () => {
                           setShowFunnel(false);
                           setShowProgression(false);
-                        }
+                        },
+                        className: "px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm"
                       }
                     ].map(action => (
                       <button
                         key={action.id}
-                        className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm text-xs sm:text-sm md:text-base"
+                        className={action.className}
                         onClick={action.onClick}
                       >
                         {action.label}
@@ -725,13 +587,8 @@ export default function Page() {
                     <div key={source.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5 sm:gap-2">
                       <span className="text-xs sm:text-sm text-gray-600">{source.source}</span>
                       <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <div className="flex-1 sm:w-24 h-1.5 sm:h-2 bg-gray-200 rounded-full">
-                          <div
-                            className="h-1.5 sm:h-2 bg-[#0e6537] rounded-full"
-                            style={{ width: `${source.percentage}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-xs sm:text-sm font-medium">{source.count}</span>
+                        <span className="text-xs sm:text-sm font-medium text-gray-900">{source.count}</span>
+                        <span className="text-xs sm:text-sm text-gray-500">({source.percentage}%)</span>
                       </div>
                     </div>
                   ))}
@@ -748,7 +605,7 @@ export default function Page() {
                   <div className="bg-[#0e6537]/5 p-3 rounded-lg">
                     <div className="flex justify-between items-center mb-2">
                       <h4 className="text-sm font-medium text-gray-700">Average EV Score</h4>
-                      <span className="text-xs text-gray-500">{getTimeRangeText()}</span>
+                      <span className="text-xs text-gray-500">{getTimeRangeText(timeRange)}</span>
                     </div>
                     <div className="flex items-end gap-2">
                       <span className="text-2xl font-bold text-[#0e6537]">
@@ -762,7 +619,7 @@ export default function Page() {
                   <div className="bg-[#0e6537]/5 p-3 rounded-lg">
                     <div className="flex justify-between items-center mb-2">
                       <h4 className="text-sm font-medium text-gray-700">Conversion Rate</h4>
-                      <span className="text-xs text-gray-500">{getTimeRangeText()}</span>
+                      <span className="text-xs text-gray-500">{getTimeRangeText(timeRange)}</span>
                     </div>
                     <div className="flex items-end gap-2">
                       <span className="text-2xl font-bold text-[#0e6537]">
@@ -776,7 +633,7 @@ export default function Page() {
                   <div className="bg-[#0e6537]/5 p-3 rounded-lg">
                     <div className="flex justify-between items-center mb-2">
                       <h4 className="text-sm font-medium text-gray-700">Avg. Time to Convert</h4>
-                      <span className="text-xs text-gray-500">{getTimeRangeText()}</span>
+                      <span className="text-xs text-gray-500">{getTimeRangeText(timeRange)}</span>
                     </div>
                     <div className="flex items-end gap-2">
                       <span className="text-2xl font-bold text-[#0e6537]">
@@ -791,7 +648,7 @@ export default function Page() {
           </div>
         </SidebarInset>
       </SidebarProvider>
-    </>
+    </div>
   )
 }
 
