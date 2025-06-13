@@ -17,7 +17,6 @@ export async function POST(request: Request) {
     }
 
     // one thing we have to do is update the thread to set 'busy' to true 
-
     const url = `${config.API_URL}/db/update`;
     const updateResponse = await fetch(url, {
       method: 'POST',
