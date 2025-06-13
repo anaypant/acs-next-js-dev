@@ -74,8 +74,10 @@ export interface LeadPerformanceData {
     threadId: string;
     score: number;
     timestamp: string;
-    source: string;
-    sourceName: string;
+    startTimestamp: string;
+    endTimestamp: string;
+    source?: string;
+    sourceName?: string;
 }
 
 export type MessageWithResponseId = Message & {

@@ -209,8 +209,8 @@ export default function Page() {
     return { unread, review, completion };
   }, [conversations]);
 
-  // Memoize recent leads based on time range
-  const recentLeads = useMemo(() => {
+  // Memoize filtered leads based on time range
+  const filteredLeads = useMemo(() => {
     const now = new Date();
     const timeRanges = {
       day: 24 * 60 * 60 * 1000,
@@ -219,43 +219,98 @@ export default function Page() {
       year: 365 * 24 * 60 * 60 * 1000,
     };
     const timeLimit = now.getTime() - (timeRanges[timeRange as TimeRange] || timeRanges.week);
-
-    return leadPerformanceData.filter(lead => {
-      const messageDate = new Date(lead.timestamp);
+    return conversations.filter(thread => {
+      const messages = thread.messages || [];
+      const latestMsg = messages[0];
+      if (!latestMsg) return false;
+      const messageDate = new Date(latestMsg.timestamp);
       return messageDate.getTime() >= timeLimit;
     });
-  }, [leadPerformanceData, timeRange]);
+  }, [conversations, timeRange]);
 
   // Calculate average EV score
   const averageEvScore = useMemo(() => {
-    if (recentLeads.length === 0) return 0;
-    const totalEv = recentLeads.reduce((sum: number, lead) => sum + (lead.score ?? 0), 0);
-    return Math.round(totalEv / recentLeads.length);
-  }, [recentLeads]);
+    if (filteredLeads.length === 0) return 0;
+    const validScores = filteredLeads
+      .map(thread => {
+        let score = thread?.ev_score;
+        if (typeof score === 'string') score = parseFloat(score);
+        if (!Number.isFinite(score) || typeof score === 'undefined') score = 0;
+        return Number.isFinite(score) ? score : null;
+      })
+      .filter((score): score is number => score !== null);
+    if (validScores.length === 0) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('No valid EV scores found in filteredLeads:', filteredLeads);
+      }
+      return 0;
+    }
+    if (process.env.NODE_ENV === 'development') {
+      const invalidScores = filteredLeads.filter(thread => {
+        const evMsg = getLatestEvaluableMessage(thread.messages || []);
+        let score = evMsg?.ev_score;
+        if (typeof score === 'string') score = parseFloat(score);
+        return !Number.isFinite(score);
+      });
+      if (invalidScores.length > 0) {
+        console.warn('Invalid EV scores found:', invalidScores);
+      }
+    }
+    const totalEv = validScores.reduce((sum, score) => sum + score, 0);
+    return Math.round(totalEv / validScores.length);
+  }, [filteredLeads]);
 
   // Calculate conversion rate
   const conversionRate = useMemo(() => {
-    if (recentLeads.length === 0) return 0;
-    const flaggedLeads = recentLeads.filter(lead => (lead.score ?? 0) >= 70);
-    return Math.round((flaggedLeads.length / recentLeads.length) * 100);
-  }, [recentLeads]);
+    if (filteredLeads.length === 0) return 0;
+    const validThreads = filteredLeads.filter(thread => {
+      const evMsg = getLatestEvaluableMessage(thread.messages || []);
+      let score = evMsg?.ev_score;
+      if (typeof score === 'string') score = parseFloat(score);
+      return Number.isFinite(score);
+    });
+    if (validThreads.length === 0) return 0;
+    const flaggedLeads = validThreads.filter(thread => {
+      const evMsg = getLatestEvaluableMessage(thread.messages || []);
+      let score = evMsg?.ev_score;
+      if (typeof score === 'string') score = parseFloat(score);
+      if (!Number.isFinite(score) || typeof score === 'undefined') score = 0;
+      return score >= 70;
+    });
+    return Math.round((flaggedLeads.length / validThreads.length) * 100);
+  }, [filteredLeads]);
 
   // Calculate average time to convert
   const avgTimeToConvert = useMemo(() => {
-    const conversionTimes = recentLeads
-      .filter(lead => (lead.score ?? 0) >= 70)
-      .map(lead => {
-        const startTime = new Date(lead.timestamp);
-        const endTime = new Date(lead.timestamp);
-        return (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60); // Convert to hours
-      });
+    const conversionTimes = filteredLeads
+      .map(thread => {
+        const evMsg = getLatestEvaluableMessage(thread.messages || []);
+        let score = evMsg?.ev_score;
+        if (typeof score === 'string') score = parseFloat(score);
+        if (!Number.isFinite(score) || typeof score === 'undefined') score = 0;
+        if (score < 70) return null;
+        const messages = thread.messages || [];
+        const firstMsg = messages[messages.length - 1];
+        const lastMsg = messages[0];
+        const startTime = new Date(firstMsg?.timestamp);
+        const endTime = new Date(lastMsg?.timestamp);
+        const diff = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60); // hours
+        if (!Number.isFinite(diff)) {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('Invalid time difference for thread:', thread, 'start:', firstMsg?.timestamp, 'end:', lastMsg?.timestamp);
+          }
+          return null;
+        }
+        return diff;
+      })
+      .filter((time): time is number => time !== null);
 
     if (conversionTimes.length === 0) return 'N/A';
-    const avgHours = conversionTimes.reduce((sum: number, time: number) => sum + time, 0) / conversionTimes.length;
+    const avgHours = conversionTimes.reduce((sum, time) => sum + time, 0) / conversionTimes.length;
     return avgHours < 24 
       ? `${Math.round(avgHours)}h`
       : `${Math.round(avgHours / 24)}d`;
-  }, [recentLeads]);
+  }, [filteredLeads]);
 
   return (
     <div className="min-h-screen bg-gray-50">
