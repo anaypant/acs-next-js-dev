@@ -15,7 +15,6 @@ export default function ProcessGoogle() {
             if (status === 'authenticated' && session?.user) {
                 try {
                     // Validate session
-                    console.log('Session:', session);
                     if (!validateSession(session)) {
                         throw new Error('Invalid session data');
                     }
@@ -26,7 +25,6 @@ export default function ProcessGoogle() {
                     // Determine redirect based on auth type
                     const user = session.user;
                     if (user) {
-                        console.log('User:', user);
                         const redirectPath = getAuthRedirectPath(user.authType);
                         router.push(redirectPath);
                     }

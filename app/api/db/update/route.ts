@@ -44,7 +44,6 @@ export async function POST(request: Request) {
     }
 
     const responseText = await response.text();
-    console.log('Raw response:', responseText);
 
     // Parse the response text
     let proxyResponse;
@@ -55,7 +54,6 @@ export async function POST(request: Request) {
       throw new Error('Invalid response format from API');
     }
     
-    console.log('Parsed response:', proxyResponse);
 
     // Return the updated_item from the response
     return NextResponse.json({

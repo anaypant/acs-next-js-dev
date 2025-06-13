@@ -14,7 +14,6 @@ export async function POST(request: Request) {
 
     // First, delete all conversations with the given conversation_id
     const url = `${config.API_URL}/db/delete`;
-    console.log(url);
     const conversationsResponse = await fetch(url, {
       method: 'POST',
       headers: {
@@ -30,9 +29,6 @@ export async function POST(request: Request) {
     });
 
     if (!conversationsResponse.ok) {
-      console.log(conversationsResponse.statusText);
-      console.log(conversationsResponse.status);
-      console.log(conversationsResponse.body);
       
       throw new Error(`Failed to delete conversations: ${conversationsResponse.statusText}`);
     }

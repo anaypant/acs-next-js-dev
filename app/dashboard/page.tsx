@@ -225,19 +225,15 @@ export default function Page() {
     };
     const timeLimit = now.getTime() - (timeRanges[timeRange] || timeRanges.week);
 
-    console.log('Filtering leads for time range:', timeRange, 'Time limit:', new Date(timeLimit));
     const filtered = rawThreads.filter((thread: any) => {
       const firstMessage = thread.messages?.[0];
       if (!firstMessage) {
-        console.log('No messages found for thread:', thread.thread?.conversation_id);
         return false;
       }
       const messageDate = new Date(firstMessage.timestamp);
       const isInRange = messageDate.getTime() >= timeLimit;
-      console.log('Thread:', thread.thread?.conversation_id, 'Date:', messageDate, 'In range:', isInRange);
       return isInRange;
     });
-    console.log('Filtered leads count:', filtered.length);
     return filtered;
   }, [rawThreads, timeRange]);
 
@@ -251,25 +247,20 @@ export default function Page() {
         .sort((a: Message, b: Message) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()) // Sort by newest first
         .find((msg: Message) => {
           const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
-          console.log('Message EV score:', msg.ev_score, 'Parsed:', score, 'Thread:', thread.thread?.conversation_id);
           return score !== undefined && score !== null && !isNaN(score);
         });
 
       if (!evMessage) {
-        console.log('No EV score found for thread:', thread.thread?.conversation_id);
         return null;
       }
       const score = typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score;
-      console.log('Found EV score:', score, 'for thread:', thread.thread?.conversation_id);
       return score;
     }).filter((score): score is number => score !== null);
 
-    console.log('Threads with scores:', threadsWithScores);
     if (threadsWithScores.length === 0) return 0;
 
     const totalEv = threadsWithScores.reduce((sum, score) => sum + score, 0);
     const average = Math.round(totalEv / threadsWithScores.length);
-    console.log('Final average EV score:', average);
     return average;
   }, [recentLeads]);
 

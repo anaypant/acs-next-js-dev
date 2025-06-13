@@ -12,6 +12,12 @@ export const useConversations = (session: Session | null, mounted: boolean, rout
     const [updatingSpam, setUpdatingSpam] = useState<string | null>(null);
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [threadToDelete, setThreadToDelete] = useState<{ id: string; name: string } | null>(null);
+    const [warnings, setWarnings] = useState<any>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [retryCount, setRetryCount] = useState(0);
+    const [threads, setThreads] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [RETRY_DELAY, setRETRY_DELAY] = useState(1000);
 
     const conversations = useMemo(() => {
         if (!rawThreads) return [];
@@ -34,103 +40,52 @@ export const useConversations = (session: Session | null, mounted: boolean, rout
     }, [rawThreads]);
 
     const MAX_RETRIES = 3;
-    const INITIAL_RETRY_DELAY = 1000; // 1 second
 
-    const fetchThreads = useCallback(async (retryCount = 0): Promise<void> => {
+    const fetchThreads = async () => {
         if (!mounted || !session?.user?.id) {
-            console.log('fetchThreads early return:', { mounted, sessionId: session?.user?.id });
             return;
         }
 
+        const requestBody = {
+            userId: session.user.id,
+            // Add any other necessary parameters
+        };
+
         try {
-            setLoadingConversations(true);
-            console.log('Making API request with userId:', session.user.id);
-            const requestBody = JSON.stringify({ userId: session.user.id });
-            console.log('Request body:', requestBody);
-            
-            const response = await fetch('/api/lcp/get_all_threads', {
+            const response = await fetch('/api/threads', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: requestBody,
+                body: JSON.stringify(requestBody)
             });
-
-            const data = await response.json();
 
             if (!response.ok) {
-                // If the error is retryable and we haven't exceeded max retries, try again
-                if (data.retryable && retryCount < MAX_RETRIES) {
-                    console.log(`Retrying fetch... (${retryCount + 1}/${MAX_RETRIES})`);
-                    await new Promise(resolve => setTimeout(resolve, INITIAL_RETRY_DELAY * Math.pow(2, retryCount)));
-                    return fetchThreads(retryCount + 1);
-                }
-                throw new Error(data.error || `Failed to fetch threads: ${response.statusText}`);
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
 
+            const data = await response.json();
+            
             if (!data.success) {
-                throw new Error(data.error || 'Failed to fetch threads');
+                throw new Error(data.error || 'Invalid response format');
             }
 
-            if (!Array.isArray(data.data)) {
-                console.error('Invalid response format:', data);
-                throw new Error('Invalid response format from server');
-            }
-
-            // Handle any warnings about failed threads
             if (data.warnings?.failedThreads?.length > 0) {
-                console.warn('Some threads failed to load:', data.warnings.failedThreads);
+                // Handle warnings appropriately
+                setWarnings(data.warnings);
             }
 
-            // Sort threads by most recent message timestamp
-            const sortedData = [...data.data].sort((a: any, b: any) => {
-                const aMessages = a.messages || [];
-                const bMessages = b.messages || [];
-                const aLatestTimestamp = aMessages.length > 0 ? new Date(aMessages[aMessages.length - 1].timestamp).getTime() : 0;
-                const bLatestTimestamp = bMessages.length > 0 ? new Date(bMessages[bMessages.length - 1].timestamp).getTime() : 0;
-                return bLatestTimestamp - aLatestTimestamp;
-            });
-
-            const conversations = sortedData.map((item: any) => ({
-                conversation_id: item.thread?.conversation_id || '',
-                associated_account: item.thread?.associated_account || '',
-                lcp_enabled: item.thread?.lcp_enabled === true || item.thread?.lcp_enabled === 'true',
-                read: item.thread?.read === true || item.thread?.read === 'true',
-                source: item.thread?.source || '',
-                source_name: item.thread?.source_name || '',
-                lcp_flag_threshold: typeof item.thread?.lcp_flag_threshold === 'number' ? item.thread.lcp_flag_threshold : Number(item.thread?.lcp_flag_threshold) || 0,
-                ai_summary: item.thread?.ai_summary || '',
-                budget_range: item.thread?.budget_range || '',
-                preferred_property_types: item.thread?.preferred_property_types || '',
-                timeline: item.thread?.timeline || '',
-                busy: item.thread?.busy === 'true',
-                flag_for_review: item.thread?.flag_for_review === 'true',
-                spam: item.thread?.spam === true || item.thread?.spam === 'true',
-            }));
-
-            setRawThreads(sortedData);
-
-            // Update spam count if needed
-            const spamCount = sortedData.filter((thread: { thread?: { spam?: boolean | string } }) =>
-                thread.thread?.spam === true || thread.thread?.spam === 'true'
-            ).length;
-
-            if (typeof window !== 'undefined') {
-                localStorage.setItem('junkEmailCount', spamCount.toString());
-                window.dispatchEvent(new CustomEvent('junkEmailCountUpdated', { detail: spamCount }));
-            }
-
+            setThreads(data.threads);
+            setLoading(false);
+            setError(null);
         } catch (error) {
-            console.error('Error fetching threads:', error);
-            setRawThreads([]);
-            // If it's a retryable error and we haven't exceeded max retries, try again
-            if (error instanceof Error && error.message.includes('fetch') && retryCount < MAX_RETRIES) {
-                console.log(`Retrying fetch after error... (${retryCount + 1}/${MAX_RETRIES})`);
-                await new Promise(resolve => setTimeout(resolve, INITIAL_RETRY_DELAY * Math.pow(2, retryCount)));
-                return fetchThreads(retryCount + 1);
+            setError(error instanceof Error ? error.message : 'Error fetching threads');
+            setLoading(false);
+            
+            if (retryCount < MAX_RETRIES) {
+                setRetryCount(prev => prev + 1);
+                setTimeout(fetchThreads, RETRY_DELAY);
             }
-        } finally {
-            setLoadingConversations(false);
         }
-    }, [session, mounted]);
+    };
 
     const handleMarkAsRead = async (conversationId: string) => {
         if (!session?.user?.id) return;
@@ -145,21 +100,14 @@ export const useConversations = (session: Session | null, mounted: boolean, rout
 
             router.push(`/dashboard/conversations/${conversationId}`);
             
-            await fetch('/api/db/update', {
+            await fetch('/api/threads/mark-read', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    table_name: 'Threads',
-                    key_name: 'conversation_id',
-                    key_value: conversationId,
-                    update_data: { read: true },
-                }),
+                body: JSON.stringify({ threadId: conversationId, userId: session?.user?.id })
             });
 
         } catch (error) {
-            console.error('Error marking thread as read:', error);
-            // Revert is tricky with navigation, so we just navigate.
-            router.push(`/dashboard/conversations/${conversationId}`);
+            setError(error instanceof Error ? error.message : 'Error marking thread as read');
         } finally {
             setUpdatingRead(null);
         }
@@ -188,7 +136,7 @@ export const useConversations = (session: Session | null, mounted: boolean, rout
                 }),
             });
         } catch (error) {
-            console.error('Error updating LCP status:', error);
+            setError('Error updating LCP status');
             // Revert optimistic update on failure
             setRawThreads(originalThreads);
         } finally {
@@ -214,7 +162,7 @@ export const useConversations = (session: Session | null, mounted: boolean, rout
                 body: JSON.stringify({ conversation_id: threadToDelete.id }),
             });
         } catch (error) {
-            console.error('Error deleting thread:', error);
+            setError('Error deleting thread');
             alert('Failed to delete conversation. Please try again.');
             setRawThreads(originalThreads);
         } finally {
@@ -250,7 +198,7 @@ export const useConversations = (session: Session | null, mounted: boolean, rout
 
             await fetchThreads();
         } catch (error) {
-            console.error('Error marking as not spam:', error);
+            setError('Error marking as not spam');
         } finally {
             setUpdatingSpam(null);
         }
@@ -273,6 +221,12 @@ export const useConversations = (session: Session | null, mounted: boolean, rout
         confirmDelete,
         handleMarkAsNotSpam,
         setDeleteModalOpen,
-        setThreadToDelete
+        setThreadToDelete,
+        warnings,
+        error,
+        retryCount,
+        threads,
+        loading,
+        RETRY_DELAY
     };
 }; 

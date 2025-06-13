@@ -13,7 +13,6 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = MAX_R
     return response;
   } catch (error) {
     if (retries > 0) {
-      console.log(`Retrying fetch... (${retries} attempts remaining)`);
       await new Promise(resolve => setTimeout(resolve, delay));
       return fetchWithRetry(url, options, retries - 1, delay * 2);
     }
@@ -23,15 +22,12 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = MAX_R
 
 export async function POST(request: Request) {
   try {
-    console.log('get_all_threads API called');
     const requestText = await request.text();
-    console.log('Raw request body:', requestText);
     
     let userId;
     try {
       const parsedBody = JSON.parse(requestText);
       userId = parsedBody.userId;
-      console.log('Parsed userId:', userId);
     } catch (parseError) {
       console.error('Error parsing request body:', parseError);
       return NextResponse.json(

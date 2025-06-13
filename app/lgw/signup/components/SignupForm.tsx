@@ -23,7 +23,6 @@ export function SignupForm() {
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     // Handle form submission here
-    console.log("Form submitted");
   };
 
   return (
