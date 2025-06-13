@@ -13,6 +13,8 @@ import { useSession } from "next-auth/react"
 import type { Session } from "next-auth"
 import type { Thread } from "@/app/types/lcp"
 import Slider from '@mui/material/Slider';
+import { useRouter } from "next/navigation"
+import { goto404 } from "@/app/utils/error"
 
 // Add type for message
 type Message = {
@@ -106,33 +108,39 @@ function parseBoolean(value: any): boolean {
  * @returns {JSX.Element} Complete conversations dashboard view
  */
 export default function ConversationsPage() {
-  const { data: session, status } = useSession() as { data: Session | null, status: string }
-  const [mounted, setMounted] = useState(false)
-  const [conversations, setConversations] = useState<Thread[]>([])
-  const [rawThreads, setRawThreads] = useState<any[]>([])
-  const [loadingConversations, setLoadingConversations] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [selectedDate, setSelectedDate] = useState("")
-  const [sortField, setSortField] = useState<SortField>(null)
-  const [sortDirection, setSortDirection] = useState<SortDirection>(null)
-  const [showFilters, setShowFilters] = useState(false)
+  const { data: session, status } = useSession() as { data: (Session & { user?: { id: string } }) | null, status: string };
+  const [mounted, setMounted] = useState(false);
+  const [conversations, setConversations] = useState<Thread[]>([]);
+  const [rawThreads, setRawThreads] = useState<any[]>([]);
+  const [loadingConversations, setLoadingConversations] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     status: ["hot", "warm", "cold"],
     aiScoreRange: [0, 100],
-  })
+  });
+  const router = useRouter();
 
-  // Handle mounting state to prevent hydration mismatch
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      goto404("401", "No active session found", router);
+    }
+  }, [status, router]);
 
   // Function to fetch threads
   const fetchThreads = async () => {
-    if (!mounted || !session?.user?.id) return;
+    if (!mounted || status !== 'authenticated' || !session?.user?.id) return;
 
     try {
       setLoadingConversations(true);
-      const response = await fetch('/api/threads', {
+      const response = await fetch('/api/lcp/get_all_threads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -140,16 +148,22 @@ export default function ConversationsPage() {
         })
       });
 
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to fetch threads');
+      if (!response.ok) {
+        throw new Error('Failed to fetch threads');
       }
 
-      const sortedData = data.threads.sort((a: any, b: any) => {
-        const dateA = new Date(a.thread?.last_message_time || 0);
-        const dateB = new Date(b.thread?.last_message_time || 0);
-        return dateB.getTime() - dateA.getTime();
+      const { data } = await response.json();
+      
+      if (!Array.isArray(data)) {
+        throw new Error('Invalid response format');
+      }
+
+      const sortedData = [...data].sort((a: any, b: any) => {
+        const aMessages = a.messages || [];
+        const bMessages = b.messages || [];
+        const dateA = aMessages.length > 0 ? new Date(aMessages[aMessages.length - 1].timestamp).getTime() : 0;
+        const dateB = bMessages.length > 0 ? new Date(bMessages[bMessages.length - 1].timestamp).getTime() : 0;
+        return dateB - dateA;
       });
 
       const parsedConversations = sortedData.map((item: any) => ({
@@ -165,9 +179,10 @@ export default function ConversationsPage() {
         preferred_property_types: item.thread?.preferred_property_types || '',
         timeline: item.thread?.timeline || '',
         busy: parseBoolean(item.thread?.busy),
-      }))
-      setConversations(parsedConversations)
-      setRawThreads(sortedData)
+        spam: parseBoolean(item.thread?.spam),
+      }));
+      setConversations(parsedConversations);
+      setRawThreads(sortedData);
     } catch (error) {
       console.error('Error fetching threads:', error);
     } finally {
@@ -177,10 +192,10 @@ export default function ConversationsPage() {
 
   // Fetch threads when session is available
   useEffect(() => {
-    if (mounted && session?.user?.id) {
+    if (mounted && status === 'authenticated' && session?.user?.id) {
       fetchThreads();
     }
-  }, [session, mounted]);
+  }, [session?.user?.id, status, mounted]);
 
   // Handle sort click
   const handleSort = (field: SortField) => {
@@ -216,15 +231,15 @@ export default function ConversationsPage() {
       
       // Search term filter
       const searchMatch = 
-        thread.source_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        thread.ai_summary?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        latestMessage?.body?.toLowerCase().includes(searchTerm.toLowerCase());
+        thread.source_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        thread.ai_summary?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        latestMessage?.body?.toLowerCase().includes(searchQuery.toLowerCase());
 
       // Date filter
       let dateMatch = true;
-      if (selectedDate && latestMessage?.timestamp) {
+      if (latestMessage?.timestamp) {
         const messageDate = new Date(latestMessage.timestamp);
-        const filterDate = new Date(selectedDate);
+        const filterDate = new Date(latestMessage.timestamp);
         dateMatch = messageDate.toDateString() === filterDate.toDateString();
       }
 
@@ -405,21 +420,10 @@ export default function ConversationsPage() {
               <input
                 type="text"
                 placeholder="Search conversations..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 bg-white border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0e6537]"
               />
-            </div>
-            {/* Date picker */}
-            <div className="flex gap-2">
-              <div className="relative">
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="pl-4 pr-4 py-2 bg-white border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0e6537]"
-                />
-              </div>
             </div>
           </div>
         </div>

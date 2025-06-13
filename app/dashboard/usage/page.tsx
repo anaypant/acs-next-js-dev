@@ -161,6 +161,7 @@ export default function UsagePage() {
         const response = await fetch(`/api/usage/stats?timeRange=${dateRange}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include'
         })
 
         if (!response.ok) throw new Error('Failed to fetch usage stats')

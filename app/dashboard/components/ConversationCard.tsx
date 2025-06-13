@@ -11,6 +11,8 @@ import type { Thread, Message, MessageWithResponseId } from '../../types/lcp';
 import GradientText from './GradientText';
 import OverrideStatus from './OverrideStatus';
 import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, PanelLeft, AlertTriangle, RefreshCw, ChevronDown, X, Shield, ShieldOff } from "lucide-react"
+import { useRouter } from "next/navigation";
+import { useEffect } from 'react';
 
 /**
  * Props interface for ConversationCard component
@@ -56,6 +58,7 @@ const PASCAL_COLORS = [
 
 // Function to get consistent color for a conversation
 const getConversationColor = (conversationId: string) => {
+    if (!conversationId) return PASCAL_COLORS[0]; // Return first color as fallback
     // Use the first 8 characters of the ID to generate a number
     const hash = conversationId.slice(0, 8).split('').reduce((acc, char) => {
         return char.charCodeAt(0) + ((acc << 5) - acc);
@@ -89,6 +92,7 @@ const ConversationCard = ({
     handleLcpToggle,
     handleDeleteThread,
 }: ConversationCardProps) => {
+    const router = useRouter();
     const messages: Message[] = rawThread?.messages || [];
     const sortedMessages = [...messages].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     const latestMessage = sortedMessages[0];
@@ -115,9 +119,19 @@ const ConversationCard = ({
         .map((n: string) => n[0].toUpperCase())
         .join('');
 
+    // Add logging for AI summary display
+    useEffect(() => {
+        console.log('[ConversationCard] Rendering card:', {
+            conversation_id: conv.conversation_id,
+            has_ai_summary: !!conv.ai_summary,
+            ai_summary_length: conv.ai_summary?.length,
+            ai_summary_value: conv.ai_summary || 'UNKNOWN'
+        });
+    }, [conv]);
+
     return (
         <div
-            className={`flex flex-col sm:flex-row items-stretch gap-2 sm:gap-3 md:gap-4 p-2 sm:p-3 md:p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors relative group ${
+            className={`flex flex-col sm:flex-row items-stretch gap-2 sm:gap-3 md:gap-4 p-2 sm:p-3 md:p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors relative ${
                 conv.flag_for_review
                     ? 'flagged-review'
                     : ev_score > conv.lcp_flag_threshold
@@ -191,8 +205,8 @@ const ConversationCard = ({
                         EV: {ev_score >= 0 ? ev_score : 'N/A'}
                     </span>
                     {ev_score > conv.lcp_flag_threshold && !conv.flag_for_review && (
-                        <span className="flex items-center gap-1 text-green-600 font-bold">
-                            <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" title="Flagged for completion" /> 
+                        <span className="flex items-center gap-1 text-green-600 font-bold" title="Flagged for completion">
+                            <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" /> 
                             <span className="hidden xs:inline">Flagged</span>
                         </span>
                     )}
@@ -241,7 +255,20 @@ const ConversationCard = ({
                     </button>
                 </div>
                 <p className="text-xs text-gray-600 mb-0.5 sm:mb-1 truncate">{latestMessage?.subject || 'No subject'}</p>
-                <p className="text-xs text-gray-500 italic mb-0.5 sm:mb-1 line-clamp-1">Summary: <span className="not-italic text-gray-700">{conv.ai_summary}</span></p>
+                <p className="text-xs text-gray-500 italic mb-0.5 sm:mb-1 line-clamp-1">
+                    Summary: <span className="not-italic text-gray-700">
+                        {(() => {
+                            const summary = conv.ai_summary;
+                            console.log('[ConversationCard] Displaying summary:', {
+                                conversation_id: conv.conversation_id,
+                                has_summary: !!summary,
+                                summary_length: summary?.length,
+                                summary_value: summary || 'UNKNOWN'
+                            });
+                            return summary || 'No summary available';
+                        })()}
+                    </span>
+                </p>
                 <p className="text-xs text-gray-400">{latestMessage?.timestamp ? new Date(latestMessage.timestamp).toLocaleString() : ''}</p>
             </div>
             <div className="flex-[1.2] flex items-center justify-center min-w-0 pl-6">
@@ -255,9 +282,9 @@ const ConversationCard = ({
                 <button
                     onClick={e => {
                         e.stopPropagation();
-                        handleMarkAsRead(conv.conversation_id);
+                        router.push(`/dashboard/conversations/${conv.conversation_id}`);
                     }}
-                    className="arrow-animate-hover w-full sm:w-auto px-1.5 sm:px-2 py-1 sm:py-1.5 text-xs font-medium text-[#0e6537] bg-[#e6f5ec] rounded-lg hover:bg-[#bbf7d0] hover:shadow-lg flex items-center justify-center gap-1 shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#0e6537]/30 group"
+                    className="arrow-animate-hover w-full sm:w-auto px-1.5 sm:px-2 py-1 sm:py-1.5 text-xs font-medium text-[#0e6537] bg-[#e6f5ec] rounded-lg hover:bg-[#bbf7d0] hover:shadow-lg flex items-center justify-center gap-1 shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#0e6537]/30 group cursor-pointer"
                 >
                     <span className="relative flex items-center w-5 h-4 sm:w-6 sm:h-4 mr-0.5">
                         <ChevronRight className="arrow-1 absolute left-0 top-0 w-2.5 h-2.5 sm:w-3 sm:h-3 transition-transform" />

@@ -32,9 +32,13 @@ const ConversationProgression: React.FC<ConversationProgressionProps> = ({ leadD
   const processLeadData = (conversationsData: any[]): MessageData[] => {
     const allData: MessageData[] = [];
 
-    conversationsData.forEach((conversation, index) => {
+    conversationsData.forEach((conversation) => {
       if (conversation.messages && conversation.messages.length > 0) {
-        const conversationId = `Conversation ${index + 1}`;
+        // Use the first message's timestamp and a hash of the first message body as a stable ID
+        const firstMessage = conversation.messages[0];
+        const conversationId = firstMessage ? 
+          `conv-${firstMessage.timestamp}-${firstMessage.body.slice(0, 8).split('').reduce((acc: number, char: string) => char.charCodeAt(0) + ((acc << 5) - acc), 0)}` :
+          `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         
         conversation.messages.forEach((msg: Message) => {
           const ev = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;

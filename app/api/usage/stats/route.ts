@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { config } from '@/lib/local-api-config';
-import { getServerSession } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/types/auth';
 import { format } from 'date-fns';
 
@@ -27,7 +27,8 @@ export async function GET(request: Request) {
         table_name: 'Invocations',
         index_name: 'associated_account-index',
         key_name: 'associated_account',
-        key_value: session.user.id
+        key_value: session.user.id,
+        account_id: session.user.id
       }),
       credentials: 'include',
     });
@@ -70,7 +71,7 @@ export async function GET(request: Request) {
     const filteredInvocations = invocations.filter(inv => inv.timestamp >= fromEpoch);
 
     // Helper function to get time key based on range (all in ms)
-    const getTimeKey = (timestamp) => {
+    const getTimeKey = (timestamp: number) => {
       const date = new Date(timestamp);
       switch (timeRange) {
         case '24h':

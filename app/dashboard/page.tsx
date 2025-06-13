@@ -14,24 +14,64 @@ import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState, useCallback, useMemo } from "react"
 import { goto404 } from "../utils/error"
-import type { Thread, Message, MessageWithResponseId } from "../types/lcp"
 import type { Session } from "next-auth"
+import type { Thread as DashboardThread } from './lib/types/threads';
+import type { Thread as LcpThread } from '../types/lcp';
+import type { Message, MessageWithResponseId, MessageType } from '../types/messages';
 import LeadFunnel from './components/LeadFunnel'
 import LeadReport from './components/LeadReport'
 import ConversationProgression from './components/ConversationProgression'
 import DeleteConfirmationModal from "./components/DeleteConfirmationModal"
 import DashboardStyles from "./components/DashboardStyles"
 import ConversationCard from "./components/ConversationCard"
-import { useConversations } from "./hooks/useConversations"
-import { useDashboardMetrics } from "./hooks/useDashboardMetrics"
+import { useThreads } from './hooks/useThreads'
+import { threadApi } from './lib/api/threads';
 
 // Helper function to get the latest message with a response ID
-const getLatestEvaluableMessage = (messages: Message[]): MessageWithResponseId | undefined => {
+const getLatestEvaluableMessage = (messages: any[]): MessageWithResponseId | undefined => {
   if (!messages) return undefined;
   return messages
     .filter((msg): msg is MessageWithResponseId => Boolean(msg.response_id))
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
 };
+
+// Helper function to ensure message has required fields
+const ensureMessageFields = (msg: any): Message => ({
+  id: msg.id || msg.conversation_id,
+  conversation_id: msg.conversation_id,
+  response_id: msg.response_id,
+  type: msg.type as MessageType,
+  content: msg.content || msg.body || '',
+  body: msg.body || msg.content || '',
+  subject: msg.subject || '',
+  timestamp: msg.timestamp,
+  sender: msg.sender,
+  recipient: msg.recipient || msg.receiver,
+  receiver: msg.receiver || msg.recipient,
+  associated_account: msg.associated_account || msg.sender,
+  ev_score: typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score,
+  in_reply_to: msg.in_reply_to || null,
+  is_first_email: msg.is_first_email || false,
+  metadata: msg.metadata || {},
+});
+
+// Helper to flatten API response
+function flattenThreadApiResponse(apiResponse: any[]) {
+  return apiResponse.map(item => {
+    const thread = item.thread || {};
+    const messages = item.messages || [];
+    // Find the latest message (by timestamp)
+    const latestMessage = messages.length > 0
+      ? messages.slice().sort((a: { timestamp: string }, b: { timestamp: string }) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
+      : null;
+    return {
+      ...thread,
+      ai_summary: thread.ai_summary || '',
+      messages,
+      latestMessage,
+    };
+  });
+}
 
 /**
  * Page Component
@@ -52,33 +92,29 @@ export default function Page() {
   const [mounted, setMounted] = useState(false)
   
   const {
-    conversations,
-    rawThreads,
-    loadingConversations,
-    updatingLcp,
-    updatingRead,
-    deletingThread,
-    deleteModalOpen,
-    threadToDelete,
-    fetchThreads,
-    handleMarkAsRead,
-    handleLcpToggle,
-    handleDeleteThread,
-    confirmDelete,
-    setDeleteModalOpen,
-    setThreadToDelete,
-  } = useConversations(session, status === 'authenticated', router);
+    threads: conversations,
+    threads: rawThreads,
+    loading: loadingConversations,
+    metrics,
+    operations: {
+      fetch: fetchThreads,
+      update: handleMarkAsRead,
+      toggleLcp: handleLcpToggle,
+      delete: handleDeleteThread,
+    },
+  } = useThreads();
+
+  // Local state for UI
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedThreadToDelete, setSelectedThreadToDelete] = useState<DashboardThread | null>(null);
+  const [updatingLcp, setUpdatingLcp] = useState<string | null>(null);
+  const [updatingRead, setUpdatingRead] = useState<string | null>(null);
+  const [deletingThread, setDeletingThread] = useState<string | null>(null);
 
   const [showFunnel, setShowFunnel] = useState(true)
   const [showProgression, setShowProgression] = useState(false)
   const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month' | 'year'>('week')
   const [showTimeRangeDropdown, setShowTimeRangeDropdown] = useState(false)
-
-  // New state for lead performance data
-  const [loadingLeadPerformance, setLoadingLeadPerformance] = useState(false)
-
-  // Add new state for lead performance refresh
-  const [refreshingLeadPerformance, setRefreshingLeadPerformance] = useState(false)
 
   // Add new state for filters
   const [filters, setFilters] = useState({
@@ -94,13 +130,23 @@ export default function Page() {
 
   // Fetch threads and lead performance data when session is available
   useEffect(() => {
-    if (status === 'authenticated') {
-      setLoadingLeadPerformance(true); // Set loading true before fetching
-      fetchThreads().finally(() => setLoadingLeadPerformance(false));
-    }
-  }, [status, fetchThreads]);
+    if (status === 'authenticated' && session?.user?.id) {
+      // Initial fetch when component mounts
+      fetchThreads();
+      
+      // Set up periodic refresh every 5 minutes
+      const refreshInterval = setInterval(() => {
+        if (session?.user?.id) {  // Check again before refresh
+          fetchThreads();
+        }
+      }, 5 * 60 * 1000); // 5 minutes
 
-  const metrics = useDashboardMetrics(rawThreads, timeRange);
+      // Cleanup interval on unmount
+      return () => {
+        clearInterval(refreshInterval);
+      };
+    }
+  }, [status, session?.user?.id, fetchThreads]); // Added session?.user?.id to dependencies
 
   // Time range options
   const timeRangeOptions = [
@@ -117,7 +163,10 @@ export default function Page() {
     }
   }, [status, router])
 
-  // Memoize the refresh function
+  // Remove the loadingLeadPerformance state since we're not using it for initial load
+  const [refreshingLeadPerformance, setRefreshingLeadPerformance] = useState(false);
+
+  // Update the refresh function to handle loading state
   const refreshLeadPerformance = useCallback(async () => {
     if (!session?.user?.id) return;
     
@@ -129,7 +178,7 @@ export default function Page() {
     } finally {
       setRefreshingLeadPerformance(false);
     }
-  }, [session?.user?.id, fetchThreads]); // Only recreate if userId changes
+  }, [session?.user?.id, fetchThreads]);
 
   // Update the time range text based on selection
   const getTimeRangeText = () => {
@@ -178,42 +227,37 @@ export default function Page() {
 
   // Memoize filter counts
   const filterCounts = useMemo(() => {
-    const unread = conversations.filter((c: Thread) => !c.read).length;
-    const review = conversations.filter((c: Thread) => c.flag_for_review).length;
+    const unread = conversations.filter((c: DashboardThread) => !c.read).length;
+    const review = conversations.filter((c: DashboardThread) => c.flag_for_review).length;
     
-    const completion = conversations.filter((c: Thread) => {
+    const completion = conversations.filter((c: DashboardThread) => {
       const rawThread = rawThreads.find((t: any) => t.thread?.conversation_id === c.conversation_id);
-      const messages = rawThread?.messages || [];
+      const messages = (rawThread?.messages || []).map(ensureMessageFields);
       const evMessage = getLatestEvaluableMessage(messages);
       if (!evMessage) return false;
 
-      const ev_score = typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score;
+      const ev_score = evMessage.ev_score ?? 0;
       return ev_score > c.lcp_flag_threshold && !c.flag_for_review;
     }).length;
 
     return { unread, review, completion };
   }, [conversations, rawThreads]);
 
-  // Memoize filtered conversations
+  // Update filteredConversations to use threads from context directly
   const filteredConversations = useMemo(() => {
-    return conversations.filter((conv: Thread) => {
-      // First filter out any spam threads
+    return rawThreads.filter((conv: any) => {
       if (conv.spam) return false;
-
-      const rawThread = rawThreads.find((t: any) => t.thread?.conversation_id === conv.conversation_id);
-      const messages = rawThread?.messages || [];
+      const messages = (conv.messages || []).map(ensureMessageFields);
       const evMessage = getLatestEvaluableMessage(messages);
-
-      const ev_score = evMessage ? (typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score) : -1;
+      const ev_score = evMessage?.ev_score ?? -1;
       const isFlaggedForCompletion = ev_score > conv.lcp_flag_threshold;
-
       if (filters.unread && !conv.read) return true;
       if (filters.review && conv.flag_for_review) return true;
       if (filters.completion && isFlaggedForCompletion && !conv.flag_for_review) return true;
       if (!filters.unread && !filters.review && !filters.completion) return true;
       return false;
     });
-  }, [conversations, rawThreads, filters]);
+  }, [rawThreads, filters]);
 
   const recentLeads = useMemo(() => {
     const now = new Date();
@@ -241,42 +285,32 @@ export default function Page() {
     if (recentLeads.length === 0) return 0;
     
     const threadsWithScores = recentLeads.map((thread: any) => {
-      const messages = thread.messages || [];
-      // Get the most recent message with any EV score
+      const messages = (thread.messages || []).map(ensureMessageFields);
       const evMessage = messages
-        .sort((a: Message, b: Message) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()) // Sort by newest first
-        .find((msg: Message) => {
-          const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
-          return score !== undefined && score !== null && !isNaN(score);
-        });
+        .sort((a: Message, b: Message) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .find((msg: Message) => msg.ev_score !== undefined && msg.ev_score !== null && !isNaN(msg.ev_score));
 
-      if (!evMessage) {
-        return null;
-      }
-      const score = typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score;
-      return score;
+      return evMessage?.ev_score ?? null;
     }).filter((score): score is number => score !== null);
 
     if (threadsWithScores.length === 0) return 0;
-
-    const totalEv = threadsWithScores.reduce((sum, score) => sum + score, 0);
-    const average = Math.round(totalEv / threadsWithScores.length);
-    return average;
+    const totalEv = threadsWithScores.reduce((sum: number, score: number) => sum + score, 0);
+    return Math.round(totalEv / threadsWithScores.length);
   }, [recentLeads]);
 
   const conversionRate = useMemo(() => {
     if (recentLeads.length === 0) return 0;
 
     const flaggedLeads = recentLeads.filter((thread: any) => {
-      const messages = thread.messages || [];
+      const messages = (thread.messages || []).map(ensureMessageFields);
       const evMessage = messages
         .sort((a: Message, b: Message) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
         .find((msg: Message) => {
-          const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
+          const score = msg.ev_score;
           return typeof score === 'number' && !isNaN(score) && score >= 0 && score <= 100;
         });
 
-      const evScore = evMessage ? (typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score) : 0;
+      const evScore = evMessage?.ev_score ?? 0;
       return evScore > (thread.thread?.lcp_flag_threshold || 70);
     });
 
@@ -285,12 +319,12 @@ export default function Page() {
 
   const avgTimeToConvert = useMemo(() => {
     const conversionTimes = recentLeads.map((thread: any) => {
-      const messages = thread.messages || [];
+      const messages = (thread.messages || []).map(ensureMessageFields);
       const firstMessage = messages[0];
       const evMessage = messages
         .sort((a: Message, b: Message) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
         .find((msg: Message) => {
-          const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
+          const score = msg.ev_score;
           return typeof score === 'number' && !isNaN(score) && score > (thread.thread?.lcp_flag_threshold || 70);
         });
 
@@ -301,11 +335,36 @@ export default function Page() {
     }).filter((time): time is number => time !== null);
 
     if (conversionTimes.length === 0) return 'N/A';
-    const avgHours = conversionTimes.reduce((sum, time) => sum + time, 0) / conversionTimes.length;
+    const avgHours = conversionTimes.reduce((sum: number, time: number) => sum + time, 0) / conversionTimes.length;
     return avgHours < 24 
       ? `${Math.round(avgHours)}h`
       : `${Math.round(avgHours / 24)}d`;
   }, [recentLeads]);
+
+  // Wrapper functions to handle type conversion
+  const handleMarkAsReadWrapper = useCallback((conversationId: string) => {
+    console.log('[UI] Mark as read clicked for:', conversationId);
+    handleMarkAsRead(conversationId, { read: true });
+  }, [handleMarkAsRead]);
+
+  const handleLcpToggleWrapper = useCallback((conversationId: string) => {
+    console.log('[UI] Toggle LCP clicked for:', conversationId);
+    handleLcpToggle(conversationId);
+  }, [handleLcpToggle]);
+
+  const handleDeleteThreadWrapper = useCallback((conversationId: string) => {
+    console.log('[UI] Delete thread clicked for:', conversationId);
+    handleDeleteThread(conversationId);
+  }, [handleDeleteThread]);
+
+  // Update DeleteConfirmationModal props
+  const confirmDelete = useCallback(() => {
+    if (selectedThreadToDelete) {
+      handleDeleteThread(selectedThreadToDelete.conversation_id);
+      setIsDeleteModalOpen(false);
+      setSelectedThreadToDelete(null);
+    }
+  }, [selectedThreadToDelete, handleDeleteThread]);
 
   return (
     <>
@@ -323,13 +382,13 @@ export default function Page() {
 
           {/* Add DeleteConfirmationModal */}
           <DeleteConfirmationModal
-            isOpen={deleteModalOpen}
+            isOpen={isDeleteModalOpen}
             onClose={() => {
-              setDeleteModalOpen(false);
-              setThreadToDelete(null);
+              setIsDeleteModalOpen(false);
+              setSelectedThreadToDelete(null);
             }}
             onConfirm={confirmDelete}
-            conversationName={threadToDelete?.name || 'Unknown'}
+            conversationName={selectedThreadToDelete?.conversation_id || 'Unknown'}
             isDeleting={deletingThread !== null}
           />
 
@@ -508,22 +567,29 @@ export default function Page() {
                           : "No conversations found."}
                       </div>
                     ) : (
-                      filteredConversations.map((conv: Thread) => {
-                        const rawThread = rawThreads.find((t: any) => t.thread?.conversation_id === conv.conversation_id);
-                        return (
+                      (() => {
+                        console.log(
+                          "Dashboard ConversationCard ai_summary debug:",
+                          filteredConversations.map((conv, idx) => ({
+                            idx,
+                            id: conv.conversation_id,
+                            ai_summary: conv.ai_summary
+                          }))
+                        );
+                        return filteredConversations.map((conv: any, idx: number) => (
                           <ConversationCard
-                            key={conv.conversation_id}
+                            key={conv.conversation_id || idx}
                             conv={conv}
-                            rawThread={rawThread}
+                            rawThread={conv}
                             updatingRead={updatingRead}
                             updatingLcp={updatingLcp}
                             deletingThread={deletingThread}
-                            handleMarkAsRead={handleMarkAsRead}
-                            handleLcpToggle={handleLcpToggle}
-                            handleDeleteThread={handleDeleteThread}
+                            handleMarkAsRead={handleMarkAsReadWrapper}
+                            handleLcpToggle={handleLcpToggleWrapper}
+                            handleDeleteThread={handleDeleteThreadWrapper}
                           />
-                        );
-                      })
+                        ));
+                      })()
                     )}
                   </div>
                 </div>
@@ -578,14 +644,14 @@ export default function Page() {
                   <LeadFunnel 
                     userId={session?.user?.id} 
                     leadData={rawThreads} 
-                    loading={loadingLeadPerformance} 
+                    loading={refreshingLeadPerformance} 
                     timeRange={timeRange}
                     onRefresh={refreshLeadPerformance}
                   />
                 ) : showProgression ? (
                   <ConversationProgression 
                     leadData={rawThreads} 
-                    loading={loadingLeadPerformance} 
+                    loading={refreshingLeadPerformance} 
                     timeRange={timeRange}
                     onRefresh={refreshLeadPerformance}
                   />
@@ -593,7 +659,7 @@ export default function Page() {
                   <LeadReport 
                     userId={session?.user?.id} 
                     leadData={rawThreads} 
-                    loading={loadingLeadPerformance} 
+                    loading={refreshingLeadPerformance} 
                     timeRange={timeRange}
                     onRefresh={refreshLeadPerformance}
                   />
@@ -603,33 +669,40 @@ export default function Page() {
                 <div className="mt-3 sm:mt-4 md:mt-6">
                   <h4 className="font-semibold mb-2 sm:mb-3">Quick Actions</h4>
                   <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-2">
-                    <button
-                      className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm text-xs sm:text-sm md:text-base"
-                      onClick={() => {
-                        setShowFunnel(true);
-                        setShowProgression(false);
-                      }}
-                    >
-                      Track Lead Journey
-                    </button>
-                    <button
-                      className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm"
-                      onClick={() => {
-                        setShowFunnel(false);
-                        setShowProgression(true);
-                      }}
-                    >
-                      Conversation Progression
-                    </button>
-                    <button
-                      className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm"
-                      onClick={() => {
-                        setShowFunnel(false);
-                        setShowProgression(false);
-                      }}
-                    >
-                      Generate Report
-                    </button>
+                    {[
+                      {
+                        id: 'track-lead-journey',
+                        label: 'Track Lead Journey',
+                        onClick: () => {
+                          setShowFunnel(true);
+                          setShowProgression(false);
+                        }
+                      },
+                      {
+                        id: 'conversation-progression',
+                        label: 'Conversation Progression',
+                        onClick: () => {
+                          setShowFunnel(false);
+                          setShowProgression(true);
+                        }
+                      },
+                      {
+                        id: 'generate-report',
+                        label: 'Generate Report',
+                        onClick: () => {
+                          setShowFunnel(false);
+                          setShowProgression(false);
+                        }
+                      }
+                    ].map(action => (
+                      <button
+                        key={action.id}
+                        className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm text-xs sm:text-sm md:text-base"
+                        onClick={action.onClick}
+                      >
+                        {action.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -644,12 +717,12 @@ export default function Page() {
                 {/* Lead source progress bars */}
                 <div className="space-y-2 sm:space-y-3 md:space-y-4">
                   {[
-                    { source: "Website Forms", count: 45, percentage: 75 },
-                    { source: "Social Media", count: 28, percentage: 50 },
-                    { source: "Referrals", count: 18, percentage: 33 },
-                    { source: "Open Houses", count: 12, percentage: 25 },
-                  ].map((source, index) => (
-                    <div key={index} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5 sm:gap-2">
+                    { id: 'website-forms', source: "Website Forms", count: 45, percentage: 75 },
+                    { id: 'social-media', source: "Social Media", count: 28, percentage: 50 },
+                    { id: 'referrals', source: "Referrals", count: 18, percentage: 33 },
+                    { id: 'open-houses', source: "Open Houses", count: 12, percentage: 25 },
+                  ].map((source) => (
+                    <div key={source.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5 sm:gap-2">
                       <span className="text-xs sm:text-sm text-gray-600">{source.source}</span>
                       <div className="flex items-center gap-2 w-full sm:w-auto">
                         <div className="flex-1 sm:w-24 h-1.5 sm:h-2 bg-gray-200 rounded-full">

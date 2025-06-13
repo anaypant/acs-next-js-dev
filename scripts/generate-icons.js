@@ -17,6 +17,6 @@ sizes.forEach(size => {
         .resize(size, size)
         .png()
         .toFile(path.join(outputDir, `icon-${size}x${size}.png`))
-        .then(() => console.log(`Generated ${size}x${size} icon`))
+
         .catch(err => console.error(`Error generating ${size}x${size} icon:`, err));
 }); 

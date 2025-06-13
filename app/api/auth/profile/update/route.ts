@@ -40,7 +40,8 @@ export async function POST(request: Request) {
           email: email,
           phone: phone || null,
           updated_at: new Date().toISOString()
-        }
+        },
+        account_id: session.user.id
       }),
       credentials: 'include',
     });

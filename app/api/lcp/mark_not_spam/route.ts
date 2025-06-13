@@ -28,7 +28,8 @@ export async function POST(request: Request) {
           update_data: {
             spam: 'false',
             ttl: Math.floor(Date.now() / 1000) + (1000 * 365 * 24 * 60 * 60) // 1000 years from now in Unix timestamp
-          }
+          },
+          account_id: account_id
         }),
         credentials: 'include',
       }),
@@ -46,7 +47,8 @@ export async function POST(request: Request) {
           update_data: {
             spam: 'false',
             ttl: Math.floor(Date.now() / 1000) + (1000 * 365 * 24 * 60 * 60) // 1000 years from now in Unix timestamp
-          }
+          },
+          account_id: account_id
         }),
         credentials: 'include',
       })

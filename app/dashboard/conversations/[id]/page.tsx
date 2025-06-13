@@ -293,6 +293,55 @@ export default function ConversationDetailPage() {
   const [submittingReport, setSubmittingReport] = useState(false);
   const [previewMessageId, setPreviewMessageId] = useState<string | null>(null);
   const [reportSuccess, setReportSuccess] = useState(false);
+  const [llmEmailType, setLlmEmailType] = useState<string>('');
+
+  // Add logging for thread state changes
+  useEffect(() => {
+    if (thread) {
+      console.log('[ConversationDetail] Thread updated:', {
+        conversation_id: thread.conversation_id,
+        has_ai_summary: !!thread.ai_summary,
+        ai_summary_length: thread.ai_summary?.length,
+        ai_summary_value: thread.ai_summary || 'UNKNOWN'
+      });
+    }
+  }, [thread]);
+
+  // Add logging for initial thread fetch
+  useEffect(() => {
+    const fetchThread = async () => {
+      if (!conversationId) return;
+      
+      console.log('[ConversationDetail] Fetching thread:', conversationId);
+      try {
+        const response = await fetch('/api/lcp/getThreadById', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conversation_id: conversationId })
+        });
+        const data = await response.json();
+        
+        console.log('[ConversationDetail] Thread fetch response:', {
+          success: data.success,
+          has_thread: !!data.data?.thread,
+          has_ai_summary: !!data.data?.thread?.ai_summary,
+          ai_summary_length: data.data?.thread?.ai_summary?.length,
+          ai_summary_value: data.data?.thread?.ai_summary || 'UNKNOWN'
+        });
+
+        if (data.success && data.data?.thread) {
+          setThread(data.data.thread);
+          setMessages(data.data.messages || []);
+        }
+      } catch (error) {
+        console.error('[ConversationDetail] Error fetching thread:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchThread();
+  }, [conversationId]);
 
   // Fetch user signature on component mount
   useEffect(() => {
@@ -1711,6 +1760,15 @@ export default function ConversationDetailPage() {
               const propertyTypes = thread.preferred_property_types?.trim();
               const timeline = thread.timeline?.trim();
               const isEmpty = [aiSummary, budgetRange, propertyTypes, timeline].every((val) => !val || val === 'UNKNOWN');
+              
+              console.log('[ConversationDetail] Rendering AI Insights:', {
+                conversation_id: thread.conversation_id,
+                has_ai_summary: !!aiSummary,
+                ai_summary_length: aiSummary?.length,
+                ai_summary_value: aiSummary || 'UNKNOWN',
+                is_empty: isEmpty
+              });
+
               if (isEmpty) return null;
               return (
                 <div className="bg-white rounded-2xl border shadow-lg p-6 text-left min-h-[170px] flex flex-col justify-center">
