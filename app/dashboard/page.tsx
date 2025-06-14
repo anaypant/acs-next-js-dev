@@ -12,7 +12,7 @@ import type React from "react"
 import { SidebarProvider, AppSidebar, SidebarTrigger, SidebarInset } from "./components/Sidebar"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
 import { goto404 } from "../utils/error"
 import type { Thread, Message, TimeRange } from "@/app/types/lcp"
 import type { Session } from "next-auth"
@@ -22,6 +22,7 @@ import ConversationProgression from './components/ConversationProgression'
 import DeleteConfirmationModal from "./components/DeleteConfirmationModal"
 import ConversationCard from "./components/ConversationCard"
 import { useDashboard } from "./lib/dashboard-client"
+import LoadingSpinner from './components/LoadingSpinner'
 
 // Time range options
 const timeRangeOptions = [
@@ -101,9 +102,22 @@ export default function Page() {
     refreshLeadPerformance,
   } = useDashboard();
 
-  // Load threads on mount
+  const { data: sessionData, status } = useSession();
+
   useEffect(() => {
+    if (status !== 'authenticated' || !session?.user?.id) return;
+    console.log('Loading threads');
     loadThreads();
+  }, [status, session?.user?.id, loadThreads]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        loadThreads();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [loadThreads]);
 
   // Add CSS for animations and effects
@@ -323,6 +337,10 @@ export default function Page() {
       : `${Math.round(avgHours / 24)}d`;
   }, [filteredLeads]);
 
+  if (status === 'loading') {
+    return <LoadingSpinner />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <SidebarProvider>
@@ -497,7 +515,7 @@ export default function Page() {
                           ? "No conversations match the selected filters."
                           : "No conversations found."}
                       </div>
-                    ) : (
+                    ) : !loadingConversations && (
                       <>
                         <div className="flex justify-center pt-4">
                           <button
