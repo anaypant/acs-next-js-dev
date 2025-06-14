@@ -7,14 +7,14 @@
  */
 
 "use client"
-import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, PanelLeft, Bell, CheckCircle, XCircle, Flag, Trash2, AlertTriangle, RefreshCw, Clock, ChevronRight, ChevronDown, X, Shield, ShieldOff } from "lucide-react"
+import { MessageSquare, RefreshCw, CheckCircle, Flag, Shield, ChevronDown } from "lucide-react"
 import type React from "react"
-import { SidebarProvider, AppSidebar, SidebarTrigger, SidebarInset, Logo } from "./components/Sidebar"
+import { SidebarProvider, AppSidebar, SidebarTrigger, SidebarInset } from "./components/Sidebar"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { useEffect, useState, useCallback, useMemo } from "react"
+import { useEffect, useMemo } from "react"
 import { goto404 } from "../utils/error"
-import type { Thread, Message, MessageWithResponseId, TimeRange } from "@/app/types/lcp"
+import type { Thread, Message, TimeRange } from "@/app/types/lcp"
 import type { Session } from "next-auth"
 import LeadFunnel from './components/LeadFunnel'
 import LeadReport from './components/LeadReport'
@@ -54,15 +54,6 @@ const getLatestEvaluableMessage = (messages: Message[]): Message | undefined => 
     });
 };
 
-interface LeadPerformanceData {
-  timestamp: string;
-  score?: number;
-  messages?: Array<{
-    ev_score?: number | string;
-    timestamp: string;
-  }>;
-}
-
 /**
  * Page Component
  * Main dashboard component that displays the lead conversion pipeline and analytics
@@ -90,7 +81,6 @@ export default function Page() {
     showProgression,
     timeRange,
     showTimeRangeDropdown,
-    leadPerformanceData,
     loadingLeadPerformance,
     refreshingLeadPerformance,
     filters,
@@ -111,12 +101,10 @@ export default function Page() {
     refreshLeadPerformance,
   } = useDashboard();
 
-  const [mounted, setMounted] = useState(false);
-
-  // Handle mounting state to prevent hydration mismatch
+  // Load threads on mount
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    loadThreads();
+  }, [loadThreads]);
 
   // Add CSS for animations and effects
   useEffect(() => {
@@ -506,7 +494,7 @@ export default function Page() {
                           : "No conversations found."}
                       </div>
                     ) : (
-
+                      <>
                         <div className="flex justify-center pt-4">
                           <button
                             className="px-4 py-2 bg-white border border-[#0e6537]/20 text-[#0e6537] rounded-lg hover:bg-[#0e6537]/5 transition-all duration-200 shadow-sm text-sm flex items-center gap-2"
@@ -516,25 +504,24 @@ export default function Page() {
                             View All Conversations
                           </button>
                         </div>
+                        {filteredConversations.slice(0, 5).map((conv: Thread) => {
+                          // Find the original thread data from the conversations array
+                          const rawThread = conversations.find((t: Thread) => t.conversation_id === conv.conversation_id);
+                          return (
+                            <ConversationCard
+                              key={conv.conversation_id}
+                              conv={conv}
+                              rawThread={rawThread}
+                              updatingRead={updatingRead}
+                              updatingLcp={updatingLcp}
+                              deletingThread={deletingThread}
+                              handleMarkAsRead={handleMarkAsRead}
+                              handleLcpToggle={handleLcpToggle}
+                              handleDeleteThread={handleDeleteThread}
+                            />
+                          );
+                        })}
                       </>
-
-                      filteredConversations.slice(0, 5).map((conv: Thread) => {
-                        // Find the original thread data from the conversations array
-                        const rawThread = conversations.find((t: Thread) => t.conversation_id === conv.conversation_id);
-                        return (
-                          <ConversationCard
-                            key={conv.conversation_id}
-                            conv={conv}
-                            rawThread={rawThread}
-                            updatingRead={updatingRead}
-                            updatingLcp={updatingLcp}
-                            deletingThread={deletingThread}
-                            handleMarkAsRead={handleMarkAsRead}
-                            handleLcpToggle={handleLcpToggle}
-                            handleDeleteThread={handleDeleteThread}
-                          />
-                        );
-                      })
                     )}
                   </div>
                 </div>
