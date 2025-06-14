@@ -74,7 +74,7 @@ export const useDashboard = () => {
             console.log(data.data);
             const { conversations, leadPerformance } = processThreadData(data.data, timeRange);
             setConversations(conversations);
-            setLeadPerformanceData(data.leadPerformance || leadPerformance || []);
+            setLeadPerformanceData(leadPerformance);
         } catch (error) {
             console.error('Error fetching threads:', error);
             setConversations([]);

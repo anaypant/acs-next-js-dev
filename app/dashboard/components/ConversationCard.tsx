@@ -126,11 +126,11 @@ const ConversationCard = ({
     const messages: Message[] = rawThread?.messages || [];
     const sortedMessages = [...messages].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-    // Find the earliest message for subject
-    const earliestMessage = messages.length > 0
-        ? [...messages].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())[0]
+    // Find the most recent message (inbound or outbound)
+    const mostRecentMessage = messages.length > 0
+        ? [...messages].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
         : undefined;
-    const subject = earliestMessage?.subject || 'No subject';
+    const subject = mostRecentMessage?.subject || 'No subject';
 
     // Find the most recent evaluable message for EV score
     const evMessage = sortedMessages.find((msg: Message) => {
@@ -145,11 +145,12 @@ const ConversationCard = ({
     else if (score >= 40 && score <= 69) evColor = 'bg-yellow-100 text-yellow-800';
     else if (score >= 70 && score <= 100) evColor = 'bg-green-100 text-green-800';
 
-    const isPendingReply = earliestMessage?.type === 'inbound-email';
+    // Pending reply: only if the most recent message is inbound-email
+    const isPendingReply = mostRecentMessage?.type === 'inbound-email';
 
     // Get the color for this conversation
     const circleColor = getConversationColor(conv.conversation_id);
-    const initials = (earliestMessage?.sender || earliestMessage?.receiver || 'C')
+    const initials = (mostRecentMessage?.sender || mostRecentMessage?.receiver || 'C')
         .split(' ')
         .map((n: string) => n[0].toUpperCase())
         .join('');
@@ -216,7 +217,7 @@ const ConversationCard = ({
             <div className="flex-1 flex flex-col min-w-0 justify-between">
                 <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
                     <div className="flex items-center gap-1">
-                        <p className="font-medium text-xs sm:text-sm truncate max-w-[150px] xs:max-w-[200px] sm:max-w-none">{conv.source_name || earliestMessage?.sender || earliestMessage?.receiver || 'Unknown'}</p>
+                        <p className="font-medium text-xs sm:text-sm truncate max-w-[150px] xs:max-w-[200px] sm:max-w-none">{conv.source_name || mostRecentMessage?.sender || mostRecentMessage?.receiver || 'Unknown'}</p>
                         {isPendingReply && (
                             <span className="flex items-center gap-1 text-amber-600" title="Awaiting your reply">
                                 <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
@@ -272,7 +273,7 @@ const ConversationCard = ({
                             e.stopPropagation();
                             handleDeleteThread(
                                 conv.conversation_id,
-                                conv.source_name || earliestMessage?.sender || earliestMessage?.receiver || 'Unknown'
+                                conv.source_name || mostRecentMessage?.sender || mostRecentMessage?.receiver || 'Unknown'
                             );
                         }}
                         disabled={deletingThread === conv.conversation_id}
@@ -301,13 +302,13 @@ const ConversationCard = ({
                         })()}
                     </span>
                 </p>
-                <p className="text-xs text-gray-400">{earliestMessage?.timestamp ? new Date(earliestMessage.timestamp).toLocaleString() : ''}</p>
+                <p className="text-xs text-gray-400">{mostRecentMessage?.timestamp ? new Date(mostRecentMessage.timestamp).toLocaleString() : ''}</p>
             </div>
             <div className="flex-[1.2] flex items-center justify-center min-w-0 pl-6">
                 <GradientText
-                    text={earliestMessage?.body || ''}
+                    text={mostRecentMessage?.body || ''}
                     isPending={isPendingReply}
-                    messageType={earliestMessage?.type}
+                    messageType={mostRecentMessage?.type}
                 />
             </div>
             <div className="flex flex-col justify-center items-end w-full sm:w-24 md:w-28 pl-2">

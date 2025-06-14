@@ -97,11 +97,20 @@ export const processThreadData = (rawData: any[], timeRange: TimeRange) => {
     const leadPerformance = conversations
         .filter(thread => thread.messages?.[0])
         .map(thread => {
-            const evMessage = getLatestEvaluableMessage(thread.messages);
+            const messages = thread.messages || [];
+            const evMessage = getLatestEvaluableMessage(messages);
+            const firstMessage = messages[messages.length - 1];
+            const lastMessage = messages[0];
+
+            // Guarantee score is a valid number
+            const rawScore = thread?.ev_score;
+            let score = Number(rawScore);
             return {
                 threadId: thread.conversation_id,
-                score: evMessage?.ev_score ?? 0,
+                score,
                 timestamp: evMessage?.timestamp || new Date().toISOString(),
+                startTimestamp: firstMessage?.timestamp || new Date().toISOString(),
+                endTimestamp: lastMessage?.timestamp || new Date().toISOString(),
                 source: thread.source,
                 sourceName: thread.source_name,
             };

@@ -42,12 +42,16 @@ const getTimeRangeText = (range: TimeRange): string => {
   }
 };
 
-// Helper function to get the latest message with a response ID
-const getLatestEvaluableMessage = (messages: Message[]): MessageWithResponseId | undefined => {
-  if (!messages) return undefined;
-  return messages
-    .filter((msg): msg is MessageWithResponseId => Boolean(msg.response_id))
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+// Helper function to get the latest message with a valid ev_score
+const getLatestEvaluableMessage = (messages: Message[]): Message | undefined => {
+  if (!messages?.length) return undefined;
+  return [...messages]
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .find(msg => {
+      let score = msg.ev_score;
+      if (typeof score === 'string') score = parseFloat(score);
+      return Number.isFinite(score);
+    });
 };
 
 interface LeadPerformanceData {
@@ -205,21 +209,30 @@ export default function Page() {
     };
   }, []);
 
-  // Memoize filter counts
+  // Memoize filter counts (should match the filteredConversations logic and exclude spam/junk)
   const filterCounts = useMemo(() => {
-    const unread = conversations.filter((c: Thread) => !c.read).length;
-    const review = conversations.filter((c: Thread) => c.flag_for_review).length;
-    const completion = conversations.filter((c: Thread) => {
-      const evMessage = getLatestEvaluableMessage(c.messages);
-      const ev_score = evMessage?.ev_score ?? 0;
-      return ev_score > (c.lcp_flag_threshold ?? 70) && !c.flag_for_review;
-    }).length;
+    const getCount = (filterKey: keyof typeof filters) => {
+      return conversations.filter((c: Thread) => {
+        if (c.spam) return false; // Exclude junk
+        if (filterKey === 'unread') return !c.read;
+        if (filterKey === 'review') return c.flag_for_review;
+        if (filterKey === 'completion') {
+          const evMessage = getLatestEvaluableMessage(c.messages);
+          const ev_score = evMessage?.ev_score ?? 0;
+          return ev_score > (c.lcp_flag_threshold ?? 70) && !c.flag_for_review;
+        }
+        return false;
+      }).length;
+    };
+    return {
+      unread: getCount('unread'),
+      review: getCount('review'),
+      completion: getCount('completion'),
+    };
+  }, [conversations, filters]);
 
-    return { unread, review, completion };
-  }, [conversations]);
-
-  // Memoize recent leads based on time range
-  const recentLeads = useMemo(() => {
+  // Memoize filtered leads based on time range
+  const filteredLeads = useMemo(() => {
     const now = new Date();
     const timeRanges = {
       day: 24 * 60 * 60 * 1000,
@@ -228,49 +241,99 @@ export default function Page() {
       year: 365 * 24 * 60 * 60 * 1000,
     };
     const timeLimit = now.getTime() - (timeRanges[timeRange as TimeRange] || timeRanges.week);
-
-    return leadPerformanceData.filter(lead => {
-      const messageDate = new Date(lead.timestamp);
+    return conversations.filter(thread => {
+      const messages = thread.messages || [];
+      const latestMsg = messages[0];
+      if (!latestMsg) return false;
+      const messageDate = new Date(latestMsg.timestamp);
       return messageDate.getTime() >= timeLimit;
     });
-  }, [leadPerformanceData, timeRange]);
+  }, [conversations, timeRange]);
 
   // Calculate average EV score
   const averageEvScore = useMemo(() => {
-    if (recentLeads.length === 0) return 0;
-    
-    // Calculate average of all scores
-    const totalScore = recentLeads.reduce((sum, lead) => {
-      const score = lead.score ?? 0;
-      return sum + (isNaN(score) ? 0 : score);
-    }, 0);
-
-    return Math.round(totalScore / recentLeads.length);
-  }, [recentLeads]);
+    if (filteredLeads.length === 0) return 0;
+    const validScores = filteredLeads
+      .map(thread => {
+        const evMsg = getLatestEvaluableMessage(thread.messages || []);
+        let score = evMsg?.ev_score;
+        if (typeof score === 'string') score = parseFloat(score);
+        return Number.isFinite(score) ? score : null;
+      })
+      .filter((score): score is number => score !== null);
+    if (validScores.length === 0) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('No valid EV scores found in filteredLeads:', filteredLeads);
+      }
+      return 0;
+    }
+    if (process.env.NODE_ENV === 'development') {
+      const invalidThreads = filteredLeads.filter(thread => {
+        const evMsg = getLatestEvaluableMessage(thread.messages || []);
+        let score = evMsg?.ev_score;
+        if (typeof score === 'string') score = parseFloat(score);
+        return !Number.isFinite(score);
+      });
+      if (invalidThreads.length > 0) {
+        console.warn('Invalid EV scores found:', invalidThreads);
+      }
+    }
+    console.log(validScores);
+    const totalEv = validScores.reduce((sum, score) => sum + score, 0);
+    return Math.round(totalEv / validScores.length);
+  }, [filteredLeads]);
 
   // Calculate conversion rate
   const conversionRate = useMemo(() => {
-    if (recentLeads.length === 0) return 0;
-    const flaggedLeads = recentLeads.filter(lead => (lead.score ?? 0) >= 70);
-    return Math.round((flaggedLeads.length / recentLeads.length) * 100);
-  }, [recentLeads]);
+    if (filteredLeads.length === 0) return 0;
+    const validThreads = filteredLeads.filter(thread => {
+      const evMsg = getLatestEvaluableMessage(thread.messages || []);
+      let score = evMsg?.ev_score;
+      if (typeof score === 'string') score = parseFloat(score);
+      return Number.isFinite(score);
+    });
+    if (validThreads.length === 0) return 0;
+    const flaggedLeads = validThreads.filter(thread => {
+      const evMsg = getLatestEvaluableMessage(thread.messages || []);
+      let score = evMsg?.ev_score;
+      if (typeof score === 'string') score = parseFloat(score);
+      if (!Number.isFinite(score) || typeof score === 'undefined') score = 0;
+      return score >= 70;
+    });
+    return Math.round((flaggedLeads.length / validThreads.length) * 100);
+  }, [filteredLeads]);
 
   // Calculate average time to convert
   const avgTimeToConvert = useMemo(() => {
-    const conversionTimes = recentLeads
-      .filter(lead => (lead.score ?? 0) >= 70)
-      .map(lead => {
-        const startTime = new Date(lead.timestamp);
-        const endTime = new Date(lead.timestamp);
-        return (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60); // Convert to hours
-      });
+    const conversionTimes = filteredLeads
+      .map(thread => {
+        const evMsg = getLatestEvaluableMessage(thread.messages || []);
+        let score = evMsg?.ev_score;
+        if (typeof score === 'string') score = parseFloat(score);
+        if (!Number.isFinite(score) || typeof score === 'undefined') score = 0;
+        if (score < 70) return null;
+        const messages = thread.messages || [];
+        const firstMsg = messages[messages.length - 1];
+        const lastMsg = messages[0];
+        const startTime = new Date(firstMsg?.timestamp);
+        const endTime = new Date(lastMsg?.timestamp);
+        const diff = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60); // hours
+        if (!Number.isFinite(diff)) {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('Invalid time difference for thread:', thread, 'start:', firstMsg?.timestamp, 'end:', lastMsg?.timestamp);
+          }
+          return null;
+        }
+        return diff;
+      })
+      .filter((time): time is number => time !== null);
 
     if (conversionTimes.length === 0) return 'N/A';
-    const avgHours = conversionTimes.reduce((sum: number, time: number) => sum + time, 0) / conversionTimes.length;
+    const avgHours = conversionTimes.reduce((sum, time) => sum + time, 0) / conversionTimes.length;
     return avgHours < 24 
       ? `${Math.round(avgHours)}h`
       : `${Math.round(avgHours / 24)}d`;
-  }, [recentLeads]);
+  }, [filteredLeads]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -443,24 +506,7 @@ export default function Page() {
                           : "No conversations found."}
                       </div>
                     ) : (
-                      <>
-                        {filteredConversations.map((conv: Thread) => {
-                          // Find the original thread data from the conversations array
-                          const rawThread = conversations.find((t: Thread) => t.conversation_id === conv.conversation_id);
-                          return (
-                            <ConversationCard
-                              key={conv.conversation_id}
-                              conv={conv}
-                              rawThread={rawThread}
-                              updatingRead={updatingRead}
-                              updatingLcp={updatingLcp}
-                              deletingThread={deletingThread}
-                              handleMarkAsRead={handleMarkAsRead}
-                              handleLcpToggle={handleLcpToggle}
-                              handleDeleteThread={handleDeleteThread}
-                            />
-                          );
-                        })}
+
                         <div className="flex justify-center pt-4">
                           <button
                             className="px-4 py-2 bg-white border border-[#0e6537]/20 text-[#0e6537] rounded-lg hover:bg-[#0e6537]/5 transition-all duration-200 shadow-sm text-sm flex items-center gap-2"
@@ -471,6 +517,24 @@ export default function Page() {
                           </button>
                         </div>
                       </>
+
+                      filteredConversations.slice(0, 5).map((conv: Thread) => {
+                        // Find the original thread data from the conversations array
+                        const rawThread = conversations.find((t: Thread) => t.conversation_id === conv.conversation_id);
+                        return (
+                          <ConversationCard
+                            key={conv.conversation_id}
+                            conv={conv}
+                            rawThread={rawThread}
+                            updatingRead={updatingRead}
+                            updatingLcp={updatingLcp}
+                            deletingThread={deletingThread}
+                            handleMarkAsRead={handleMarkAsRead}
+                            handleLcpToggle={handleLcpToggle}
+                            handleDeleteThread={handleDeleteThread}
+                          />
+                        );
+                      })
                     )}
                   </div>
                 </div>
