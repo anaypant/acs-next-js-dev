@@ -215,7 +215,7 @@ export default function HomePage() {
 
               <div className="relative z-10">
                 <Link
-                  href="/get-started"
+                  href="/signup"
                   className="inline-flex items-center px-4 sm:px-6 py-2.5 sm:py-3 text-white bg-[#0e6537] hover:bg-gradient-to-r hover:from-[#0e6537] hover:to-[#157a42] rounded-md font-medium transition-all duration-300 shadow-lg shadow-green-700/20 text-sm sm:text-base"
                 >
                   Get Started
@@ -443,7 +443,7 @@ export default function HomePage() {
 
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <Link
-                  href="/get-started"
+                  href="/signup"
                   className="px-6 sm:px-8 py-2.5 sm:py-3 bg-white text-[#0e6537] hover:bg-gradient-to-r hover:from-white hover:to-green-100 rounded-md font-medium transition-all duration-300 text-center text-sm sm:text-base"
                 >
                   Get Started

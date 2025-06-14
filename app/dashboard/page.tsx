@@ -428,16 +428,16 @@ export default function Page() {
               <div className="lg:col-span-3 bg-white p-3 sm:p-4 md:p-6 rounded-lg border border-[#0e6537]/20 shadow-sm">
                 <div className="flex flex-col gap-3 sm:gap-4">
                   {/* Header with title and actions */}
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-3">
-                    <h3 className="text-base sm:text-lg font-semibold">Recent Conversations</h3>
-                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-center">
-                      {/* Centered filter bar with label */}
-                      <div className="flex items-center gap-1 px-3 py-1 bg-gray-50 rounded-lg border border-gray-200 mx-auto">
-                        <span className="text-sm font-medium text-gray-700 mr-1">Filters:</span>
-                        <div className="flex flex-wrap gap-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-base sm:text-lg font-semibold whitespace-nowrap">Recent Conversations</h3>
+                    <div className="flex items-center gap-2">
+                      {/* Filter bar */}
+                      <div className="flex items-center gap-1 px-2 py-1 bg-gray-50 rounded-lg border border-gray-200">
+                        <span className="text-sm font-medium text-gray-700 whitespace-nowrap">Filters:</span>
+                        <div className="flex gap-1">
                           <button
                             onClick={() => toggleFilter('unread')}
-                            className={`px-2 py-1 text-xs sm:text-sm rounded-lg transition-colors ${
+                            className={`px-2 py-1 text-xs rounded-lg transition-colors whitespace-nowrap ${
                               filters.unread
                                 ? 'bg-[#0e6537] text-white'
                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -447,7 +447,7 @@ export default function Page() {
                           </button>
                           <button
                             onClick={() => toggleFilter('review')}
-                            className={`px-2 py-1 text-xs sm:text-sm rounded-lg transition-colors ${
+                            className={`px-2 py-1 text-xs rounded-lg transition-colors whitespace-nowrap ${
                               filters.review
                                 ? 'bg-[#0e6537] text-white'
                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -457,7 +457,7 @@ export default function Page() {
                           </button>
                           <button
                             onClick={() => toggleFilter('completion')}
-                            className={`px-2 py-1 text-xs sm:text-sm rounded-lg transition-colors ${
+                            className={`px-2 py-1 text-xs rounded-lg transition-colors whitespace-nowrap ${
                               filters.completion
                                 ? 'bg-[#0e6537] text-white'
                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -467,16 +467,20 @@ export default function Page() {
                           </button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm flex items-center gap-1 sm:gap-2 text-xs sm:text-sm md:text-base"
-                          onClick={() => loadThreads()}
-                          disabled={loadingConversations}
-                        >
-                          <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${loadingConversations ? 'animate-spin' : ''}`} />
-                          Refresh
-                        </button>
-                      </div>
+                      <button
+                        className="px-2 py-1.5 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm flex items-center gap-1 text-xs whitespace-nowrap"
+                        onClick={() => loadThreads()}
+                        disabled={loadingConversations}
+                      >
+                        <RefreshCw className={`w-3 h-3 ${loadingConversations ? 'animate-spin' : ''}`} />
+                        Refresh
+                      </button>
+                      <button
+                        className="px-2 py-1.5 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm text-xs whitespace-nowrap"
+                        onClick={() => (window.location.href = "/dashboard/conversations")}
+                      >
+                        Load All
+                      </button>
                     </div>
                   </div>
 

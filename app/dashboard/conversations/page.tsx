@@ -337,7 +337,6 @@ export default function ConversationsPage() {
       <div className="max-w-7xl mx-auto p-6">
         {/* Header section with navigation */}
         <div className="flex items-center gap-4 mb-6">
-          <Logo />
           <button
             onClick={() => window.history.back()}
             className="p-2 hover:bg-white/10 rounded-lg"

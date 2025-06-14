@@ -237,11 +237,11 @@ const ConversationCard = ({
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                    <span className={`px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-xs font-medium whitespace-nowrap ${evColor}`} title="Engagement Value (0=bad, 100=good)">
+                    <span className={`px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-xs font-medium whitespace-nowrap ${evColor}`} title="Engagement Value Score (0-100): Measures the quality and relevance of the conversation. Higher scores indicate more promising leads.">
                         EV: {score >= 0 ? score.toString() : 'N/A'}
                     </span>
                     {score > conv.lcp_flag_threshold && !conv.flag_for_review && (
-                        <span className="flex items-center gap-1 text-green-600 font-bold" title="Flagged for completion">
+                        <span className="flex items-center gap-1 text-green-600 font-bold" title="This conversation has met the completion criteria and is ready for follow-up action.">
                             <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" /> 
                             <span className="hidden xs:inline">Flagged</span>
                         </span>
