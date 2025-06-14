@@ -42,12 +42,16 @@ const getTimeRangeText = (range: TimeRange): string => {
   }
 };
 
-// Helper function to get the latest message with a response ID
-const getLatestEvaluableMessage = (messages: Message[]): MessageWithResponseId | undefined => {
-  if (!messages) return undefined;
-  return messages
-    .filter((msg): msg is MessageWithResponseId => Boolean(msg.response_id))
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+// Helper function to get the latest message with a valid ev_score
+const getLatestEvaluableMessage = (messages: Message[]): Message | undefined => {
+  if (!messages?.length) return undefined;
+  return [...messages]
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .find(msg => {
+      let score = msg.ev_score;
+      if (typeof score === 'string') score = parseFloat(score);
+      return Number.isFinite(score);
+    });
 };
 
 /**
@@ -196,18 +200,27 @@ export default function Page() {
     };
   }, []);
 
-  // Memoize filter counts
+  // Memoize filter counts (should match the filteredConversations logic and exclude spam/junk)
   const filterCounts = useMemo(() => {
-    const unread = conversations.filter((c: Thread) => !c.read).length;
-    const review = conversations.filter((c: Thread) => c.flag_for_review).length;
-    const completion = conversations.filter((c: Thread) => {
-      const evMessage = getLatestEvaluableMessage(c.messages);
-      const ev_score = evMessage?.ev_score ?? 0;
-      return ev_score > (c.lcp_flag_threshold ?? 70) && !c.flag_for_review;
-    }).length;
-
-    return { unread, review, completion };
-  }, [conversations]);
+    const getCount = (filterKey: keyof typeof filters) => {
+      return conversations.filter((c: Thread) => {
+        if (c.spam) return false; // Exclude junk
+        if (filterKey === 'unread') return !c.read;
+        if (filterKey === 'review') return c.flag_for_review;
+        if (filterKey === 'completion') {
+          const evMessage = getLatestEvaluableMessage(c.messages);
+          const ev_score = evMessage?.ev_score ?? 0;
+          return ev_score > (c.lcp_flag_threshold ?? 70) && !c.flag_for_review;
+        }
+        return false;
+      }).length;
+    };
+    return {
+      unread: getCount('unread'),
+      review: getCount('review'),
+      completion: getCount('completion'),
+    };
+  }, [conversations, filters]);
 
   // Memoize filtered leads based on time range
   const filteredLeads = useMemo(() => {
@@ -233,9 +246,9 @@ export default function Page() {
     if (filteredLeads.length === 0) return 0;
     const validScores = filteredLeads
       .map(thread => {
-        let score = thread?.ev_score;
+        const evMsg = getLatestEvaluableMessage(thread.messages || []);
+        let score = evMsg?.ev_score;
         if (typeof score === 'string') score = parseFloat(score);
-        if (!Number.isFinite(score) || typeof score === 'undefined') score = 0;
         return Number.isFinite(score) ? score : null;
       })
       .filter((score): score is number => score !== null);
@@ -246,16 +259,17 @@ export default function Page() {
       return 0;
     }
     if (process.env.NODE_ENV === 'development') {
-      const invalidScores = filteredLeads.filter(thread => {
+      const invalidThreads = filteredLeads.filter(thread => {
         const evMsg = getLatestEvaluableMessage(thread.messages || []);
         let score = evMsg?.ev_score;
         if (typeof score === 'string') score = parseFloat(score);
         return !Number.isFinite(score);
       });
-      if (invalidScores.length > 0) {
-        console.warn('Invalid EV scores found:', invalidScores);
+      if (invalidThreads.length > 0) {
+        console.warn('Invalid EV scores found:', invalidThreads);
       }
     }
+    console.log(validScores);
     const totalEv = validScores.reduce((sum, score) => sum + score, 0);
     return Math.round(totalEv / validScores.length);
   }, [filteredLeads]);
@@ -487,7 +501,7 @@ export default function Page() {
                           : "No conversations found."}
                       </div>
                     ) : (
-                      filteredConversations.map((conv: Thread) => {
+                      filteredConversations.slice(0, 5).map((conv: Thread) => {
                         // Find the original thread data from the conversations array
                         const rawThread = conversations.find((t: Thread) => t.conversation_id === conv.conversation_id);
                         return (
