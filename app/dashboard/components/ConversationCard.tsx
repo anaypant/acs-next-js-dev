@@ -67,6 +67,21 @@ const getConversationColor = (conversationId: string) => {
     return PASCAL_COLORS[Math.abs(hash) % PASCAL_COLORS.length];
 };
 
+// Returns a style object for the EV score badge based on the score (0-100)
+function getEvScoreColor(score: number) {
+    const s = Math.max(0, Math.min(100, score));
+    let h = 0;
+    if (s <= 50) {
+        h = 0 + (48 - 0) * (s / 50);
+    } else {
+        h = 48 + (142 - 48) * ((s - 50) / 50);
+    }
+    return {
+        backgroundColor: `hsl(${h}, 95%, 90%)`,
+        color: `hsl(${h}, 60%, 30%)`,
+    };
+}
+
 /**
  * ConversationCard Component
  * Displays individual conversation cards with interactive features and status indicators
@@ -140,10 +155,7 @@ const ConversationCard = ({
     const ev_score = evMessage ? (typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score) : -1;
     const score = typeof ev_score === 'number' && !isNaN(ev_score) ? ev_score : -1;
 
-    let evColor = 'bg-gray-200 text-gray-700';
-    if (score >= 0 && score <= 39) evColor = 'bg-red-100 text-red-800';
-    else if (score >= 40 && score <= 69) evColor = 'bg-yellow-100 text-yellow-800';
-    else if (score >= 70 && score <= 100) evColor = 'bg-green-100 text-green-800';
+    const evColorStyle = score >= 0 ? getEvScoreColor(score) : { backgroundColor: '#e5e7eb', color: '#374151' };
 
     // Pending reply: only if the most recent message is inbound-email
     const isPendingReply = mostRecentMessage?.type === 'inbound-email';
@@ -237,7 +249,11 @@ const ConversationCard = ({
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                    <span className={`px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-xs font-medium whitespace-nowrap ${evColor}`} title="Engagement Value (0=bad, 100=good)">
+                    <span
+                        className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-xs font-medium whitespace-nowrap"
+                        style={evColorStyle}
+                        title="Engagement Value (0=bad, 100=good)"
+                    >
                         EV: {score >= 0 ? score.toString() : 'N/A'}
                     </span>
                     {score > conv.lcp_flag_threshold && !conv.flag_for_review && (

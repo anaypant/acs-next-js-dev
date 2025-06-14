@@ -15,6 +15,30 @@ import type {
     LeadPerformanceData 
 } from '@/app/types/lcp';
 
+// Define a type for the processed thread that matches our Thread type
+type ProcessedThread = {
+    conversation_id: string;
+    associated_account: string;
+    name: string;
+    flag_for_review: boolean;
+    flag_review_override: boolean;
+    read: boolean;
+    busy: boolean;
+    spam: boolean;
+    lcp_enabled: boolean;
+    lcp_flag_threshold: number;
+    messages: Message[];
+    ai_summary: string;
+    source: string;
+    source_name: string;
+    budget_range: string;
+    preferred_property_types: string;
+    timeline: string;
+    last_updated: string;
+    created_at: string;
+    updated_at: string;
+};
+
 export const ensureMessageFields = (msg: any): Message => ({
     id: msg.id || msg.conversation_id,
     conversation_id: msg.conversation_id,
@@ -47,7 +71,10 @@ export const calculateMetrics = (threads: Thread[], timeRange: TimeRange): Threa
     const now = new Date();
     const startDate = getStartDate(timeRange, now);
 
-    return threads.reduce((metrics, thread) => {
+    // Exclude spam threads from metrics
+    const nonSpamThreads = threads.filter(thread => !thread.spam);
+
+    return nonSpamThreads.reduce((metrics, thread) => {
         const messages = thread.messages || [];
         const latestMessage = messages[0];
 
@@ -71,27 +98,54 @@ const getStartDate = (timeRange: TimeRange, now: Date): Date => {
 };
 
 export const processThreadData = (rawData: any[], timeRange: TimeRange) => {
+    if (!Array.isArray(rawData)) {
+        console.warn('processThreadData received non-array data:', rawData);
+        return { conversations: [], metrics: { newLeads: 0, pendingReplies: 0, unopenedLeads: 0 }, leadPerformance: [] };
+    }
+
     const sortedData = [...rawData].sort((a, b) => {
-        const aLatest = a.messages?.[0]?.timestamp || 0;
-        const bLatest = b.messages?.[0]?.timestamp || 0;
+        const aLatest = a?.messages?.[0]?.timestamp || 0;
+        const bLatest = b?.messages?.[0]?.timestamp || 0;
         return new Date(bLatest).getTime() - new Date(aLatest).getTime();
     });
 
     const conversations = sortedData.map(item => {
-        const thread = item.thread;
-        return {
-            ...thread,
-            flag_for_review: thread.flag_for_review === 'true',
-            flag_review_override: thread.flag_review_override === 'true',
-            read: thread.read === 'true',
-            busy: thread.busy === 'true',
-            spam: thread.spam === 'true',
+        if (!item || typeof item !== 'object') {
+            console.warn('Invalid thread item:', item);
+            return null;
+        }
+
+        const thread = item.thread || item;
+        if (!thread || typeof thread !== 'object') {
+            console.warn('Invalid thread data:', thread);
+            return null;
+        }
+
+        const processedThread: ProcessedThread = {
+            conversation_id: thread.conversation_id || thread.id || '',
+            associated_account: thread.associated_account || thread.sender || '',
+            name: thread.name || 'Unnamed Conversation',
+            flag_for_review: thread.flag_for_review === 'true' || thread.flag_for_review === true,
+            flag_review_override: thread.flag_review_override === 'true' || thread.flag_review_override === true,
+            read: thread.read === 'true' || thread.read === true,
+            busy: thread.busy === 'true' || thread.busy === true,
+            spam: thread.spam === 'true' || thread.spam === true,
             lcp_enabled: thread.lcp_enabled === true || thread.lcp_enabled === 'true' || thread.lcp_enabled === 1,
-            lcp_flag_threshold: typeof thread.lcp_flag_threshold === 'number' ? thread.lcp_flag_threshold : Number(thread.lcp_flag_threshold) || 0,
-            messages: (item.messages || []).map(ensureMessageFields),
+            lcp_flag_threshold: typeof thread.lcp_flag_threshold === 'number' ? thread.lcp_flag_threshold : Number(thread.lcp_flag_threshold) || 70,
+            messages: Array.isArray(item.messages) ? item.messages.map(ensureMessageFields) : [],
             ai_summary: thread.ai_summary || '',
+            source: thread.source || '',
+            source_name: thread.source_name || '',
+            budget_range: thread.budget_range || '',
+            preferred_property_types: thread.preferred_property_types || '',
+            timeline: thread.timeline || '',
+            last_updated: thread.last_updated || thread.updated_at || new Date().toISOString(),
+            created_at: thread.created_at || new Date().toISOString(),
+            updated_at: thread.updated_at || new Date().toISOString(),
         };
-    });
+
+        return processedThread as unknown as Thread;
+    }).filter((thread): thread is Thread => thread !== null);
 
     const metrics = calculateMetrics(conversations, timeRange);
     const leadPerformance = conversations
@@ -102,17 +156,14 @@ export const processThreadData = (rawData: any[], timeRange: TimeRange) => {
             const firstMessage = messages[messages.length - 1];
             const lastMessage = messages[0];
 
-            // Guarantee score is a valid number
-            const rawScore = thread?.ev_score;
-            let score = Number(rawScore);
             return {
                 threadId: thread.conversation_id,
-                score,
+                score: evMessage?.ev_score || 0,
                 timestamp: evMessage?.timestamp || new Date().toISOString(),
                 startTimestamp: firstMessage?.timestamp || new Date().toISOString(),
                 endTimestamp: lastMessage?.timestamp || new Date().toISOString(),
-                source: thread.source,
-                sourceName: thread.source_name,
+                source: thread.source || '',
+                sourceName: thread.source_name || '',
             };
         });
 

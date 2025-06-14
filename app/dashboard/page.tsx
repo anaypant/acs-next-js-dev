@@ -12,7 +12,7 @@ import type React from "react"
 import { SidebarProvider, AppSidebar, SidebarTrigger, SidebarInset } from "./components/Sidebar"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
 import { goto404 } from "../utils/error"
 import type { Thread, Message, TimeRange } from "@/app/types/lcp"
 import type { Session } from "next-auth"
@@ -22,6 +22,7 @@ import ConversationProgression from './components/ConversationProgression'
 import DeleteConfirmationModal from "./components/DeleteConfirmationModal"
 import ConversationCard from "./components/ConversationCard"
 import { useDashboard } from "./lib/dashboard-client"
+import LoadingSpinner from './components/LoadingSpinner'
 
 // Time range options
 const timeRangeOptions = [
@@ -101,9 +102,22 @@ export default function Page() {
     refreshLeadPerformance,
   } = useDashboard();
 
-  // Load threads on mount
+  const { data: sessionData, status } = useSession();
+
   useEffect(() => {
+    if (status !== 'authenticated' || !session?.user?.id) return;
+    console.log('Loading threads');
     loadThreads();
+  }, [status, session?.user?.id, loadThreads]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        loadThreads();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [loadThreads]);
 
   // Add CSS for animations and effects
@@ -323,6 +337,10 @@ export default function Page() {
       : `${Math.round(avgHours / 24)}d`;
   }, [filteredLeads]);
 
+  if (status === 'loading') {
+    return <LoadingSpinner />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <SidebarProvider>
@@ -470,7 +488,9 @@ export default function Page() {
                       <div className="flex items-center gap-2">
                         <button
                           className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm flex items-center gap-1 sm:gap-2 text-xs sm:text-sm md:text-base"
-                          onClick={() => loadThreads()}
+                          onClick={() => {
+                            loadThreads();
+                          }}
                           disabled={loadingConversations}
                         >
                           <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${loadingConversations ? 'animate-spin' : ''}`} />
@@ -493,7 +513,7 @@ export default function Page() {
                           ? "No conversations match the selected filters."
                           : "No conversations found."}
                       </div>
-                    ) : (
+                    ) : !loadingConversations && (
                       <>
                         <div className="flex justify-center pt-4">
                           <button
