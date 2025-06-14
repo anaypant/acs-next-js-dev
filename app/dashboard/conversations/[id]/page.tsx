@@ -21,6 +21,7 @@ import 'jspdf-autotable';
 import type { User } from "next-auth"
 import { v4 as uuidv4 } from 'uuid';
 import { ensureMessageFields } from "@/app/dashboard/lib/dashboard-utils";
+import ConversationProgression from "@/app/dashboard/components/ConversationProgression";
 
 // Add type declaration for jsPDF with autoTable
 declare module 'jspdf' {
@@ -1254,43 +1255,58 @@ export default function ConversationDetailPage() {
     };
 
     return (
-      <div id="notes-widget" className="bg-white rounded-lg border border-[#0e6537]/20 p-4">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="font-medium text-gray-900">Context Notes</h3>
-          {!isEditing ? (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <Edit2 className="w-4 h-4 text-gray-500" />
-            </button>
-          ) : (
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="p-1 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
-            >
-              {saving ? (
-                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Save className="w-4 h-4 text-gray-500" />
-              )}
-            </button>
-          )}
+      <div className="flex flex-col gap-6">
+        <div id="notes-widget" className="bg-white rounded-lg border border-[#0e6537]/20 p-4">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-medium text-gray-900">Context Notes</h3>
+            {!isEditing ? (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <Edit2 className="w-4 h-4 text-gray-500" />
+              </button>
+            ) : (
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="p-1 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {saving ? (
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4 text-gray-500" />
+                )}
+              </button>
+            )}
+          </div>
+          <div>
+            {isEditing ? (
+              <textarea
+                value={editedNotes}
+                onChange={(e) => setEditedNotes(e.target.value)}
+                placeholder="Add context notes about this conversation..."
+                className="w-full h-32 p-2 border rounded-lg focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] outline-none resize-none"
+              />
+            ) : (
+              <p className="text-gray-600 whitespace-pre-wrap">
+                {notes || "No context notes added yet. Click the edit button to add notes."}
+              </p>
+            )}
+          </div>
         </div>
-        <div>
-          {isEditing ? (
-            <textarea
-              value={editedNotes}
-              onChange={(e) => setEditedNotes(e.target.value)}
-              placeholder="Add context notes about this conversation..."
-              className="w-full h-32 p-2 border rounded-lg focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] outline-none resize-none"
+
+        {/* Conversation Progression Chart */}
+        <div className="bg-white rounded-lg border border-[#0e6537]/20 p-4">
+          <h3 className="font-medium text-gray-900 mb-4">Conversation Progression</h3>
+          <div className="w-full">
+            <ConversationProgression
+              leadData={[{ thread: thread, messages: messages }]}
+              loading={loading}
+              timeRange="month"
+              onRefresh={reloadConversation}
             />
-          ) : (
-            <p className="text-gray-600 whitespace-pre-wrap">
-              {notes || "No context notes added yet. Click the edit button to add notes."}
-            </p>
-          )}
+          </div>
         </div>
       </div>
     );
@@ -1485,7 +1501,7 @@ export default function ConversationDetailPage() {
       )}
 
       <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1] pb-10">
-        <div className="max-w-[1600px] mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6" style={{ gridTemplateColumns: '1fr 1fr 320px' }}>
+        <div className="max-w-[1600px] mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left: Conversation History */}
           <div className="flex flex-col">
             {/* Header */}
