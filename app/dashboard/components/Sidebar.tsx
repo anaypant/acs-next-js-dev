@@ -7,7 +7,7 @@
  */
 
 "use client"
-import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, Menu, Trash2, CreditCard, LogOut } from "lucide-react"
+import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, Menu, Trash2, CreditCard, LogOut, FileText } from "lucide-react"
 import type React from "react"
 import { useState, createContext, useContext, useEffect, useRef } from "react"
 import { useSession, signOut } from "next-auth/react"
@@ -307,25 +307,15 @@ const mainNavigation = [
     url: "/dashboard/conversations",
   },
   {
-    title: "Analytics",
-    icon: BarChart3,
-    url: "/dashboard/analytics",
+    title: "Privacy Policy",
+    icon: FileText,
+    url: "/legal",
   },
-  // {
-  //   title: "Calendar",
-  //   icon: Calendar,
-  //   url: "/dashboard/calendar",
-  // },
-  // {
-  //   title: "Contacts",
-  //   icon: Phone,
-  //   url: "/dashboard/contacts",
-  // },
-  // {
-  //   title: "Email",
-  //   icon: Mail,
-  //   url: "/dashboard/email",
-  // },
+  {
+    title: "Terms of Service",
+    icon: FileText,
+    url: "/legal",
+  },
   {
     title: "Junk",
     icon: Trash2,
@@ -490,14 +480,9 @@ function AppSidebar() {
         <div className={`mt-auto px-3 py-4 border-t border-white/20 ${!isOpen && isMobile ? 'hidden' : ''}`}>
           <div className="flex flex-col gap-2 text-xs text-white/60">
             <div className="flex flex-wrap gap-x-4 gap-y-1">
-              {/* <a href="#" className="hover:text-white transition-colors">About Us</a>
-              <a href="#" className="hover:text-white transition-colors">Careers</a>
-              <a href="#" className="hover:text-white transition-colors">Blog</a> */}
               <a href="#" className="hover:text-white transition-colors">Contact</a>
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-1">
-              <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
-              <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
               <a href="#" className="hover:text-white transition-colors">Cookie Policy</a>
             </div>
             <span className="text-white/40 mt-2">© 2025 ACS. All rights reserved.</span>

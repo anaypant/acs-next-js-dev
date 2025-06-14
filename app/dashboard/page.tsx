@@ -54,6 +54,15 @@ const getLatestEvaluableMessage = (messages: Message[]): Message | undefined => 
     });
 };
 
+interface LeadPerformanceData {
+  timestamp: string;
+  score?: number;
+  messages?: Array<{
+    ev_score?: number | string;
+    timestamp: string;
+  }>;
+}
+
 /**
  * Page Component
  * Main dashboard component that displays the lead conversion pipeline and analytics
@@ -470,20 +479,16 @@ export default function Page() {
                           </button>
                         </div>
                       </div>
-                      <button
-                        className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm flex items-center gap-1 sm:gap-2 text-xs sm:text-sm md:text-base"
-                        onClick={() => loadThreads()}
-                        disabled={loadingConversations}
-                      >
-                        <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${loadingConversations ? 'animate-spin' : ''}`} />
-                        Refresh
-                      </button>
-                      <button
-                        className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm text-xs sm:text-sm md:text-base"
-                        onClick={() => (window.location.href = "/dashboard/conversations")}
-                      >
-                        Load All Conversations
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm flex items-center gap-1 sm:gap-2 text-xs sm:text-sm md:text-base"
+                          onClick={() => loadThreads()}
+                          disabled={loadingConversations}
+                        >
+                          <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${loadingConversations ? 'animate-spin' : ''}`} />
+                          Refresh
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -501,6 +506,18 @@ export default function Page() {
                           : "No conversations found."}
                       </div>
                     ) : (
+
+                        <div className="flex justify-center pt-4">
+                          <button
+                            className="px-4 py-2 bg-white border border-[#0e6537]/20 text-[#0e6537] rounded-lg hover:bg-[#0e6537]/5 transition-all duration-200 shadow-sm text-sm flex items-center gap-2"
+                            onClick={() => (window.location.href = "/dashboard/conversations")}
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                            View All Conversations
+                          </button>
+                        </div>
+                      </>
+
                       filteredConversations.slice(0, 5).map((conv: Thread) => {
                         // Find the original thread data from the conversations array
                         const rawThread = conversations.find((t: Thread) => t.conversation_id === conv.conversation_id);
@@ -596,7 +613,7 @@ export default function Page() {
                 {/* Quick actions section */}
                 <div className="mt-3 sm:mt-4 md:mt-6">
                   <h4 className="font-semibold mb-2 sm:mb-3">Quick Actions</h4>
-                  <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-2">
+                  <div className="flex gap-2">
                     {[
                       {
                         id: 'track-lead-journey',
@@ -608,22 +625,13 @@ export default function Page() {
                         className: "px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm text-xs sm:text-sm md:text-base"
                       },
                       {
-                        id: 'conversation-progression',
-                        label: 'Conversation Progression',
-                        onClick: () => {
-                          setShowFunnel(false);
-                          setShowProgression(true);
-                        },
-                        className: "px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm"
-                      },
-                      {
                         id: 'generate-report',
                         label: 'Generate Report',
                         onClick: () => {
                           setShowFunnel(false);
                           setShowProgression(false);
                         },
-                        className: "px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm"
+                        className: "px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm text-xs sm:text-sm md:text-base"
                       }
                     ].map(action => (
                       <button
@@ -641,26 +649,55 @@ export default function Page() {
 
             {/* Bottom section with lead sources and activity */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
-              {/* Lead sources section */}
+              {/* Legend section */}
               <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg border border-[#0e6537]/20 shadow-sm">
-                <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 md:mb-6">Lead Sources This Week</h3>
+                <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 md:mb-6">Understanding Your Dashboard</h3>
 
-                {/* Lead source progress bars */}
-                <div className="space-y-2 sm:space-y-3 md:space-y-4">
-                  {[
-                    { id: 'website-forms', source: "Website Forms", count: 45, percentage: 75 },
-                    { id: 'social-media', source: "Social Media", count: 28, percentage: 50 },
-                    { id: 'referrals', source: "Referrals", count: 18, percentage: 33 },
-                    { id: 'open-houses', source: "Open Houses", count: 12, percentage: 25 },
-                  ].map((source) => (
-                    <div key={source.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5 sm:gap-2">
-                      <span className="text-xs sm:text-sm text-gray-600">{source.source}</span>
-                      <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <span className="text-xs sm:text-sm font-medium text-gray-900">{source.count}</span>
-                        <span className="text-xs sm:text-sm text-gray-500">({source.percentage}%)</span>
-                      </div>
+                {/* Legend items */}
+                <div className="space-y-4">
+                  {/* EV Score */}
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-[#0e6537]/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-[#0e6537] font-semibold">EV</span>
                     </div>
-                  ))}
+                    <div>
+                      <h4 className="font-medium text-gray-900">EV Score</h4>
+                      <p className="text-sm text-gray-600">Engagement Value score (0-100) indicating the quality and potential of the lead interaction.</p>
+                    </div>
+                  </div>
+
+                  {/* Review Flag */}
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-yellow-50 flex items-center justify-center flex-shrink-0">
+                      <Flag className="w-4 h-4 text-yellow-500" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900">Review Flag</h4>
+                      <p className="text-sm text-gray-600">Indicates a conversation that needs human review due to potential issues or high EV score.</p>
+                    </div>
+                  </div>
+
+                  {/* Review Check Toggle */}
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-[#0e6537]/10 flex items-center justify-center flex-shrink-0">
+                      <Shield className="w-4 h-4 text-[#0e6537]" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900">Review Check</h4>
+                      <p className="text-sm text-gray-600">When enabled (shield icon), AI will flag conversations for review. When disabled (shield-off icon), AI review checks are bypassed.</p>
+                    </div>
+                  </div>
+
+                  {/* Completion Status */}
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-[#0e6537]/10 flex items-center justify-center flex-shrink-0">
+                      <CheckCircle className="w-4 h-4 text-[#0e6537]" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900">Completion Status</h4>
+                      <p className="text-sm text-gray-600">Shows whether a conversation has been completed or is still in progress.</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 

@@ -33,27 +33,33 @@ const ConversationProgression: React.FC<ConversationProgressionProps> = ({ leadD
     const allData: MessageData[] = [];
 
     conversationsData.forEach((conversation) => {
-      if (conversation.messages && conversation.messages.length > 0) {
+      const messages = conversation.messages || [];
+      if (messages.length > 0) {
         // Use the first message's timestamp and a hash of the first message body as a stable ID
-        const firstMessage = conversation.messages[0];
+        const firstMessage = messages[0];
         const conversationId = firstMessage ? 
           `conv-${firstMessage.timestamp}-${firstMessage.body.slice(0, 8).split('').reduce((acc: number, char: string) => char.charCodeAt(0) + ((acc << 5) - acc), 0)}` :
           `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         
-        conversation.messages.forEach((msg: Message) => {
-          const ev = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
-          if (typeof ev === 'number' && !isNaN(ev)) {
-            allData.push({
-              timestamp: msg.timestamp,
-              evScore: ev,
-              conversationId
-            });
+        messages.forEach((msg: Message) => {
+          // Only process messages with ev_score
+          if (msg.ev_score !== undefined) {
+            const ev = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
+            if (typeof ev === 'number' && !isNaN(ev)) {
+              allData.push({
+                timestamp: msg.timestamp,
+                evScore: ev,
+                conversationId
+              });
+            }
           }
         });
       }
     });
 
-    return allData.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    const sortedData = allData.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    console.log('Processed data for chart:', sortedData);
+    return sortedData;
   };
 
   const formatDate = (timestamp: string) => {
@@ -67,6 +73,7 @@ const ConversationProgression: React.FC<ConversationProgressionProps> = ({ leadD
 
   // Get unique conversation IDs
   const uniqueConversations = Array.from(new Set(processedData.map(d => d.conversationId)));
+  console.log('Unique conversations:', uniqueConversations);
 
   return (
     <div className="bg-white p-6 rounded-lg border border-[#0e6537]/20 shadow-sm">
@@ -74,7 +81,7 @@ const ConversationProgression: React.FC<ConversationProgressionProps> = ({ leadD
       {loading ? (
         <div className="flex items-center justify-center h-64 text-gray-600">Loading progression data...</div>
       ) : processedData.length > 0 ? (
-        <div className="h-[500px]">
+        <div className="w-full h-[400px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -100,7 +107,7 @@ const ConversationProgression: React.FC<ConversationProgressionProps> = ({ leadD
                   type="monotone"
                   data={processedData.filter(d => d.conversationId === conversationId)}
                   dataKey="evScore"
-                  name={conversationId}
+                  name={`Conversation ${index + 1}`}
                   stroke={`hsl(${(index * 137.5) % 360}, 70%, 40%)`}
                   strokeWidth={2}
                   dot={{ r: 4 }}
