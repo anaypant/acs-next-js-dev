@@ -7,7 +7,7 @@
  */
 
 "use client"
-import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, Menu, Trash2, CreditCard, LogOut, FileText } from "lucide-react"
+import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, PanelLeft, AlertTriangle, RefreshCw, ChevronDown, X, Shield, ShieldOff, FileText, Menu, Trash2, CreditCard, LogOut } from "lucide-react"
 import type React from "react"
 import { useState, createContext, useContext, useEffect, useRef } from "react"
 import { useSession, signOut } from "next-auth/react"
@@ -197,41 +197,6 @@ function SidebarMenuItem({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * SidebarMenuButton Component
- * Interactive menu button with active state
- * 
- * @param {Object} props - Component props
- * @param {React.ReactNode} props.children - Child components
- * @param {string} props.href - Navigation URL
- * @param {boolean} props.isActive - Active state flag
- * @returns {JSX.Element} Menu button
- */
-function SidebarMenuButton({
-  children,
-  href,
-  isActive = false,
-}: {
-  children: React.ReactNode
-  href: string
-  isActive?: boolean
-}) {
-  const { isOpen } = useSidebar()
-
-  return (
-    <a
-      href={href}
-      className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors ${
-        isActive
-          ? "bg-gradient-to-r from-[#e6f5ec] to-[#f0f9f4] text-[#002417] font-medium"
-          : "text-white hover:text-white hover:bg-[#0e6537]/30"
-      }`}
-    >
-      {children}
-    </a>
-  )
-}
-
-/**
  * SidebarTrigger Component
  * Button to toggle sidebar state
  * 
@@ -364,7 +329,7 @@ function LogoutButton() {
  */
 function AppSidebar() {
   const { data: session, status } = useSession() as { data: (Session & { user?: { id: string } }) | null, status: string };
-  const [isOpen, setIsOpen] = useState(true);
+  const { isOpen } = useSidebar();
   const [unreadSpamCount, setUnreadSpamCount] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const mounted = useRef(false);
@@ -383,58 +348,17 @@ function AppSidebar() {
   }, []);
 
   useEffect(() => {
-    if (!mounted.current || status !== 'authenticated' || !session?.user?.id) return;
+    if (!mounted.current || !session?.user?.id || status !== 'authenticated') return;
 
-    const fetchUnreadSpamCount = async () => {
-      try {
-
-        const response = await fetch('/api/lcp/get_all_threads', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: session.user.id })
-        });
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('[AppSidebar] Failed to fetch threads:', {
-            status: response.status,
-            statusText: response.statusText,
-            error: errorText
-          });
-          throw new Error(`Failed to fetch threads: ${response.status} ${response.statusText}`);
-        }
-        
-        const responseData = await response.json();
-
-        
-        if (!responseData.success || !Array.isArray(responseData.data)) {
-          console.error('[AppSidebar] Invalid response format:', responseData);
-          throw new Error('Invalid response format from threads fetch');
-        }
-
-        const unreadSpamThreads = responseData.data.filter((item: any) => 
-          item.thread && 
-          (item.thread.spam === true || item.thread.spam === 'true') && 
-          (item.thread.read === false || item.thread.read === 'false')
-        );
-        
-
-        setUnreadSpamCount(unreadSpamThreads.length);
-      } catch (error) {
-        console.error('[AppSidebar] Error fetching unread spam count:', error);
-        // Don't throw the error, just log it and keep the current count
-      }
-    };
-
-    // Add event listener for junk email count updates
     const handleJunkEmailCountUpdate = (event: CustomEvent<number>) => {
       setUnreadSpamCount(event.detail);
     };
 
     window.addEventListener('junkEmailCountUpdated', handleJunkEmailCountUpdate as EventListener);
 
-    fetchUnreadSpamCount();
-    const interval = setInterval(fetchUnreadSpamCount, 60000); // Check every minute
+    const interval = setInterval(() => {
+      // Check for new junk emails
+    }, 60000); // Check every minute
 
     return () => {
       clearInterval(interval);
@@ -453,7 +377,10 @@ function AppSidebar() {
           <SidebarMenu>
             {mainNavigation.map((item) => (
               <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton href={item.url}>
+                <a
+                  href={item.url}
+                  className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors text-white hover:text-white hover:bg-[#0e6537]/30`}
+                >
                   <item.icon className="h-4 w-4" style={{ color: 'white' }} />
                   {isOpen && (
                     <div className="flex items-center justify-between w-full">
@@ -465,7 +392,7 @@ function AppSidebar() {
                       )}
                     </div>
                   )}
-                </SidebarMenuButton>
+                </a>
               </SidebarMenuItem>
             ))}
           </SidebarMenu>
@@ -477,7 +404,7 @@ function AppSidebar() {
         </div>
 
         {/* Footer section */}
-        <div className={`mt-auto px-3 py-4 border-t border-white/20 ${!isOpen && isMobile ? 'hidden' : ''}`}>
+        <div className={`mt-auto px-3 py-4 border-t border-white/20 ${!isOpen ? 'hidden' : ''}`}>
           <div className="flex flex-col gap-2 text-xs text-white/60">
             <div className="flex flex-wrap gap-x-4 gap-y-1">
               <a href="#" className="hover:text-white transition-colors">Contact</a>

@@ -301,7 +301,7 @@ function TeamSection() {
     },
     {
       name: "Alejo Cagliolo",
-      role: "Chief Product Officer",
+      role: "Chief Operating Officer",
     },
     {
       name: "Utsav Arora",
