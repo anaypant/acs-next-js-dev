@@ -8,7 +8,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import type { Session } from 'next-auth';
@@ -27,7 +27,6 @@ import { ensureMessageFields, getLatestEvaluableMessage, calculateMetrics, proce
 export const useDashboard = () => {
     const { data: session, status } = useSession() as { data: Session | null, status: string };
     const router = useRouter();
-    const [mounted, setMounted] = useState(false);
     const [conversations, setConversations] = useState<Thread[]>([]);
     const [loadingConversations, setLoadingConversations] = useState(false);
     const [updatingLcp, setUpdatingLcp] = useState<string | null>(null);
@@ -45,19 +44,43 @@ export const useDashboard = () => {
     const [refreshingLeadPerformance, setRefreshingLeadPerformance] = useState(false);
     const [filters, setFilters] = useState<DashboardFilters>({ unread: false, review: false, completion: false });
 
+    // Handle authentication
     useEffect(() => {
-        setMounted(true);
-    }, []);
-
-    useEffect(() => {
-        if (!mounted) return;
         if (status === "unauthenticated") {
             goto404("401", "No active session found", router);
         }
-    }, [status, session, router, mounted]);
+    }, [status, router]);
 
+    // Memoize filtered conversations to prevent recalculation on every render
+    const filteredConversations = useMemo(() => {
+        return conversations.filter(conv => {
+            if (conv.spam) return false;
+            if (filters.unread && !conv.read) return true;
+            if (filters.review && conv.flag_for_review) return true;
+            if (filters.completion) {
+                const evMessage = getLatestEvaluableMessage(conv.messages);
+                return (evMessage?.ev_score ?? 0) > conv.lcp_flag_threshold && !conv.flag_for_review;
+            }
+            return !filters.unread && !filters.review && !filters.completion;
+        });
+    }, [conversations, filters, timeRange]);
+
+    // Memoize metrics to prevent recalculation on every render
+    const metrics = useMemo(() => {
+        return calculateMetrics(conversations, timeRange);
+    }, [conversations, timeRange]);
+
+    // Update timeRange effect - only update the processed data, don't reload from API
+    useEffect(() => {
+        if (!conversations.length) return;
+        
+        const { leadPerformance } = processThreadData(conversations, timeRange);
+        setLeadPerformanceData(leadPerformance);
+    }, [timeRange, conversations]);
+
+    // Manual refresh function - only used for manual refresh button
     const loadThreads = useCallback(async () => {
-        if (!session?.user?.id) return;
+        if (!session?.user?.id || loadingConversations) return;
         setLoadingConversations(true);
         setLoadingLeadPerformance(true);
         try {
@@ -71,7 +94,6 @@ export const useDashboard = () => {
             if (!data.success || !data.data) {
                 throw new Error('Invalid response format from API');
             }
-            console.log(data.data);
             const { conversations, leadPerformance } = processThreadData(data.data, timeRange);
             setConversations(conversations);
             setLeadPerformanceData(leadPerformance);
@@ -83,13 +105,7 @@ export const useDashboard = () => {
             setLoadingConversations(false);
             setLoadingLeadPerformance(false);
         }
-    }, [session, timeRange]);
-
-    useEffect(() => {
-        if (mounted && session?.user?.id) {
-            loadThreads();
-        }
-    }, [session, mounted, loadThreads]);
+    }, [session?.user?.id]);
 
     const markAsRead = useCallback(async (conversationId: string) => {
         if (!session?.user?.id) return;
@@ -107,13 +123,19 @@ export const useDashboard = () => {
                 }),
             });
             if (!response.ok) throw new Error('Failed to mark as read');
-            await loadThreads();
+            
+            // Update local state instead of reloading
+            setConversations(prev => prev.map(conv => 
+                conv.conversation_id === conversationId 
+                    ? { ...conv, read: true }
+                    : conv
+            ));
         } catch (error) {
             console.error('Error marking as read:', error);
         } finally {
             setUpdatingRead(null);
         }
-    }, [session?.user?.id, loadThreads]);
+    }, [session?.user?.id]);
 
     const toggleLeadConversion = useCallback(async (conversationId: string, currentStatus: boolean) => {
         if (!session?.user?.id) return;
@@ -132,14 +154,18 @@ export const useDashboard = () => {
             });
             if (!response.ok) throw new Error('Failed to update LCP status');
             
-            // Force a reload of the threads to ensure we have the latest data
-            await loadThreads();
+            // Update local state instead of reloading
+            setConversations(prev => prev.map(conv => 
+                conv.conversation_id === conversationId 
+                    ? { ...conv, lcp_enabled: !currentStatus }
+                    : conv
+            ));
         } catch (error) {
             console.error('Error updating LCP status:', error);
         } finally {
             setUpdatingLcp(null);
         }
-    }, [session?.user?.id, loadThreads]);
+    }, [session?.user?.id]);
 
     const deleteThread = useCallback(async (conversationId: string) => {
         if (!session?.user?.id) return;
@@ -151,13 +177,15 @@ export const useDashboard = () => {
                 body: JSON.stringify({ conversation_id: conversationId }),
             });
             if (!response.ok) throw new Error('Failed to delete thread');
-            await loadThreads();
+            
+            // Update local state instead of reloading
+            setConversations(prev => prev.filter(conv => conv.conversation_id !== conversationId));
         } catch (error) {
             console.error('Error deleting thread:', error);
         } finally {
             setDeletingThread(null);
         }
-    }, [session?.user?.id, loadThreads]);
+    }, [session?.user?.id]);
 
     const handleMarkAsNotSpam = async (conversationId: string) => {
         setUpdatingSpam(conversationId);
@@ -174,7 +202,13 @@ export const useDashboard = () => {
                 }),
             });
             if (!response.ok) throw new Error('Failed to mark as not spam');
-            await loadThreads();
+            
+            // Update local state instead of reloading
+            setConversations(prev => prev.map(conv => 
+                conv.conversation_id === conversationId 
+                    ? { ...conv, spam: false }
+                    : conv
+            ));
         } catch (error) {
             console.error('Error marking as not spam:', error);
         } finally {
@@ -205,18 +239,6 @@ export const useDashboard = () => {
             setRefreshingLeadPerformance(false);
         }
     }, [session]);
-
-    const metrics = calculateMetrics(conversations, timeRange);
-    const filteredConversations = conversations.filter(conv => {
-        if (conv.spam) return false;
-        if (filters.unread && !conv.read) return true;
-        if (filters.review && conv.flag_for_review) return true;
-        if (filters.completion) {
-            const evMessage = getLatestEvaluableMessage(conv.messages);
-            return (evMessage?.ev_score ?? 0) > conv.lcp_flag_threshold && !conv.flag_for_review;
-        }
-        return !filters.unread && !filters.review && !filters.completion;
-    });
 
     const toggleFilter = (filter: keyof DashboardFilters) => {
         setFilters(prev => ({ ...prev, [filter]: !prev[filter] }));
