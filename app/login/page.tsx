@@ -1,9 +1,9 @@
 /**
  * File: app/login/page.tsx
  * Purpose: Renders the login page with email/password and Google authentication options.
- * Author: Anay Pant
- * Date: 5/25/25
- * Version: 1.0.0
+ * Author: acagliol
+ * Date: 06/15/25
+ * Version: 1.0.1
  */
 
 "use client"
@@ -246,12 +246,9 @@ const LoginPage = () => {
 
             {/* Sign Up Link */}
             <div className="mt-8 text-center">
-              <p className="text-sm text-[#0e6537]/70">
-                Don't have an account?{" "}
-                <Link
-                  href="/signup"
-                  className="text-[#0e6537] hover:text-[#157a42] font-medium transition-colors duration-200 hover:underline"
-                >
+              <p className="text-sm text-gray-600">
+                Don&apos;t have an account?{" "}
+                <Link href="/signup" className="!text-black hover:!text-blue-600">
                   Sign up
                 </Link>
               </p>
@@ -267,6 +264,12 @@ export default LoginPage
 
 /**
  * Change Log:
+ * 06/15/25 - Version 1.0.1
+ * - Removed: -- a/app/login/page.tsx
+ * - Added: ++ b/app/login/page.tsx
+ * - Removed:               <p className="text-sm text-[#0e6537]/70">
+ * - Removed:                 Don't have an account?{" "}
+ * - Removed:                 <Link
  * 5/25/25 - Initial version
  * - Created login page with email/password authentication
  * - Implemented Google OAuth integration

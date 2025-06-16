@@ -1,9 +1,9 @@
 /**
  * File: app/dashboard/Sidebar.tsx
  * Purpose: Implements a collapsible sidebar navigation with context management and responsive design.
- * Author: Alejo Cagliolo
- * Date: 06/11/25
- * Version: 1.0.1
+ * Author: acagliol
+ * Date: 06/15/25
+ * Version: 1.0.2
  */
 
 "use client"
@@ -261,25 +261,10 @@ const mainNavigation = [
     icon: Home,
     url: "/dashboard",
   },
-  // {
-  //   title: "Leads",
-  //   icon: Users,
-  //   url: "/dashboard/leads",
-  // },
   {
     title: "Conversations",
     icon: MessageSquare,
     url: "/dashboard/conversations",
-  },
-  {
-    title: "Privacy Policy",
-    icon: FileText,
-    url: "/legal",
-  },
-  {
-    title: "Terms of Service",
-    icon: FileText,
-    url: "/legal",
   },
   {
     title: "Junk",
@@ -374,7 +359,7 @@ function AppSidebar() {
 
         {/* Main navigation section */}
         <SidebarGroup>
-          <SidebarMenu>
+          <SidebarMenu className="space-y-0.5">
             {mainNavigation.map((item) => (
               <SidebarMenuItem key={item.title}>
                 <a
@@ -399,7 +384,7 @@ function AppSidebar() {
         </SidebarGroup>
 
         {/* Logout button */}
-        <div className="px-3 py-2">
+        <div className="px-3">
           <LogoutButton />
         </div>
 
@@ -407,10 +392,9 @@ function AppSidebar() {
         <div className={`mt-auto px-3 py-4 border-t border-white/20 ${!isOpen ? 'hidden' : ''}`}>
           <div className="flex flex-col gap-2 text-xs text-white/60">
             <div className="flex flex-wrap gap-x-4 gap-y-1">
-              <a href="#" className="hover:text-white transition-colors">Contact</a>
-            </div>
-            <div className="flex flex-wrap gap-x-4 gap-y-1">
-              <a href="#" className="hover:text-white transition-colors">Cookie Policy</a>
+              <a href="/legal/terms" className="hover:text-white transition-colors">Terms of Service</a>
+              <a href="/legal/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
+              <a href="/legal/cookies" className="hover:text-white transition-colors">Cookie Policy</a>
             </div>
             <span className="text-white/40 mt-2">© 2025 ACS. All rights reserved.</span>
           </div>
@@ -431,6 +415,12 @@ export {
 
 /**
  * Change Log:
+ * 06/15/25 - Version 1.0.2
+ * - Removed: -- a/app/dashboard/components/Sidebar.tsx
+ * - Added: ++ b/app/dashboard/components/Sidebar.tsx
+ * - Removed:   {
+ * - Removed:     title: "Privacy Policy",
+ * - Removed:     icon: FileText,
  * 06/11/25 - Version 1.0.1
  * - Enhanced mobile responsiveness
  * - Improved navigation menu accessibility
@@ -442,4 +432,3 @@ export {
  * - Implemented responsive navigation menu
  * - Added footer with legal links
  * - Integrated gradient styling and animations
- */ 

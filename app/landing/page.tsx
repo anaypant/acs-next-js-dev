@@ -1,9 +1,9 @@
 /**
  * File: app/landing/page.tsx
  * Purpose: Renders the landing page with hero section, features, benefits, testimonials, and CTA sections.
- * Author: Alejo Cagliolo
- * Date: 06/11/25
- * Version: 1.0.1
+ * Author: acagliol
+ * Date: 06/15/25
+ * Version: 1.0.2
  */
 
 "use client"
@@ -345,10 +345,10 @@ export default function HomePage() {
 
             {/* Right Column: Benefits */}
             <div>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white mb-4 sm:mb-6">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold !text-white mb-4 sm:mb-6">
                 Transform Your Real Estate Business
               </h2>
-              <p className="text-base sm:text-xl text-green-50 mb-6 sm:mb-8 font-semibold">
+              <p className="text-base sm:text-xl !text-white mb-6 sm:mb-8 font-semibold">
                 Our AI-powered platform helps you make data-driven decisions and stay ahead of the competition
               </p>
 
@@ -363,13 +363,13 @@ export default function HomePage() {
                     className="flex items-start gap-2 sm:gap-3"
                   >
                     <div className="bg-white/20 p-1.5 sm:p-2 rounded-full flex-shrink-0">
-                      <Check className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                      <Check className="h-4 w-4 sm:h-5 sm:w-5 !text-white" />
                     </div>
                     <div>
-                      <h3 className="text-base sm:text-lg font-semibold text-white hover:bg-gradient-to-r hover:from-white hover:to-green-200 hover:bg-clip-text hover:text-transparent transition-all duration-300">
+                      <h3 className="text-base sm:text-lg font-semibold !text-white hover:bg-gradient-to-r hover:from-white hover:to-green-200 hover:bg-clip-text hover:text-transparent transition-all duration-300">
                         {benefit.title}
                       </h3>
-                      <p className="text-sm sm:text-base text-green-50">{benefit.description}</p>
+                      <p className="text-sm sm:text-base !text-white">{benefit.description}</p>
                     </div>
                   </motion.div>
                 ))}
@@ -435,16 +435,16 @@ export default function HomePage() {
         <div className="container mx-auto px-4 sm:px-6 relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 items-center">
             {/* Left Column: CTA Content */}
-            <div className="text-white">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold mb-4 sm:mb-6">Ready to transform your real estate business?</h2>
-              <p className="text-base sm:text-lg text-green-50 mb-6 sm:mb-8 font-semibold">
+            <div className="!text-white">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold !text-white mb-4 sm:mb-6">Ready to transform your real estate business?</h2>
+              <p className="text-base sm:text-lg !text-white mb-6 sm:mb-8 font-semibold">
                 Join thousands of real estate professionals who are leveraging AI to grow their business
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <Link
                   href="/signup"
-                  className="px-6 sm:px-8 py-2.5 sm:py-3 bg-white text-[#0e6537] hover:bg-gradient-to-r hover:from-white hover:to-green-100 rounded-md font-medium transition-all duration-300 text-center text-sm sm:text-base"
+                  className="px-6 sm:px-8 py-2.5 sm:py-3 bg-white !text-[#0e6537] hover:bg-gradient-to-r hover:from-white hover:to-green-100 rounded-md font-medium transition-all duration-300 text-center text-sm sm:text-base"
                 >
                   Get Started
                 </Link>
@@ -459,10 +459,10 @@ export default function HomePage() {
 
             {/* Right Column: Image Placeholder */}
             <div className="flex justify-center mt-8 md:mt-0">
-              <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg p-4 sm:p-8 w-full max-w-md aspect-[4/3] flex flex-col items-center justify-center text-white">
-                <Laptop className="h-16 w-16 sm:h-20 sm:w-20 mb-3 sm:mb-4 text-white/80" />
-                <h3 className="text-lg sm:text-xl font-semibold mb-2">AI-Powered Platform</h3>
-                <p className="text-sm sm:text-base text-center text-green-50">
+              <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg p-4 sm:p-8 w-full max-w-md aspect-[4/3] flex flex-col items-center justify-center !text-white">
+                <Laptop className="h-16 w-16 sm:h-20 sm:w-20 mb-3 sm:mb-4 !text-white" />
+                <h3 className="text-lg sm:text-xl font-semibold mb-2 !text-white">AI-Powered Platform</h3>
+                <p className="text-sm sm:text-base text-center !text-white">
                   Advanced analytics and automation tools to streamline your real estate business
                 </p>
               </div>
@@ -476,6 +476,12 @@ export default function HomePage() {
 
 /**
  * Change Log:
+ * 06/15/25 - Version 1.0.2
+ * - Removed: -- a/app/landing/page.tsx
+ * - Added: ++ b/app/landing/page.tsx
+ * - Removed:               <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white mb-4 sm:mb-6">
+ * - Added:               <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold !text-white mb-4 sm:mb-6">
+ * - Removed:               <p className="text-base sm:text-xl text-green-50 mb-6 sm:mb-8 font-semibold">
  * 06/11/25 - Version 1.0.1
  * - Enhanced mobile responsiveness
  * - Improved animation performance
