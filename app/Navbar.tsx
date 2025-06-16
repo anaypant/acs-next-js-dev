@@ -44,7 +44,7 @@ const Navbar = () => {
     setIsDashboard(window.location.pathname.startsWith('/dashboard'))
   }, [])
 
-  const navigationItems = ["Home", "Solutions", /* "Case Studies", */ "Contact"]
+  const navigationItems = ["Home", "Solutions", "About", "Contact"]
 
   return (
     <nav className="bg-white/90 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50">

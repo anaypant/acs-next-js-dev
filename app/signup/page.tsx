@@ -1,29 +1,18 @@
 /**
  * File: app/signup/page.tsx
  * Purpose: Renders the signup page with email/password and Google authentication, including reCAPTCHA verification and password validation.
- * Author: Anay Pant
- * Date: 5/25/25
- * Version: 1.0.0
+ * Author: acagliol
+ * Date: 06/15/25
+ * Version: 1.0.1
  */
 
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Box,
-  Typography,
-  TextField,
-  Button,
-  Alert,
-  Link as MuiLink,
-  Snackbar,
-  Alert as MuiAlert,
-} from '@mui/material';
 import Link from 'next/link';
 import Image from 'next/image';
-import Visibility from '@mui/icons-material/Visibility';
-import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import { CircularProgress, Snackbar, Alert as MuiAlert } from '@mui/material';
 import { signIn } from 'next-auth/react';
 import { SignupData } from '../types/auth';
 import Script from 'next/script';
@@ -68,11 +57,6 @@ declare global {
  */
 const SignupPage: React.FC = () => {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [recaptchaReady, setRecaptchaReady] = useState(false);
-  const [recaptchaLoading, setRecaptchaLoading] = useState(true);
-  const [recaptchaError, setRecaptchaError] = useState<string | null>(null);
   const [formData, setFormData] = useState<SignupData>({
     name: '',
     email: '',
@@ -81,10 +65,14 @@ const SignupPage: React.FC = () => {
     captchaToken: '',
   });
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showRequirements, setShowRequirements] = useState(false);
-  const [showCaptchaError, setShowCaptchaError] = useState(false);
+  const [recaptchaReady, setRecaptchaReady] = useState(false);
+  const [recaptchaLoading, setRecaptchaLoading] = useState(true);
+  const [recaptchaError, setRecaptchaError] = useState<string | null>(null);
   const [showUserExistsError, setShowUserExistsError] = useState(false);
 
   /**
@@ -130,9 +118,9 @@ const SignupPage: React.FC = () => {
    * Handles form input changes
    * Updates form state based on input field changes
    * 
-   * @param {React.ChangeEvent<HTMLInputElement>} e - Input change event
+   * @param {ChangeEvent<HTMLInputElement>} e - Input change event
    */
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     if (name === "confirmPassword") {
       setConfirmPassword(value)
@@ -148,96 +136,79 @@ const SignupPage: React.FC = () => {
    * Handles form submission
    * Validates form data, checks password requirements, and creates account
    * 
-   * @param {React.FormEvent} e - Form submission event
+   * @param {FormEvent<HTMLFormElement>} e - Form submission event
    * @throws {Error} If validation fails or account creation fails
    */
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     setRecaptchaError(null);
 
-    // Validate form data
-    const validation = validateAuthForm(formData);
-    if (!validation.isValid) {
-      setError(validation.error || 'Invalid form data');
-      setLoading(false);
-      return;
-    }
-
-    // Check password match
-    if (formData.password !== confirmPassword) {
-      setError('Passwords do not match');
-      setLoading(false);
-      return;
-    }
-
-    // Check password requirements
-    const allValid = passwordChecks.every(c => c.test(formData.password || ''));
-    if (!allValid) {
-      setShowRequirements(true);
-      setLoading(false);
-      return;
-    }
-
-    if (!recaptchaReady) {
-      setRecaptchaError('reCAPTCHA is not ready. Please wait or refresh the page.');
-      setLoading(false);
-      return;
-    }
-
-    const captchaToken = await getCaptchaToken();
-    if (!captchaToken) {
-      setLoading(false);
-      return;
-    }
-
     try {
-      // Clear any existing auth data before signup
-      clearAuthData();
-      
-      // Set auth type for new user
-      setAuthType('new');
+      // Validate form data
+      const validation = validateAuthForm(formData);
+      if (!validation.isValid) {
+        setError(validation.error || "Invalid form data");
+        setShowRequirements(true);
+        return;
+      }
 
-      const res = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          ...formData, 
-          captchaToken 
-        }),
-        credentials: 'include',
-      });
+      // Check password match
+      if (formData.password !== confirmPassword) {
+        setError("Passwords do not match");
+        setShowRequirements(true);
+        return;
+      }
 
-      const payload = await res.json();
-      
-      if (res.status === 409) {
-        setShowUserExistsError(true);
+      // Get reCAPTCHA token
+      if (!recaptchaReady) {
+        setError("reCAPTCHA is not ready. Please try again.");
+        return;
+      }
+
+      const token = await getCaptchaToken();
+      if (!token) {
         setLoading(false);
         return;
       }
 
-      if (!res.ok) {
-        throw new Error(payload.error || 'Signup failed');
-      }
+      // Update form data with captcha token
+      setFormData((prev) => ({
+        ...prev,
+        captchaToken: token,
+      }));
 
-      // Create NextAuth session
-      const authResult = await signIn('credentials', {
-        email: formData.email,
-        password: formData.password,
-        name: formData.name,
-        redirect: false,
-        callbackUrl: `/verify-email?email=${encodeURIComponent(formData.email)}`
+      // Create account
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          captchaToken: token,
+        }),
       });
 
-      if (authResult?.error) {
-        throw new Error(authResult.error);
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.error === "User already exists") {
+          setShowUserExistsError(true);
+        } else {
+          setError(handleAuthError(data.error));
+        }
+        return;
       }
 
-      // Redirect to email verification
-      router.push(`/verify-email?email=${encodeURIComponent(formData.email)}`);
-    } catch (err: any) {
-      setError(handleAuthError(err));
+      // Clear form data and redirect
+      clearAuthData();
+      setAuthType('new');
+      router.push('/login?success=true');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -250,26 +221,14 @@ const SignupPage: React.FC = () => {
    * @throws {Error} If Google authentication fails
    */
   const handleGoogleSignIn = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Clear any existing auth data
-      clearAuthData();
-      
-      // Set auth type for new user
-      setAuthType('new');
-      
-      const result = await signIn('google', { 
-        callbackUrl: '/process-google',
-        redirect: true
-      });
+    setLoading(true);
+    setError(null);
 
-      if (result?.error) {
-        setError(result.error);
-      }
-    } catch (err: any) {
-      setError(handleAuthError(err));
+    try {
+      await signIn('google', { callbackUrl: '/dashboard' });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -577,240 +536,192 @@ const SignupPage: React.FC = () => {
         }
       `}</style>
 
-      <div className="min-h-screen flex">
-        {/* Left Side - Animated Background with Logo */}
-        <div className="hidden md:flex md:w-[45%] bg-[#0a5a2f] relative items-center justify-center">
-          {/* Background image with overlay */}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0a5a2f] via-[#0e6537] to-[#157a42] opacity-85 backdrop-blur-[2px]" />
-          <div className="absolute inset-0 bg-[#0e6537]/20" />
-
-          {/* Logo/Brand text */}
-          <div className="relative z-10">
-            <Link href="/" className="no-underline block">
-              <h1 className="brand-logo cursor-pointer relative z-10">
+      <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] to-[#e6f5ec] flex flex-col">
+        {/* Header */}
+        <div className="p-6">
+          <div className="flex items-center">
+            <Link href="/" className="no-underline">
+              <span className="text-xl font-semibold bg-gradient-to-br from-[#0e6537] to-[#157a42] bg-clip-text text-transparent">
                 ACS
-              </h1>
+              </span>
             </Link>
           </div>
         </div>
 
-        {/* Right Side - Sign Up Form */}
-        <div className="flex-1 flex items-center justify-center p-8 md:p-16 bg-gradient-to-b from-[#e6f5ec] via-[#f0f9f4] to-white">
-          <div className="w-full max-w-[440px] space-y-12">
-            <div className="text-center space-y-3">
-              <Typography variant="h4" className="heading-text">
-                Get Started Now
-              </Typography>
-              <Typography variant="body1" className="subheading-text">
-                Enter your credentials to access your account
-              </Typography>
-            </div>
+        {/* Main Content */}
+        <div className="flex-1 flex items-center justify-center px-4 pb-16">
+          <div className="w-full max-w-md">
+            <div className="bg-white rounded-2xl shadow-xl border border-[#0e6537]/5 p-8 transition-all duration-300 hover:shadow-2xl">
+              {/* Form Header */}
+              <div className="text-center mb-8">
+                <h1 className="text-2xl font-semibold text-[#002417]">Create Account</h1>
+                <p className="text-[#0e6537]/70 text-sm mt-2 transition-colors duration-200">
+                  Enter your details to create your account
+                </p>
+              </div>
 
-            {error && (
-              <Alert severity="error" className="error-alert">
-                {error}
-              </Alert>
-            )}
+              {/* Error Message */}
+              {error && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl transition-all duration-300">
+                  {error}
+                </div>
+              )}
 
-            <form onSubmit={handleSubmit} className="space-y-12">
-              <div className="flex flex-col gap-8">
-                <TextField
-                  fullWidth
-                  name="name"
-                  placeholder="Enter your name"
-                  label="Name"
-                  variant="outlined"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="form-input"
-                />
-                <TextField
-                  fullWidth
-                  name="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  label="Email address"
-                  variant="outlined"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="form-input"
-                />
-                <TextField
-                  fullWidth
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
-                  label="Password"
-                  variant="outlined"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="form-input password-input"
-                  InputProps={{
-                    endAdornment: (
-                      <button
-                        type="button"
-                        tabIndex={-1}
-                        onClick={() => setShowPassword((v) => !v)}
-                        className="password-toggle"
-                        aria-label={showPassword ? "Hide password" : "Show password"}
-                      >
-                        <span className="toggle-icon">
-                          {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
-                        </span>
-                      </button>
-                    ),
-                  }}
-                />
-                <TextField
-                  fullWidth
-                  name="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
-                  placeholder="Confirm your password"
-                  label="Confirm Password"
-                  variant="outlined"
-                  value={confirmPassword}
-                  onChange={handleChange}
-                  className="form-input password-input"
-                  InputProps={{
-                    endAdornment: (
-                      <button
-                        type="button"
-                        tabIndex={-1}
-                        onClick={() => setShowConfirmPassword((v) => !v)}
-                        className="password-toggle"
-                        aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                      >
-                        <span className="toggle-icon">
-                          {showConfirmPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
-                        </span>
-                      </button>
-                    ),
-                  }}
-                />
-                {/* Password checklist */}
-                <div className="password-checklist">
-                  <div className="checklist-title">Password requirements:</div>
-                  <ul className="checklist-items">
-                    {passwordChecks.map((check) => {
-                      const passed = check.test(formData.password || '')
-                      return (
-                        <li key={check.label} className={`checklist-item ${passed ? "passed" : "not-passed"}`}>
-                          <span className={`check-icon ${passed ? "passed-icon" : "not-passed-icon"}`}>
-                            {passed ? (
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="icon-svg"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                              >
-                                <path
-                                  fillRule="evenodd"
-                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
-                            ) : (
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="icon-svg"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                              >
-                                <path
-                                  fillRule="evenodd"
-                                  d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
-                            )}
-                          </span>
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-4">
+                  <div>
+                    <input
+                      id="name"
+                      name="name"
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={handleChange}
+                      placeholder="Full name"
+                      className="w-full px-4 py-3 border border-[#0e6537]/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0e6537]/20 focus:border-[#0e6537] transition-all duration-200 placeholder-[#0e6537]/50 text-[#002417] bg-white hover:border-[#0e6537]/30"
+                    />
+                  </div>
+                  <div>
+                    <input
+                      id="email"
+                      name="email"
+                      type="email"
+                      required
+                      value={formData.email}
+                      onChange={handleChange}
+                      placeholder="Email address"
+                      className="w-full px-4 py-3 border border-[#0e6537]/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0e6537]/20 focus:border-[#0e6537] transition-all duration-200 placeholder-[#0e6537]/50 text-[#002417] bg-white hover:border-[#0e6537]/30"
+                    />
+                  </div>
+                  <div className="relative">
+                    <input
+                      id="password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="Password"
+                      className="w-full px-4 py-3 border border-[#0e6537]/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0e6537]/20 focus:border-[#0e6537] transition-all duration-200 placeholder-[#0e6537]/50 text-[#002417] bg-white hover:border-[#0e6537]/30"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#0e6537] hover:text-[#157a42]"
+                    >
+                      {showPassword ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      required
+                      value={confirmPassword}
+                      onChange={handleChange}
+                      placeholder="Confirm password"
+                      className="w-full px-4 py-3 border border-[#0e6537]/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0e6537]/20 focus:border-[#0e6537] transition-all duration-200 placeholder-[#0e6537]/50 text-[#002417] bg-white hover:border-[#0e6537]/30"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#0e6537] hover:text-[#157a42]"
+                    >
+                      {showConfirmPassword ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Password Requirements */}
+                {showRequirements && (
+                  <div className="p-4 bg-[#f0f9f4] border border-[#0e6537]/20 rounded-xl text-sm text-[#002417]">
+                    <h3 className="font-medium mb-2">Password Requirements:</h3>
+                    <ul className="list-disc list-inside space-y-1">
+                      {passwordChecks.map((check) => (
+                        <li key={check.label} className={check.test(formData.password || "") ? "text-[#0e6537]" : ""}>
                           {check.label}
                         </li>
-                      )
-                    })}
-                  </ul>
-                </div>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading || recaptchaLoading}
+                  className="w-full py-3 px-4 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white text-sm font-medium rounded-xl hover:from-[#157a42] hover:to-[#0e6537] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0e6537]/50 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg hover:shadow-xl"
+                >
+                  {loading ? (
+                    <div className="flex items-center justify-center">
+                      <CircularProgress size={20} className="text-white mr-2" />
+                      Creating account...
+                    </div>
+                  ) : recaptchaLoading ? (
+                    <div className="flex items-center justify-center">
+                      <CircularProgress size={20} className="text-white mr-2" />
+                      Loading...
+                    </div>
+                  ) : (
+                    "Sign up"
+                  )}
+                </button>
+              </form>
+
+              {/* Google Sign In */}
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  disabled={loading}
+                  className="w-full flex items-center justify-center py-3 px-4 border border-[#0e6537]/20 rounded-xl text-sm font-medium text-[#002417] hover:bg-[#f0f9f4] transition-all duration-200 hover:border-[#0e6537]/30 hover:scale-[1.01] active:scale-[0.99]"
+                >
+                  {loading ? (
+                    <div className="flex items-center justify-center">
+                      <CircularProgress size={20} className="text-[#0e6537] mr-2" />
+                      Signing up...
+                    </div>
+                  ) : (
+                    <>
+                      <Image src="/google.svg" alt="Google" width={18} height={18} className="mr-3" />
+                      Sign up with Google
+                    </>
+                  )}
+                </button>
               </div>
 
-              <Button
-                fullWidth
-                type="submit"
-                variant="contained"
-                disabled={loading || recaptchaLoading}
-                sx={{
-                  py: 2,
-                  mt: 4,
-                  bgcolor: '#0A2F1F',
-                  borderRadius: '12px',
-                  textTransform: 'none',
-                  fontSize: '1rem',
-                  fontWeight: 500,
-                  '&:hover': {
-                    bgcolor: '#0D3B26'
-                  }
-                }}
-              >
-                {loading ? 'Creating account...' : recaptchaLoading ? 'Loading...' : 'Sign Up'}
-              </Button>
-
-              {/* Google Sign In Button */}
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={handleGoogleSignIn}
-                disabled={loading}
-                startIcon={
-                  <Image
-                    src="/google.svg"
-                    alt="Google"
-                    width={20}
-                    height={20}
-                  />
-                }
-                sx={{
-                  py: 2,
-                  mt: 2,
-                  borderColor: 'rgba(14, 101, 55, 0.2)',
-                  color: '#002417',
-                  borderRadius: '12px',
-                  textTransform: 'none',
-                  fontSize: '1rem',
-                  fontWeight: 500,
-                  '&:hover': {
-                    borderColor: '#0e6537',
-                    backgroundColor: '#f0f9f4'
-                  }
-                }}
-              >
-                Sign up with Google
-              </Button>
-
-              <div className="text-center mt-4">
-                <Typography variant="body2" className="login-text">
-                  Have an account?{" "}
-                  <MuiLink component={Link} href="/login" className="login-link">
-                    Sign In
-                  </MuiLink>
-                </Typography>
+              {/* Login Link */}
+              <div className="mt-8 text-center">
+                <p className="text-sm text-gray-600">
+                  Already have an account?{" "}
+                  <Link 
+                    href="/login" 
+                    className="!text-black hover:!text-blue-600"
+                  >
+                    Sign in
+                  </Link>
+                </p>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Snackbars */}
       <Snackbar 
         open={showRequirements} 
         autoHideDuration={6000} 
         onClose={() => setShowRequirements(false)} 
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
         <MuiAlert 
           onClose={() => setShowRequirements(false)} 
           severity="warning" 
-          sx={{ width: '100%' }}
+          sx={{ width: "100%" }}
         >
           Please complete all fields, ensure your password meets requirements, and matches confirmation.<br />
-          <ul style={{ margin: 0, paddingLeft: 20, textAlign: 'left' }}>
+          <ul style={{ margin: 0, paddingLeft: 20, textAlign: "left" }}>
             <li>At least 8 characters</li>
             <li>One uppercase letter</li>
             <li>One number</li>
@@ -824,12 +735,12 @@ const SignupPage: React.FC = () => {
         open={!!recaptchaError} 
         autoHideDuration={6000} 
         onClose={() => setRecaptchaError(null)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
         <MuiAlert 
           onClose={() => setRecaptchaError(null)} 
           severity="error" 
-          sx={{ width: '100%' }}
+          sx={{ width: "100%" }}
         >
           {recaptchaError}
         </MuiAlert>
@@ -839,12 +750,12 @@ const SignupPage: React.FC = () => {
         open={showUserExistsError} 
         autoHideDuration={6000} 
         onClose={() => setShowUserExistsError(false)} 
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
         <MuiAlert 
           onClose={() => setShowUserExistsError(false)} 
           severity="error" 
-          sx={{ width: '100%' }}
+          sx={{ width: "100%" }}
         >
           An account with this email already exists. Please try logging in instead.
         </MuiAlert>
@@ -857,6 +768,12 @@ export default SignupPage;
 
 /**
  * Change Log:
+ * 06/15/25 - Version 1.0.1
+ * - Removed: -- a/app/signup/page.tsx
+ * - Added: ++ b/app/signup/page.tsx
+ * - Removed: 'use client';
+ * - Added: "use client";
+ * - Removed: import React, { useState, useEffect } from 'react';
  * 5/25/25 - Initial version
  * - Created signup page with email/password registration
  * - Implemented Google OAuth integration

@@ -1,9 +1,9 @@
 /**
  * File: app/settings/page.tsx
  * Purpose: Renders the user settings page with profile management, session control, notifications, security, and account deletion.
- * Author: Alejo Cagliolo
- * Date: 5/25/25
- * Version: 1.0.0
+ * Author: acagliol
+ * Date: 06/15/25
+ * Version: 1.0.1
  */
 
 "use client"
@@ -13,27 +13,7 @@ import { useState, useEffect } from "react"
 import { ArrowLeft, User, Bell, Shield, Database, Mail, Loader2 } from "lucide-react"
 import type { Session } from "next-auth"
 import type { SignupProvider } from "@/app/types/auth"
-
-/**
- * Logo Component
- * Renders the ACS logo with customizable size
- * 
- * @param {Object} props - Component props
- * @param {("sm"|"lg")} [props.size="sm"] - Size variant of the logo
- * @returns {JSX.Element} ACS logo with gradient styling
- */
-function Logo({ size = "sm" }: { size?: "sm" | "lg" }) {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="w-8 h-8 bg-gradient-to-br from-[#0a5a2f] via-[#0e6537] to-[#157a42] rounded-lg flex items-center justify-center shadow-sm">
-        <span className="text-white font-bold text-sm">ACS</span>
-      </div>
-      <span className="font-bold text-lg bg-gradient-to-r from-[#0a5a2f] to-[#157a42] bg-clip-text text-transparent">
-        ACS
-      </span>
-    </div>
-  )
-}
+import { Logo } from "@/app/dashboard/components/Sidebar"
 
 /**
  * Error handling function for 404 redirection
@@ -1177,6 +1157,12 @@ export default function SettingsPage() {
 
 /**
  * Change Log:
+ * 06/15/25 - Version 1.0.1
+ * - Removed: -- a/app/settings/page.tsx
+ * - Added: ++ b/app/settings/page.tsx
+ * - Removed: function Logo({ size = "sm" }: { size?: "sm" | "lg" }) {
+ * - Removed:   return (
+ * - Removed:     <div className="flex items-center gap-2">
  * 5/25/25 - Initial version
  * - Created settings page with profile management
  * - Implemented session information display
