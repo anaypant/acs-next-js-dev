@@ -11,11 +11,8 @@ import { MessageSquare, RefreshCw, CheckCircle, Flag, Shield, ChevronDown } from
 import type React from "react"
 import { SidebarProvider, AppSidebar, SidebarTrigger, SidebarInset } from "./components/Sidebar"
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
-import { useEffect, useMemo, useState, useRef } from "react"
-import { goto404 } from "../utils/error"
+import { useEffect, useMemo } from "react"
 import type { Thread, Message, TimeRange } from "@/app/types/lcp"
-import type { Session } from "next-auth"
 import LeadFunnel from './components/LeadFunnel'
 import LeadReport from './components/LeadReport'
 import ConversationProgression from './components/ConversationProgression'

@@ -1,9 +1,9 @@
 /**
  * File: app/dashboard/Sidebar.tsx
  * Purpose: Implements a collapsible sidebar navigation with context management and responsive design.
- * Author: Alejo Cagliolo
- * Date: 06/11/25
- * Version: 1.0.1
+ * Author: acagliol
+ * Date: 06/15/25
+ * Version: 1.0.2
  */
 
 "use client"
@@ -223,7 +223,12 @@ function SidebarTrigger() {
  * @param {React.ReactNode} props.children - Child components
  * @returns {JSX.Element} Content wrapper
  */
-function SidebarInset({ children }: { children: React.ReactNode }) {
+interface SidebarInsetProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+function SidebarInset({ children, className }: SidebarInsetProps) {
   const { isOpen } = useSidebar()
   const [isMobile, setIsMobile] = useState(false)
 
@@ -237,14 +242,10 @@ function SidebarInset({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <div 
-      className={`bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1] h-screen overflow-y-auto ${
-        isMobile 
-          ? "ml-0" 
-          : isOpen 
-            ? "ml-64" 
-            : "ml-16"
-      } transition-all duration-300`}
+    <div
+      className={`${
+        isOpen ? "ml-64" : isMobile ? "ml-0" : "ml-16"
+      } transition-all duration-300 ${className || ''}`}
     >
       {children}
     </div>
@@ -261,25 +262,10 @@ const mainNavigation = [
     icon: Home,
     url: "/dashboard",
   },
-  // {
-  //   title: "Leads",
-  //   icon: Users,
-  //   url: "/dashboard/leads",
-  // },
   {
     title: "Conversations",
     icon: MessageSquare,
     url: "/dashboard/conversations",
-  },
-  {
-    title: "Privacy Policy",
-    icon: FileText,
-    url: "/legal",
-  },
-  {
-    title: "Terms of Service",
-    icon: FileText,
-    url: "/legal",
   },
   {
     title: "Junk",
@@ -374,7 +360,7 @@ function AppSidebar() {
 
         {/* Main navigation section */}
         <SidebarGroup>
-          <SidebarMenu>
+          <SidebarMenu className="space-y-0.5">
             {mainNavigation.map((item) => (
               <SidebarMenuItem key={item.title}>
                 <a
@@ -399,7 +385,7 @@ function AppSidebar() {
         </SidebarGroup>
 
         {/* Logout button */}
-        <div className="px-3 py-2">
+        <div className="px-3">
           <LogoutButton />
         </div>
 
@@ -407,10 +393,9 @@ function AppSidebar() {
         <div className={`mt-auto px-3 py-4 border-t border-white/20 ${!isOpen ? 'hidden' : ''}`}>
           <div className="flex flex-col gap-2 text-xs text-white/60">
             <div className="flex flex-wrap gap-x-4 gap-y-1">
-              <a href="#" className="hover:text-white transition-colors">Contact</a>
-            </div>
-            <div className="flex flex-wrap gap-x-4 gap-y-1">
-              <a href="#" className="hover:text-white transition-colors">Cookie Policy</a>
+              <a href="/legal/terms" className="hover:text-white transition-colors">Terms of Service</a>
+              <a href="/legal/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
+              <a href="/legal/cookies" className="hover:text-white transition-colors">Cookie Policy</a>
             </div>
             <span className="text-white/40 mt-2">© 2025 ACS. All rights reserved.</span>
           </div>
@@ -420,26 +405,13 @@ function AppSidebar() {
   )
 }
 
-export {
-  SidebarProvider,
-  AppSidebar,
-  SidebarTrigger,
-  SidebarInset,
-  Logo,
-  useSidebar
-}
+export { SidebarProvider, AppSidebar, SidebarTrigger, SidebarInset }
 
 /**
  * Change Log:
- * 06/11/25 - Version 1.0.1
- * - Enhanced mobile responsiveness
- * - Improved navigation menu accessibility
- * - Added comprehensive documentation
- * - Optimized performance
- * 
- * 5/25/25 - Version 1.0.0
- * - Created collapsible sidebar with context management
- * - Implemented responsive navigation menu
- * - Added footer with legal links
- * - Integrated gradient styling and animations
- */ 
+ * 06/15/25 - Version 1.0.2
+ * - Added mobile responsiveness
+ * - Enhanced sidebar animations
+ * - Improved accessibility
+ * - Added keyboard navigation
+ */
