@@ -99,11 +99,11 @@ export default function Page() {
     refreshLeadPerformance,
   } = useDashboard();
 
-  const { status } = useSession();
+  const { data: sessionData, status } = useSession();
+  const router = useRouter();
 
   useEffect(() => {
     if (status !== 'authenticated' || !session?.user?.id) return;
-    console.log('Loading threads');
     loadThreads();
   }, [status, session?.user?.id, loadThreads]);
 
@@ -116,6 +116,14 @@ export default function Page() {
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [loadThreads]);
+
+  // Add a separate effect to log when session status changes
+  useEffect(() => {
+    console.log('Session status changed:', { 
+      status,
+      sessionId: session?.user?.id,
+    });
+  }, [status, session?.user?.id]);
 
   // Add CSS for animations and effects
   useEffect(() => {
@@ -333,10 +341,6 @@ export default function Page() {
       ? `${Math.round(avgHours)}h`
       : `${Math.round(avgHours / 24)}d`;
   }, [filteredLeads]);
-
-  if (status === 'loading') {
-    return <LoadingSpinner />;
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">

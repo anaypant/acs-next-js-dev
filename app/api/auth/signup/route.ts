@@ -102,11 +102,13 @@ export async function POST(request: Request) {
 
         // Handle the session_id cookie from the API response
         const setCookieHeader = response.headers.get('set-cookie');
+        console.log('[signup] set-cookie header from backend:', setCookieHeader);
         if (setCookieHeader) {
-            // Extract the session_id cookie (it's the first cookie in the response)
-            const sessionIdCookie = setCookieHeader.split(',')[0].trim();
-            // Set only the session_id cookie
-            nextResponse.headers.set('set-cookie', sessionIdCookie);
+            // Forward all cookies if there are multiple
+            setCookieHeader.split(',').forEach(cookie => {
+                nextResponse.headers.append('set-cookie', cookie.trim());
+                console.log('[signup] set-cookie header forwarded to client:', cookie.trim());
+            });
         }
 
         return nextResponse;

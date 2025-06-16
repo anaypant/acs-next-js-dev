@@ -322,7 +322,8 @@ export default function ConversationDetailPage() {
             index_name: 'id-index',
             key_name: 'id',
             key_value: user.id
-          })
+          }),
+          credentials: 'include'
         });
         const data = await response.json();
         if (data.items[0]?.email_signature) {
@@ -368,7 +369,8 @@ export default function ConversationDetailPage() {
           key_name: 'conversation_id',
           key_value: conversationId,
           update_data: { read: 'true' }
-        })
+        }),
+        credentials: 'include'
       });
       // Update local state
       setThread(prev => prev ? { ...prev, read: true } : null);
@@ -473,7 +475,8 @@ export default function ConversationDetailPage() {
               index_name: 'conversation_id-index',
               key_name: 'conversation_id',
               key_value: conversationId,
-            })
+            }),
+            credentials: 'include'
           }),
           fetch('/api/db/select', {
             method: 'POST',
@@ -483,7 +486,8 @@ export default function ConversationDetailPage() {
               index_name: 'conversation_id-index',
               key_name: 'conversation_id',
               key_value: conversationId,
-            })
+            }),
+            credentials: 'include'
           })
         ]);
 
@@ -651,7 +655,8 @@ export default function ConversationDetailPage() {
         body: JSON.stringify({
           conversation_id: conversationId,
           response_body: messageInput
-        })
+        }),
+        credentials: 'include'
       });
 
       const data = await response.json();
@@ -895,7 +900,8 @@ export default function ConversationDetailPage() {
             associated_account: user?.id || "",
             llm_email_type: llmEmailType
           }
-        })
+        }),
+        credentials: 'include'
       });
     } catch (err) {
       console.error('Error updating response feedback:', err);
@@ -1220,7 +1226,8 @@ export default function ConversationDetailPage() {
           conversation_id: thread.conversation_id,
           message_id: latestMessage.message_id,
           account_id: thread.associated_account
-        })
+        }),
+        credentials: 'include'
       });
 
       if (!response.ok) {

@@ -9,6 +9,12 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { table_name, index_name, key_name, key_value, update_data } = body;
 
+    // Get session_id from request cookies
+    const cookies = request.headers.get('cookie');
+    const sessionId = cookies?.split(';')
+      .find(cookie => cookie.trim().startsWith('session_id='))
+      ?.split('=')[1];
+
     // Get session
     const session = await getServerSession(authOptions) as Session & { user: { id: string } };
     if (!session?.user?.id) {
@@ -17,12 +23,6 @@ export async function POST(request: Request) {
         { status: 404 }
       );
     }
-
-    console.log('[db/update] table_name:', table_name);
-    console.log('[db/update] index_name:', index_name);
-    console.log('[db/update] key_name:', key_name);
-    console.log('[db/update] key_value:', key_value);
-    console.log('[db/update] update_data:', update_data);
 
     // Validate required parameters
     if (!table_name || !index_name || !key_name || !key_value || !update_data) {
@@ -40,6 +40,7 @@ export async function POST(request: Request) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(sessionId && { 'Cookie': `session_id=${sessionId}` })
       },
       body: JSON.stringify({
         table_name,

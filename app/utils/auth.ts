@@ -10,7 +10,9 @@ export const handleSessionCookie = (session: Session): void => {
     if (sessionCookie) {
         const match = sessionCookie.match(/session_id=([^;]+)/);
         if (match?.[1]) {
-            document.cookie = `session_id=${match[1]}; path=/; secure; samesite=lax;`;
+            const secure = process.env.NODE_ENV === 'production' ? '; secure' : '';
+            const cookieString = `session_id=${match[1]}; path=/; samesite=lax${secure}`;
+            document.cookie = cookieString;
         }
     }
 };
@@ -75,10 +77,11 @@ export const clearAuthData = (): void => {
     sessionStorage.removeItem('next-auth.session-token');
     
     // Clear cookies
-    document.cookie = 'session_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; secure; samesite=lax';
-    document.cookie = 'next-auth.session-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; secure; samesite=lax';
-    document.cookie = 'next-auth.callback-url=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; secure; samesite=lax';
-    document.cookie = 'next-auth.csrf-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; secure; samesite=lax';
+    const secure = process.env.NODE_ENV === 'production' ? '; secure' : '';
+    document.cookie = `session_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax${secure}`;
+    document.cookie = `next-auth.session-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax${secure}`;
+    document.cookie = `next-auth.callback-url=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax${secure}`;
+    document.cookie = `next-auth.csrf-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax${secure}`;
 };
 
 /**

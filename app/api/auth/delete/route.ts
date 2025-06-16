@@ -95,7 +95,7 @@ export async function POST(request: Request) {
     const cookieOptions = {
       path: '/',
       expires: new Date(0),
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax' as const,
       httpOnly: true,
       domain: process.env.NEXTAUTH_URL ? new URL(process.env.NEXTAUTH_URL).hostname : undefined

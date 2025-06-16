@@ -100,7 +100,8 @@ export default function JunkPage() {
         const response = await fetch('/api/lcp/get_all_threads', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: session.user.id })
+          body: JSON.stringify({ userId: session.user.id }),
+          credentials: 'include'
         })
         
         if (!response.ok) throw new Error('Failed to fetch threads')
@@ -149,7 +150,8 @@ export default function JunkPage() {
           conversation_id: email.conversation_id,
           message_id: email.response_id,
           account_id: email.account_id
-        })
+        }),
+        credentials: 'include'
       })
       if (!response.ok) throw new Error('Failed to mark as not spam')
       setEmails(emails.filter(e => e.id !== email.id))
@@ -180,7 +182,8 @@ export default function JunkPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           conversation_id: threadToDelete.id
-        })
+        }),
+        credentials: 'include'
       })
 
       if (!response.ok) {
@@ -238,7 +241,8 @@ export default function JunkPage() {
               conversation_id: email.conversation_id,
               message_id: email.response_id,
               account_id: email.account_id
-            })
+            }),
+            credentials: 'include'
           })
         )
       )
@@ -269,7 +273,8 @@ export default function JunkPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               conversation_id: email.id
-            })
+            }),
+            credentials: 'include'
           })
         )
       )

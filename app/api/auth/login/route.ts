@@ -48,12 +48,13 @@ export async function POST(request: Request) {
         }, { status: 200 });
 
         if (sessionCookie) {
-            nextResponse.headers.set('Set-Cookie', sessionCookie);
+            nextResponse.headers.set('set-cookie', sessionCookie);
         }
 
         return nextResponse;
 
     } catch (error: any) {
+        // Keep error logging for debugging purposes
         console.error("Login API - Error:", error);
         return NextResponse.json({ error: 'An unexpected error occurred during login.' }, { status: 500 });
     }

@@ -36,21 +36,43 @@ export async function POST(request: Request) {
       );
     }
 
+    // Extract session_id from incoming request headers
+    const cookieHeader = request.headers.get('cookie');
+    let sessionId = '';
+    if (cookieHeader) {
+      const match = cookieHeader.match(/session_id=([^;]+)/);
+      if (match) {
+        sessionId = match[1];
+      } else {
+          cookieHeader.split(';').map(c => c.trim()).join(', ');
+      }
+    } else {
+    }
+
+    if (!sessionId) {
+      console.error('[get_all_threads] No session_id found in request headers');
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     // Get all threads for the user
     const threadsResponse = await fetch(`${config.API_URL}/db/select`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Cookie': `session_id=${sessionId}`
       },
       body: JSON.stringify({
         table_name: 'Threads',
         index_name: 'associated_account-index',
         key_name: 'associated_account',
         key_value: userId,
-        account_id: userId
-      }),
+        account_id: userId,
+        session_id: sessionId  // Also include in body as a parameter
+      })
     });
-
 
     if (!threadsResponse.ok) {
       const errorText = await threadsResponse.text();

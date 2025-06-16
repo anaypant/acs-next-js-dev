@@ -87,6 +87,7 @@ export const useDashboard = () => {
             const response = await fetch('/api/lcp/get_all_threads', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ userId: session.user.id }),
             });
             if (!response.ok) throw new Error('Failed to fetch threads');
@@ -114,6 +115,7 @@ export const useDashboard = () => {
             const response = await fetch('/api/db/update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({
                     table_name: 'Threads',
                     index_name: 'conversation_id-index',
@@ -144,6 +146,7 @@ export const useDashboard = () => {
             const response = await fetch('/api/db/update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({
                     table_name: 'Threads',
                     index_name: 'conversation_id-index',
@@ -174,6 +177,7 @@ export const useDashboard = () => {
             const response = await fetch('/api/lcp/delete_thread', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ conversation_id: conversationId }),
             });
             if (!response.ok) throw new Error('Failed to delete thread');
@@ -193,6 +197,7 @@ export const useDashboard = () => {
             const response = await fetch('/api/db/update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({
                     table_name: 'Threads',
                     index_name: 'conversation_id-index',
@@ -228,6 +233,7 @@ export const useDashboard = () => {
             const response = await fetch('/api/lcp/get_all_threads', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ userId: session.user.id }),
             });
             if (!response.ok) throw new Error('Failed to refresh lead performance');

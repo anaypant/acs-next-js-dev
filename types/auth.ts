@@ -105,9 +105,16 @@ export const authOptions = {
           const loginResponseData = await loginResponse.json();
           
           // Handle Set-Cookie header from login response
-          const setCookieHeader = loginResponse.headers.get('Set-Cookie');
+          const setCookieHeader = loginResponse.headers.get('set-cookie');
           if (setCookieHeader) {
-            user.sessionCookie = setCookieHeader;
+            let cookie = setCookieHeader;
+            if (process.env.NODE_ENV !== 'production') {
+              // Remove Secure attribute for local development
+              cookie = cookie.replace(/; ?secure/gi, '');
+            }
+            user.sessionCookie = cookie;
+          } else {
+            throw new Error('No session_id cookie found in login response headers');
           }
           
           // Store the user data in the token for session creation
@@ -140,9 +147,16 @@ export const authOptions = {
           const data = await res.json();
 
           // Handle Set-Cookie header from signup response
-          const setCookieHeader = res.headers.get('Set-Cookie');
+          const setCookieHeader = res.headers.get('set-cookie');
           if (setCookieHeader) {
-            user.sessionCookie = setCookieHeader;
+            let cookie = setCookieHeader;
+            if (process.env.NODE_ENV !== 'production') {
+              // Remove Secure attribute for local development
+              cookie = cookie.replace(/; ?secure/gi, '');
+            }
+            user.sessionCookie = cookie;
+          } else {
+            throw new Error('No session_id cookie found in signup response headers');
           }
 
           // allow if already exists
@@ -176,6 +190,9 @@ export const authOptions = {
             token.name = user.name;
             token.provider = user.provider;
             token.authType = user.authType;
+            if ((user as any).sessionCookie) {
+                token.sessionCookie = (user as any).sessionCookie;
+            }
         }
         return token;
     },
@@ -187,6 +204,9 @@ export const authOptions = {
             session.user.provider = token.provider;
             session.user.authType = token.authType;
             // Do not expose accessToken to the client-side
+        }
+        if ((token as any).sessionCookie) {
+            session.sessionCookie = (token as any).sessionCookie;
         }
         return session;
     }
