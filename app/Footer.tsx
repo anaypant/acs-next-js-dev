@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * File: app/Footer.tsx
  * Purpose: Renders the application footer with navigation links, company information, and legal resources.
@@ -139,3 +141,4 @@ export default function Footer() {
  * - Integrated dynamic copyright year
  * - Enhanced link hover effects
  * - Improved semantic structure
+*/

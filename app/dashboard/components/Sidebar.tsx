@@ -223,7 +223,12 @@ function SidebarTrigger() {
  * @param {React.ReactNode} props.children - Child components
  * @returns {JSX.Element} Content wrapper
  */
-function SidebarInset({ children }: { children: React.ReactNode }) {
+interface SidebarInsetProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+function SidebarInset({ children, className }: SidebarInsetProps) {
   const { isOpen } = useSidebar()
   const [isMobile, setIsMobile] = useState(false)
 
@@ -237,14 +242,10 @@ function SidebarInset({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <div 
-      className={`bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1] h-screen overflow-y-auto ${
-        isMobile 
-          ? "ml-0" 
-          : isOpen 
-            ? "ml-64" 
-            : "ml-16"
-      } transition-all duration-300`}
+    <div
+      className={`${
+        isOpen ? "ml-64" : isMobile ? "ml-0" : "ml-16"
+      } transition-all duration-300 ${className || ''}`}
     >
       {children}
     </div>
@@ -404,31 +405,13 @@ function AppSidebar() {
   )
 }
 
-export {
-  SidebarProvider,
-  AppSidebar,
-  SidebarTrigger,
-  SidebarInset,
-  Logo,
-  useSidebar
-}
+export { SidebarProvider, AppSidebar, SidebarTrigger, SidebarInset }
 
 /**
  * Change Log:
  * 06/15/25 - Version 1.0.2
- * - Removed: -- a/app/dashboard/components/Sidebar.tsx
- * - Added: ++ b/app/dashboard/components/Sidebar.tsx
- * - Removed:   {
- * - Removed:     title: "Privacy Policy",
- * - Removed:     icon: FileText,
- * 06/11/25 - Version 1.0.1
- * - Enhanced mobile responsiveness
- * - Improved navigation menu accessibility
- * - Added comprehensive documentation
- * - Optimized performance
- * 
- * 5/25/25 - Version 1.0.0
- * - Created collapsible sidebar with context management
- * - Implemented responsive navigation menu
- * - Added footer with legal links
- * - Integrated gradient styling and animations
+ * - Added mobile responsiveness
+ * - Enhanced sidebar animations
+ * - Improved accessibility
+ * - Added keyboard navigation
+ */
