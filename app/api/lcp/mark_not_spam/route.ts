@@ -5,6 +5,12 @@ export async function POST(request: Request) {
   try {
     const { conversation_id, message_id, account_id } = await request.json();
 
+    // Get session_id from request cookies
+    const cookies = request.headers.get('cookie');
+    const sessionId = cookies?.split(';')
+      .find(cookie => cookie.trim().startsWith('session_id='))
+      ?.split('=')[1];
+
     if (!conversation_id || !message_id || !account_id) {
         return NextResponse.json(
         { error: 'Conversation ID, Response ID, and Account ID are required' },
@@ -19,6 +25,7 @@ export async function POST(request: Request) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(sessionId && { 'Cookie': `session_id=${sessionId}` })
         },
         body: JSON.stringify({
           table_name: 'Threads',
@@ -38,6 +45,7 @@ export async function POST(request: Request) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(sessionId && { 'Cookie': `session_id=${sessionId}` })
         },
         body: JSON.stringify({
           table_name: 'Conversations',
@@ -79,6 +87,7 @@ export async function POST(request: Request) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(sessionId && { 'Cookie': `session_id=${sessionId}` })
         },
         body: JSON.stringify({
           conversation_id,

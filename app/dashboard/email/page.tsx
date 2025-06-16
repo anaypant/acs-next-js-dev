@@ -162,6 +162,7 @@ export default function EmailPage() {
           message_id: email.message_id,
           account_id: email.account_id
         }),
+        credentials: 'include'
       })
 
       if (!response.ok) {

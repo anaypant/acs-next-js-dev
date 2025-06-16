@@ -117,6 +117,7 @@ export default function NewUserPage() {
           key_name: 'responseEmail',
           key_value: email,
         }),
+        credentials: 'include'
       });
 
       if (!checkResponse.ok) {
@@ -313,6 +314,7 @@ export default function NewUserPage() {
             key_name: 'id',
             key_value: session.user.id,
           }),
+          credentials: 'include'
         });
 
         if (!response.ok) {
@@ -325,10 +327,18 @@ export default function NewUserPage() {
           goto404('500', 'Multiple entries found for this user', router);
           return;
         }
-        setData(items[0] || null);
+        console.log(items);
+        const userData = items[0] || null;
+        console.log(userData);
+        setData(userData);
+        
+        // Set signature from user data if it exists
+        if (userData?.email_signature) {
+          setSignature(userData.email_signature);
+        }
         
         // Get their default email from the database
-        const defaultEmail = items[0]?.acsMail;
+        const defaultEmail = userData?.acsMail;
         if (!defaultEmail) {
           // If no email exists, create one based on their name
           const name = session.user.name || '';
@@ -345,7 +355,9 @@ export default function NewUserPage() {
               index_name: 'responseEmail-index',
               key_name: 'responseEmail',
               key_value: generatedEmail,
+              account_id: session.user.id
             }),
+            credentials: 'include'
           });
 
           if (!checkResponse.ok) {
@@ -411,13 +423,14 @@ export default function NewUserPage() {
           key_name: 'id',
           key_value: session?.user?.id,
           update_data: {
-            email_signature: signature,
+            email_signature: signature.trim(), // Ensure we trim the signature
             phone: cleanedPhone,
             lcp_automatic_enabled: autoEmails ? 'true' : 'false',
             sms_enabled: smsEnabled ? 'true' : 'false',
             newUser: false,
           }
         }),
+        credentials: 'include'
       });
       if (!res.ok) throw new Error('Failed to save settings');
       router.push('/dashboard');
@@ -480,6 +493,7 @@ export default function NewUserPage() {
               responseEmail: finalEmail
             }
           }),
+          credentials: 'include'
         });
         if (!updateRes.ok) {
           throw new Error('Failed to update response email');
@@ -499,6 +513,7 @@ export default function NewUserPage() {
               responseEmail: finalEmail
             }
           }),
+          credentials: 'include'
         });
         if (!updateRes.ok) {
           throw new Error('Failed to update ACS Mail and response email');
@@ -522,6 +537,7 @@ export default function NewUserPage() {
             lcp_sample_prompt: lcpSettings.samplePrompt
           }
         }),
+        credentials: 'include'
       });
       if (!updateRes.ok) {
         throw new Error('Failed to update email and LCP settings');

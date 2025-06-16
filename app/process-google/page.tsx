@@ -12,7 +12,7 @@ export default function ProcessGoogle() {
 
     useEffect(() => {
         const processAuth = async () => {
-            if (status === 'authenticated' && session?.user) {
+            if (status === 'authenticated') {
                 try {
                     // Validate session
                     if (!validateSession(session)) {
@@ -20,11 +20,11 @@ export default function ProcessGoogle() {
                     }
 
                     // Handle session cookie
-                    handleSessionCookie(session);
+                    handleSessionCookie(session as any);
 
                     // Determine redirect based on auth type
-                    const user = session.user;
-                    if (user) {
+                    const user = (session.user as any);
+                    if (user && user.authType) {
                         const redirectPath = getAuthRedirectPath(user.authType);
                         router.push(redirectPath);
                     }
@@ -32,6 +32,7 @@ export default function ProcessGoogle() {
                         goto404('405', 'User not found', router);
                     }
                 } catch (error) {
+                    // Keep error logging for debugging purposes
                     console.error('Error processing authentication:', error);
                     router.push('/login?error=auth_processing_failed');
                 }

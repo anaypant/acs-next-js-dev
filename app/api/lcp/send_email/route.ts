@@ -30,6 +30,7 @@ export async function POST(request: Request) {
         index_name: 'conversation_id-index',
         update_data: { busy: true }
       }),
+      credentials: 'include'
     });
 
     if (!updateResponse.ok) {

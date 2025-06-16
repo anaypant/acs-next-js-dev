@@ -109,14 +109,24 @@ const LoginPage = () => {
       });
 
       if (result?.error) {
-        setError(result.error);
+        // Handle specific error cases
+        if (result.error.includes('500') || result.error.includes('server error')) {
+          setError('We\'re experiencing technical difficulties. Please try again later or contact support at support@acs.com for assistance.');
+        } else {
+          setError(result.error);
+        }
         return;
       }
 
       // Redirect to dashboard or callback URL
       router.push(result?.url || '/dashboard');
     } catch (err: any) {
-      setError(handleAuthError(err));
+      // Handle specific error cases
+      if (err.message?.includes('500') || err.message?.includes('server error')) {
+        setError('We\'re experiencing technical difficulties. Please try again later or contact support at support@acs.com for assistance.');
+      } else {
+        setError(handleAuthError(err));
+      }
     } finally {
       setLoading(false);
     }
@@ -150,7 +160,16 @@ const LoginPage = () => {
             {/* Error Message */}
             {error && (
               <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl transition-all duration-300">
-                {error}
+                <p className="font-medium mb-1">Login Error</p>
+                <p>{error}</p>
+                {error.includes('technical difficulties') && (
+                  <p className="mt-2 text-[#0e6537]">
+                    Need help? Contact our support team at{' '}
+                    <a href="mailto:support@acs.com" className="underline hover:text-[#0e6537]/80">
+                      support@acs.com
+                    </a>
+                  </p>
+                )}
               </div>
             )}
 

@@ -9,6 +9,12 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { table_name, index_name, key_name, key_value } = body;
 
+    // Get session_id from request cookies
+    const cookies = request.headers.get('cookie');
+    const sessionId = cookies?.split(';')
+      .find(cookie => cookie.trim().startsWith('session_id='))
+      ?.split('=')[1];
+
     // Get session using getServerSession with authOptions
     const session = await getServerSession(authOptions) as Session & { user: { id: string } };
     
@@ -37,6 +43,7 @@ export async function POST(request: Request) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(sessionId && { 'Cookie': `session_id=${sessionId}` })
       },
       body: JSON.stringify({
         table_name,

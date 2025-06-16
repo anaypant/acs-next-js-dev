@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
         uid,
         newEmail
       }),
+      credentials: 'include'
     });
 
     const data = await res.json();
