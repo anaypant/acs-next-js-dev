@@ -32,6 +32,7 @@ export const authOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
+
         try {
           const creds: Credentials = {
             email: credentials.email,
@@ -40,7 +41,8 @@ export const authOptions = {
             provider: (credentials.provider || 'form') as SignupProvider
           };
 
-          const response = await fetch(`${config.API_URL}/users/auth/login`, {
+          // Call the local login API instead of backend directly to handle session cookies
+          const response = await fetch(`${config.NEXTAUTH_URL}/api/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(creds),
@@ -50,6 +52,18 @@ export const authOptions = {
 
           if (!response.ok) {
             throw new Error(data.error || 'Authentication failed');
+          }
+
+          // Handle Set-Cookie header from login response
+          const setCookieHeader = response.headers.get('set-cookie');
+          
+          if (setCookieHeader) {
+            let cookie = setCookieHeader;
+            if (process.env.NODE_ENV !== 'production') {
+              // Remove Secure attribute for local development
+              cookie = cookie.replace(/; ?secure/gi, '');
+            }
+            (creds as any).sessionCookie = cookie;
           }
 
           const user: User = {
@@ -62,6 +76,11 @@ export const authOptions = {
           
           if (creds.provider === 'google' && data.accessToken) {
             user.accessToken = data.accessToken;
+          }
+
+          // Store session cookie in user object for later use
+          if ((creds as any).sessionCookie) {
+            (user as any).sessionCookie = (creds as any).sessionCookie;
           }
 
           return user;
@@ -80,6 +99,15 @@ export const authOptions = {
 
   callbacks: {
     async signIn({ user, account }: { user: User, account: any | null }) {
+      if (account?.provider === "credentials") {
+        // Handle session cookie for credentials provider
+        if ((user as any).sessionCookie) {
+          // The session cookie is already handled in the authorize function
+          // and will be stored in the JWT token
+          return true;
+        }
+      }
+      
       if (account?.provider === "google") {
         user.provider = 'google';
         if (account.access_token) {
@@ -201,22 +229,33 @@ export const authOptions = {
             }
             if ((user as any).sessionCookie) {
                 token.sessionCookie = (user as any).sessionCookie;
+            } else {
             }
         }
         return token;
     },
     async session({ session, token }: { session: any; token: JWT }) {
+        
         if (session.user) {
             session.user.id = token.id;
             session.user.name = token.name as string;
             session.user.email = token.email as string;
             session.user.provider = token.provider;
             session.user.authType = token.authType;
-            // Add accessToken to session for Google OAuth token revocation
             session.user.accessToken = token.accessToken;
         }
         if ((token as any).sessionCookie) {
-            session.sessionCookie = (token as any).sessionCookie;
+            // Parse session_id from the cookie string - handle multiple formats
+            let match = (token as any).sessionCookie.match(/session_id=([^;,\s]+)/);
+            if (!match) {
+                // Try alternative format without quotes
+                match = (token as any).sessionCookie.match(/session_id=([^;]+)/);
+            }
+            if (match) {
+                session.sessionId = match[1];
+            } else {
+            }
+        } else {
         }
         return session;
     }

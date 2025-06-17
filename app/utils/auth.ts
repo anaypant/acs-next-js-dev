@@ -6,13 +6,28 @@ import { Session, User } from 'next-auth';
  * @returns void
  */
 export const handleSessionCookie = (session: Session): void => {
+    // First try to get session_id from session.sessionId (set by NextAuth session callback)
+    if ((session as any).sessionId) {
+        const secure = process.env.NODE_ENV === 'production' ? '; secure' : '';
+        const cookieString = `session_id=${(session as any).sessionId}; path=/; samesite=lax${secure}`;
+        document.cookie = cookieString;
+        return;
+    }
+    
+    // Fallback to session.sessionCookie (legacy approach)
     const sessionCookie = (session as any).sessionCookie;
     if (sessionCookie) {
-        const match = sessionCookie.match(/session_id=([^;]+)/);
+        // Parse session_id from the cookie string - handle multiple formats
+        let match = sessionCookie.match(/session_id=([^;,\s]+)/);
+        if (!match) {
+            // Try alternative format without quotes
+            match = sessionCookie.match(/session_id=([^;]+)/);
+        }
         if (match?.[1]) {
             const secure = process.env.NODE_ENV === 'production' ? '; secure' : '';
             const cookieString = `session_id=${match[1]}; path=/; samesite=lax${secure}`;
             document.cookie = cookieString;
+        } else {
         }
     }
 };

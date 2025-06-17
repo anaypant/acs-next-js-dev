@@ -113,6 +113,7 @@ function LoadingFallback() {
 function DashboardContent() {
   const {
     session,
+    status,
     conversations,
     loadingConversations,
     updatingLcp,
@@ -144,7 +145,6 @@ function DashboardContent() {
     refreshLeadPerformance,
   } = useDashboard();
 
-  const { data: sessionData, status } = useSession();
   const router = useRouter();
 
   useEffect(() => {
@@ -165,7 +165,6 @@ function DashboardContent() {
       if (document.visibilityState === "visible") {
         // Only refresh if we were in idle state
         if (isIdle) {
-          console.log("Returning from idle state, refreshing threads");
           loadThreads();
           isIdle = false;
         }
@@ -173,7 +172,6 @@ function DashboardContent() {
         // When visibility changes to hidden, start idle timer
         clearTimeout(idleTimeoutId);
         idleTimeoutId = setTimeout(() => {
-          console.log("User has been idle for 15 minutes");
           isIdle = true;
         }, 15 * 60 * 1000); // 15 minutes
       }
@@ -186,13 +184,6 @@ function DashboardContent() {
     };
   }, [loadThreads]);
 
-  // Add a separate effect to log when session status changes
-  useEffect(() => {
-    console.log('Session status changed:', { 
-      status,
-      sessionId: session?.user?.id,
-    });
-  }, [status, session?.user?.id]);
 
   // Add CSS for animations and effects
   useEffect(() => {
@@ -359,7 +350,6 @@ function DashboardContent() {
         console.warn('Invalid EV scores found:', invalidThreads);
       }
     }
-    console.log(validScores);
     const totalEv = validScores.reduce((sum, score) => sum + score, 0);
     return Math.round(totalEv / validScores.length);
   }, [filteredLeads]);
@@ -436,8 +426,8 @@ function DashboardContent() {
               setDeleteModalOpen(false);
               setThreadToDelete(null);
             }}
-            onConfirm={() => threadToDelete && confirmDelete(threadToDelete)}
-            conversationName={threadToDelete?.name || 'Unknown'}
+            onConfirm={() => threadToDelete && confirmDelete()}
+            conversationName={threadToDelete ? conversations.find(c => c.conversation_id === threadToDelete)?.source_name || 'Unknown' : 'Unknown'}
             isDeleting={deletingThread !== null}
           />
 

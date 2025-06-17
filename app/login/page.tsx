@@ -9,12 +9,12 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { CircularProgress } from "@mui/material"
-import { signIn } from "next-auth/react"
+import { signIn, useSession } from "next-auth/react"
 import { handleAuthError, validateAuthForm } from "../utils/auth"
 
 /**
@@ -35,12 +35,22 @@ import { handleAuthError, validateAuthForm } from "../utils/auth"
  */
 const LoginPage = () => {
   const router = useRouter()
+  const { data: session, status } = useSession()
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [signInTriggered, setSignInTriggered] = useState(false)
+
+  // Handle session changes after signIn
+  useEffect(() => {
+    if (signInTriggered && status !== "loading" && session?.user) {
+      router.push(`/process-form?authType=existing`);
+      setSignInTriggered(false);
+    }
+  }, [session, status, signInTriggered, router]);
 
   /**
    * Handles input field changes
@@ -104,6 +114,7 @@ const LoginPage = () => {
       const result = await signIn('credentials', {
         email: formData.email,
         password: formData.password,
+        provider: 'form',
         redirect: false,
         callbackUrl: '/dashboard'
       });
@@ -118,8 +129,8 @@ const LoginPage = () => {
         return;
       }
 
-      // Redirect to dashboard or callback URL
-      router.push(result?.url || '/dashboard');
+      // Set flag to trigger redirect when session is ready
+      setSignInTriggered(true);
     } catch (err: any) {
       // Handle specific error cases
       if (err.message?.includes('500') || err.message?.includes('server error')) {

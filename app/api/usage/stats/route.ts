@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized - No authenticated user found' },
         { status: 401 }
       );
     }
@@ -48,6 +48,21 @@ export async function GET(request: Request) {
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[usage/stats] Failed to fetch invocations:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText
+      });
+      
+      // If the backend returns 401, we should also return 401
+      if (response.status === 401) {
+        return NextResponse.json(
+          { error: 'Unauthorized - Session expired or invalid' },
+          { status: 401 }
+        );
+      }
+      
       throw new Error(`Failed to fetch invocations: ${response.statusText}`);
     }
 
@@ -163,7 +178,7 @@ export async function GET(request: Request) {
       total: {
         invocations: totalInvocations,
         inputTokens: totalInputTokens,
-        outputTokens: totalOutputTokens
+        outputTokens: totalOutputTokens,
       },
       range: {
         from: fromDate,
@@ -173,13 +188,29 @@ export async function GET(request: Request) {
         outputTokens: rangeOutputTokens
       },
       conversationsByThread: threadStats,
-      timeStats // Include detailed time stats with conversation data
+      timeStats: Object.entries(timeStats).map(([key, value]) => ({
+        time: key,
+        invocations: value.invocations,
+        inputTokens: value.inputTokens,
+        outputTokens: value.outputTokens,
+        conversations: Array.from(value.conversations).length
+      })).sort((a, b) => {
+        const aTime = new Date(a.time).getTime();
+        const bTime = new Date(b.time).getTime();
+        return aTime - bTime;
+      })
     });
 
-  } catch (error: any) {
-    console.error('Error in usage/stats route:', error);
+  } catch (error) {
+    console.error('[usage/stats] Unexpected error:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { 
+        error: 'Internal server error from usage/stats route',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

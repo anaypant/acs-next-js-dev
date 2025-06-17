@@ -8,12 +8,12 @@ export async function POST(request: Request) {
   try {
     const { conversation_id } = await request.json();
 
-    // Get session
+    // Get session to verify user is authenticated
     const session = await getServerSession(authOptions) as Session & { user: { id: string } };
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: 'No authenticated user found' },
-        { status: 404 }
+        { error: 'Unauthorized - No authenticated user found' },
+        { status: 401 }
       );
     }
 
@@ -48,6 +48,22 @@ export async function POST(request: Request) {
     });
 
     if (!threadResponse.ok) {
+      const errorText = await threadResponse.text();
+      console.error('[getThreadById] Failed to fetch thread:', {
+        status: threadResponse.status,
+        statusText: threadResponse.statusText,
+        error: errorText,
+        conversation_id
+      });
+      
+      // If the backend returns 401, we should also return 401
+      if (threadResponse.status === 401) {
+        return NextResponse.json(
+          { error: 'Unauthorized - Session expired or invalid' },
+          { status: 401 }
+        );
+      }
+      
       throw new Error(`Failed to fetch thread: ${threadResponse.statusText}`);
     }
 
@@ -78,7 +94,22 @@ export async function POST(request: Request) {
     });
 
     if (!messagesResponse.ok) {
-      // log the error
+      const errorText = await messagesResponse.text();
+      console.error('[getThreadById] Failed to fetch messages:', {
+        status: messagesResponse.status,
+        statusText: messagesResponse.statusText,
+        error: errorText,
+        conversation_id
+      });
+      
+      // If the backend returns 401, we should also return 401
+      if (messagesResponse.status === 401) {
+        return NextResponse.json(
+          { error: 'Unauthorized - Session expired or invalid' },
+          { status: 401 }
+        );
+      }
+      
       throw new Error(`Failed to fetch messages for thread ${conversation_id}`);
     }
 
@@ -93,7 +124,10 @@ export async function POST(request: Request) {
     });
 
   } catch (error: any) {
-    console.error('Error in getThreadById route:', error);
+    console.error('[getThreadById] Unexpected error:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return NextResponse.json(
       { 
         success: false,

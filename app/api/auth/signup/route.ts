@@ -75,6 +75,7 @@ export async function POST(request: Request) {
         });
 
         const data = await response.json();
+        console.log('[signup] data from backend:', data);
 
         if (!response.ok) {
             return NextResponse.json(
@@ -90,7 +91,7 @@ export async function POST(request: Request) {
                 ...data,
                 session: {
                     user: {
-                        id: id,
+                        id: data.id || data.user?.id || id, // Use backend ID if available, fallback to local ID
                         email: data.email,
                         name: name,
                         provider: signupData.provider,
@@ -106,9 +107,16 @@ export async function POST(request: Request) {
         if (setCookieHeader) {
             // Forward all cookies if there are multiple
             setCookieHeader.split(',').forEach(cookie => {
-                nextResponse.headers.append('set-cookie', cookie.trim());
-                console.log('[signup] set-cookie header forwarded to client:', cookie.trim());
+                let cookieToSet = cookie.trim();
+                if (process.env.NODE_ENV !== 'production') {
+                    // Remove Secure attribute for local development
+                    cookieToSet = cookieToSet.replace(/; ?secure/gi, '');
+                }
+                nextResponse.headers.append('set-cookie', cookieToSet);
+                console.log('[signup] set-cookie header forwarded to client:', cookieToSet);
             });
+        } else {
+            console.log('[signup] No set-cookie header found in backend response');
         }
 
         return nextResponse;

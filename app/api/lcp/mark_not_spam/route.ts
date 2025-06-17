@@ -1,9 +1,29 @@
 import { NextResponse } from 'next/server';
 import { config } from '@/lib/local-api-config';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/types/auth';
+import { Session } from 'next-auth';
 
 export async function POST(request: Request) {
   try {
     const { conversation_id, message_id, account_id } = await request.json();
+
+    // Get session to verify user is authenticated
+    const session = await getServerSession(authOptions) as Session & { user: { id: string } };
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized - No authenticated user found' },
+        { status: 401 }
+      );
+    }
+
+    // Verify that the account_id matches the session user id
+    if (account_id && account_id !== session.user.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Account ID mismatch' },
+        { status: 401 }
+      );
+    }
 
     // Get session_id from request cookies
     const cookies = request.headers.get('cookie');
@@ -64,20 +84,45 @@ export async function POST(request: Request) {
 
     // Wait for both updates to complete
     const [threadsResponse, conversationsResponse] = await Promise.all(updatePromises);
-    // log the bodies of the responses
 
     // Check if either update failed
     if (!threadsResponse.ok || !conversationsResponse.ok) {
       const errors = [];
       if (!threadsResponse.ok) {
         const errorText = await threadsResponse.text();
+        console.error('[mark_not_spam] Threads update failed:', {
+          status: threadsResponse.status,
+          error: errorText
+        });
+        
+        // If the backend returns 401, we should also return 401
+        if (threadsResponse.status === 401) {
+          return NextResponse.json(
+            { error: 'Unauthorized - Session expired or invalid' },
+            { status: 401 }
+          );
+        }
+        
         errors.push(`Threads update failed: ${errorText}`);
       }
       if (!conversationsResponse.ok) {
         const errorText = await conversationsResponse.text();
+        console.error('[mark_not_spam] Conversations update failed:', {
+          status: conversationsResponse.status,
+          error: errorText
+        });
+        
+        // If the backend returns 401, we should also return 401
+        if (conversationsResponse.status === 401) {
+          return NextResponse.json(
+            { error: 'Unauthorized - Session expired or invalid' },
+            { status: 401 }
+          );
+        }
+        
         errors.push(`Conversations update failed: ${errorText}`);
       }
-      console.error('Update spam status failed:', errors);
+      console.error('[mark_not_spam] Update spam status failed:', errors);
       throw new Error(`Failed to update spam status: ${errors.join(', ')}`);
     }
 
@@ -99,13 +144,13 @@ export async function POST(request: Request) {
 
       if (!evResponse.ok) {
         const errorData = await evResponse.json();
-        console.warn('EV generation failed, but spam status was updated successfully:', {
+        console.warn('[mark_not_spam] EV generation failed, but spam status was updated successfully:', {
           status: evResponse.status,
           error: errorData
         });
       }
     } catch (evError) {
-      console.warn('EV generation failed, but spam status was updated successfully:', evError);
+      console.warn('[mark_not_spam] EV generation failed, but spam status was updated successfully:', evError);
     }
 
     return NextResponse.json({
@@ -114,7 +159,10 @@ export async function POST(request: Request) {
     });
 
   } catch (error: any) {
-    console.error('Error in mark_not_spam route:', error);
+    console.error('[mark_not_spam] Unexpected error:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return NextResponse.json(
       { 
         success: false,

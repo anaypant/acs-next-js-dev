@@ -20,8 +20,8 @@ export async function POST(request: Request) {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: 'No authenticated user found' },
-        { status: 404 }
+        { error: 'Unauthorized - No authenticated user found' },
+        { status: 401 }
       );
     }
 
@@ -54,12 +54,14 @@ export async function POST(request: Request) {
       credentials: 'include',
     });
 
+    // Get the response text
+    const responseText = await response.text();
+    
     if (!response.ok) {
-      const errorText = await response.text();
       console.error('[db/delete] Response not ok:', {
         status: response.status,
         statusText: response.statusText,
-        error: errorText,
+        error: responseText,
         url: apiUrl,
         requestBody: {
           table_name,
@@ -68,23 +70,33 @@ export async function POST(request: Request) {
           is_primary_key
         }
       });
+      
+      // If the backend returns 401, we should also return 401
+      if (response.status === 401) {
+        return NextResponse.json(
+          { 
+            error: 'Unauthorized - Session expired or invalid',
+            details: responseText,
+            status: response.status
+          },
+          { status: 401 }
+        );
+      }
+      
       return NextResponse.json(
         { 
           error: 'Database delete failed',
-          details: errorText,
+          details: responseText,
           status: response.status
         },
         { status: response.status }
       );
     }
 
-    // Get the response text
-    const responseText = await response.text();
-
     // Parse the response text
-    let proxyResponse;
+    let data;
     try {
-      proxyResponse = JSON.parse(responseText);
+      data = JSON.parse(responseText);
     } catch (parseError) {
       console.error('[db/delete] Failed to parse response:', parseError);
       return NextResponse.json(
@@ -93,10 +105,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Return the success status and deleted item info
     return NextResponse.json({
       success: true,
-      deleted_item: proxyResponse.deleted_item
+      data: data
     });
 
   } catch (error) {

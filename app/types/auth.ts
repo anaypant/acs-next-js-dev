@@ -15,7 +15,8 @@ declare module "next-auth" {
       authType: 'new' | 'existing';
       provider: SignupProvider;
       accessToken?: string;
-    }
+    };
+    sessionId?: string;
   }
 
   interface User {
@@ -49,7 +50,8 @@ declare module "next-auth/react" {
       authType: 'new' | 'existing';
       provider: SignupProvider;
       accessToken?: string;
-    }
+    };
+    sessionId?: string;
   }
 }
 
