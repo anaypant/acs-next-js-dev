@@ -146,49 +146,96 @@ const LeadFunnel: React.FC<LeadFunnelProps> = ({ userId, leadData, loading, time
 
   return (
     <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg border border-[#0e6537]/20 shadow-sm">
-      <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Lead Journey Funnel</h3>
-      {loading ? (
-        <div className="flex items-center justify-center h-48 sm:h-64 text-gray-600 text-sm sm:text-base">
-          Loading funnel data...
+      {/* Quick Actions */}
+      <div className="mb-6">
+        <h4 className="font-semibold mb-3 text-center">Quick Actions</h4>
+        <div className="flex justify-center items-center gap-4 flex-wrap w-full mb-2">
+          <button
+            className="px-5 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow text-base font-semibold focus:outline-none focus:ring-2 focus:ring-[#0e6537]/50 border-2 border-[#0e6537]"
+            style={{ boxShadow: '0 0 0 2px #0e6537' }}
+            disabled
+            title="You are viewing the Lead Journey"
+          >
+            Track Lead Journey
+          </button>
+          <button
+            className="px-5 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow text-base font-semibold focus:outline-none focus:ring-2 focus:ring-[#0e6537]/50"
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                const event = new CustomEvent('leadreport:generate-report');
+                window.dispatchEvent(event);
+              }
+            }}
+          >
+            Generate Report
+          </button>
+          <button
+            className="px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm text-base font-semibold focus:outline-none focus:ring-2 focus:ring-[#0e6537]/50"
+            onClick={async () => {
+              if (typeof window === 'undefined') return;
+              const html2pdf = (await import('html2pdf.js')).default;
+              const element = document.getElementById('lead-funnel-content');
+              if (element) {
+                html2pdf(element, {
+                  margin: 10,
+                  filename: 'lead-journey-funnel.pdf',
+                  image: { type: 'jpeg', quality: 0.98 },
+                  html2canvas: { scale: 2 },
+                  jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                });
+              }
+            }}
+            title="Download the Lead Journey Funnel as PDF"
+          >
+            Download PDF Report
+          </button>
         </div>
-      ) : categorizedData.length === 0 ? (
-        <div className="flex items-center justify-center h-48 sm:h-64 text-gray-600 text-sm sm:text-base">
-          No lead data found.
-        </div>
-      ) : (
-        <div className="w-full overflow-x-auto">
-          <ResponsiveContainer width="100%" height={chartHeight}>
-            <BarChart 
-              data={categorizedData} 
-              layout="vertical" 
-              barCategoryGap="20%"
-              margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                type="number" 
-                domain={[0, 'auto']} 
-                tick={{ fontSize: 12 }}
-                tickFormatter={(value) => value.toString()}
-              />
-              <YAxis 
-                dataKey="name" 
-                type="category" 
-                tickLine={false} 
-                axisLine={false}
-                tick={{ fontSize: 12 }}
-                width={80}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar 
-                dataKey="leads" 
-                fill="#0e6537"
-                radius={[0, 4, 4, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+      </div>
+      <div id="lead-funnel-content">
+        <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Lead Journey Funnel</h3>
+        {loading ? (
+          <div className="flex items-center justify-center h-48 sm:h-64 text-gray-600 text-sm sm:text-base">
+            Loading funnel data...
+          </div>
+        ) : categorizedData.length === 0 ? (
+          <div className="flex items-center justify-center h-48 sm:h-64 text-gray-600 text-sm sm:text-base">
+            No lead data found.
+          </div>
+        ) : (
+          <div className="w-full overflow-x-auto">
+            <ResponsiveContainer width="100%" height={chartHeight}>
+              <BarChart 
+                data={categorizedData} 
+                layout="vertical" 
+                barCategoryGap="20%"
+                margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  type="number" 
+                  domain={[0, 'auto']} 
+                  tick={{ fontSize: 12 }}
+                  tickFormatter={(value) => value.toString()}
+                />
+                <YAxis 
+                  dataKey="name" 
+                  type="category" 
+                  tickLine={false} 
+                  axisLine={false}
+                  tick={{ fontSize: 12 }}
+                  width={80}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar 
+                  dataKey="leads" 
+                  fill="#0e6537"
+                  radius={[0, 4, 4, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

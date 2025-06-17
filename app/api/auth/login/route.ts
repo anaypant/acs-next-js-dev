@@ -25,7 +25,6 @@ export async function POST(request: Request) {
         });
 
         const data = await response.json();
-        console.log('[login] data from backend:', data);
 
         if (!response.ok) {
             return NextResponse.json({ error: 'Login failed.' }, { status: response.status });
@@ -42,7 +41,6 @@ export async function POST(request: Request) {
             authType: data.authType || data.authType || data.authtype || 'existing',
             provider: provider || 'form',
         };
-        console.log('[login] user object to return:', user);
         
         const nextResponse = NextResponse.json({
             success: true,

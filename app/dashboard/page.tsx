@@ -9,7 +9,8 @@
 "use client"
 import { MessageSquare, RefreshCw, CheckCircle, Flag, Shield, ChevronDown } from "lucide-react"
 import React, { useEffect, useMemo, Suspense } from "react"
-import { SidebarProvider, AppSidebar, SidebarTrigger, SidebarInset } from "./components/Sidebar"
+import { SidebarProvider, AppSidebar, SidebarInset } from "./components/Sidebar"
+import { useSidebar } from "./components/Sidebar"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import type { Thread, Message, TimeRange } from "@/app/types/lcp"
@@ -20,6 +21,7 @@ import DeleteConfirmationModal from "./components/DeleteConfirmationModal"
 import ConversationCard from "./components/ConversationCard"
 import { useDashboard } from "./lib/dashboard-client"
 import LoadingSpinner from './components/LoadingSpinner'
+import { SidebarTrigger } from "./components/Sidebar"
 
 // Time range options
 const timeRangeOptions = [
@@ -102,9 +104,48 @@ class ErrorBoundary extends React.Component<
 // Loading fallback component
 function LoadingFallback() {
   return (
-    <div className="flex items-center justify-center py-8">
-      <RefreshCw className="w-8 h-8 animate-spin text-[#0e6537]" />
-      <span className="ml-2 text-base text-gray-600">Loading...</span>
+    <div className="flex items-center justify-center min-h-screen w-full bg-gradient-to-br from-gray-50 via-white to-gray-50">
+      <div className="relative flex flex-col items-center">
+        <span className="sr-only">Loading...</span>
+        
+        {/* Animated logo/icon */}
+        <div className="relative mb-8">
+          {/* Outer glow */}
+          <div className="absolute inset-0 w-20 h-20 rounded-full bg-gradient-to-r from-[#0e6537] via-[#157a42] to-[#0a5a2f] opacity-30 animate-ping" />
+          
+          {/* Main icon container */}
+          <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-[#0e6537] via-[#157a42] to-[#0a5a2f] flex items-center justify-center shadow-xl">
+            <RefreshCw className="w-8 h-8 text-white animate-spin" />
+          </div>
+          
+          {/* Floating accent dots */}
+          <div className="absolute -top-1 -right-1 w-3 h-3 bg-[#0e6537] rounded-full opacity-60 animate-pulse" />
+          <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-[#157a42] rounded-full opacity-40 animate-pulse" style={{ animationDelay: '500ms' }} />
+        </div>
+        
+        {/* Loading text */}
+        <div className="text-center mb-6">
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-[#0e6537] via-[#157a42] to-[#0a5a2f] bg-clip-text text-transparent mb-2">
+            Loading Dashboard
+          </h2>
+          <p className="text-gray-600 font-medium">
+            Gathering your analytics and insights...
+          </p>
+        </div>
+        
+        {/* Animated progress indicator */}
+        <div className="flex space-x-2">
+          <div className="w-2 h-2 bg-[#0e6537] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+          <div className="w-2 h-2 bg-[#157a42] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+          <div className="w-2 h-2 bg-[#0a5a2f] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+        </div>
+        
+        {/* Background decoration */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/3 left-1/4 w-24 h-24 bg-gradient-to-br from-[#0e6537]/10 to-transparent rounded-full blur-xl" />
+          <div className="absolute bottom-1/3 right-1/4 w-32 h-32 bg-gradient-to-tl from-[#157a42]/10 to-transparent rounded-full blur-xl" />
+        </div>
+      </div>
     </div>
   );
 }
@@ -146,10 +187,33 @@ function DashboardContent() {
   } = useDashboard();
 
   const router = useRouter();
+  const [isMobile, setIsMobile] = React.useState(false);
+  const { isOpen } = useSidebar ? useSidebar() : { isOpen: true };
+  const mtd = React.useRef(false);
+
+  React.useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
-    if (status !== 'authenticated' || !session?.user?.id) return;
+    if (status !== 'authenticated' || !session?.user?.id || mtd.current) return;
+
+    // Call once after mount
     loadThreads();
+    mtd.current = true;
+
+    // Set up 5-minute interval
+    const interval = setInterval(() => {
+      loadThreads();
+    }, 5 * 60 * 1000);
+
+    // Clean up on unmount
+    return () => clearInterval(interval);
   }, [status, session?.user?.id, loadThreads]);
 
   // Optimize useEffect for visibility change
@@ -183,7 +247,6 @@ function DashboardContent() {
       clearTimeout(idleTimeoutId);
     };
   }, [loadThreads]);
-
 
   // Add CSS for animations and effects
   useEffect(() => {
@@ -406,19 +469,35 @@ function DashboardContent() {
       : `${Math.round(avgHours / 24)}d`;
   }, [filteredLeads]);
 
+  // Add event listeners for LeadReport quick actions
+  React.useEffect(() => {
+    function handleTrackJourney() {
+      setShowFunnel(true);
+      setShowProgression(false);
+      // Scroll to lead performance section
+      const section = document.querySelector(".lg\\:col-span-2");
+      if (section) section.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    function handleGenerateReport() {
+      setShowFunnel(false);
+      setShowProgression(false);
+      // Scroll to lead performance section
+      const section = document.querySelector(".lg\\:col-span-2");
+      if (section) section.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    window.addEventListener("leadreport:track-journey", handleTrackJourney);
+    window.addEventListener("leadreport:generate-report", handleGenerateReport);
+    return () => {
+      window.removeEventListener("leadreport:track-journey", handleTrackJourney);
+      window.removeEventListener("leadreport:generate-report", handleGenerateReport);
+    };
+  }, [setShowFunnel, setShowProgression]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset>
-          {/* Header with navigation and title */}
-          <header className="flex h-16 shrink-0 items-center justify-between border-b border-[#0e6537]/20 px-4 bg-gradient-to-r from-[#e6f5ec] to-[#f0f9f4]">
-            <div className="flex items-center gap-2">
-              {/* Logo removed */}
-            </div>
-            <SidebarTrigger />
-          </header>
-
           {/* Add DeleteConfirmationModal */}
           <DeleteConfirmationModal
             isOpen={deleteModalOpen}
@@ -430,6 +509,13 @@ function DashboardContent() {
             conversationName={threadToDelete ? conversations.find(c => c.conversation_id === threadToDelete)?.source_name || 'Unknown' : 'Unknown'}
             isDeleting={deletingThread !== null}
           />
+
+          {/* Mobile sidebar trigger */}
+          {isMobile && (
+            <div className="fixed top-4 left-4 z-50 lg:hidden">
+              <SidebarTrigger />
+            </div>
+          )}
 
           {/* Main dashboard content with gradient background */}
           <div className="flex flex-col gap-3 sm:gap-4 md:gap-6 p-3 sm:p-4 md:p-6 bg-gradient-to-b from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1]">
@@ -506,7 +592,7 @@ function DashboardContent() {
             </div>
 
             {/* Main dashboard grid layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
+            <div className={`grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6${!isMobile && !isOpen ? ' items-start' : ''}`}>
               {/* Recent conversations section */}
               <div className="lg:col-span-3 bg-white p-3 sm:p-4 md:p-6 rounded-lg border border-[#0e6537]/20 shadow-sm">
                 <div className="flex flex-col gap-3 sm:gap-4">
@@ -610,7 +696,7 @@ function DashboardContent() {
               </div>
 
               {/* Lead performance metrics section */}
-              <div className="lg:col-span-2 bg-white p-3 sm:p-4 md:p-6 rounded-lg border border-[#0e6537]/20 shadow-sm">
+              <div className={`lg:col-span-2${!isMobile && !isOpen ? ' self-start' : ''}`}>
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
                   <h3 className="text-base sm:text-lg md:text-xl font-semibold">Lead Performance</h3>
                   <div className="flex items-center gap-2">
@@ -678,93 +764,84 @@ function DashboardContent() {
                     onRefresh={refreshLeadPerformance}
                   />
                 )}
-
-                {/* Quick actions section */}
-                <div className="mt-3 sm:mt-4 md:mt-6">
-                  <h4 className="font-semibold mb-2 sm:mb-3">Quick Actions</h4>
-                  <div className="flex gap-2">
-                    {[
-                      {
-                        id: 'track-lead-journey',
-                        label: 'Track Lead Journey',
-                        onClick: () => {
-                          setShowFunnel(true);
-                          setShowProgression(false);
-                        },
-                        className: "px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm text-xs sm:text-sm md:text-base"
-                      },
-                      {
-                        id: 'generate-report',
-                        label: 'Generate Report',
-                        onClick: () => {
-                          setShowFunnel(false);
-                          setShowProgression(false);
-                        },
-                        className: "px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm text-xs sm:text-sm md:text-base"
-                      }
-                    ].map(action => (
-                      <button
-                        key={action.id}
-                        className={action.className}
-                        onClick={action.onClick}
-                      >
-                        {action.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
               </div>
             </div>
 
             {/* Bottom section with lead sources and activity */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
               {/* Legend section */}
-              <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg border border-[#0e6537]/20 shadow-sm">
-                <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 md:mb-6">Understanding Your Dashboard</h3>
-
-                {/* Legend items */}
-                <div className="space-y-4">
-                  {/* EV Score */}
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-[#0e6537]/10 flex items-center justify-center flex-shrink-0">
-                      <span className="text-[#0e6537] font-semibold">EV</span>
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900">EV Score</h4>
-                      <p className="text-sm text-gray-600">Engagement Value score (0-100) indicating the quality and potential of the lead interaction.</p>
-                    </div>
+              <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg border border-[#0e6537]/20 shadow-sm flex flex-col h-full justify-between">
+                <div>
+                  {/* Header with title and Learn More button */}
+                  <div className="flex items-center justify-between mb-3 sm:mb-4 md:mb-6">
+                    <h3 className="text-base sm:text-lg font-semibold">Understanding Your Dashboard</h3>
+                    <a href="/dashboard/resources" className="px-3 py-1.5 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm text-xs font-medium">Learn More</a>
                   </div>
 
-                  {/* Review Flag */}
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-yellow-50 flex items-center justify-center flex-shrink-0">
-                      <Flag className="w-4 h-4 text-yellow-500" />
+                  {/* Legend items */}
+                  <div className="space-y-4">
+                    {/* EV Score */}
+                    <div className="flex items-start gap-3 relative">
+                      <div className="w-8 h-8 rounded-full bg-[#0e6537]/10 flex items-center justify-center flex-shrink-0">
+                        <span className="text-[#0e6537] font-semibold">EV</span>
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900 flex items-center">EV Score
+                          <span className="ml-2 relative group cursor-pointer">
+                            <span className="w-4 h-4 bg-gray-200 rounded-full flex items-center justify-center text-xs text-gray-600">?</span>
+                            <span className="absolute z-10 left-1/2 -translate-x-1/2 -top-8 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap">Engagement Value score (0-100) indicating the quality and potential of the lead interaction.</span>
+                          </span>
+                        </h4>
+                        <p className="text-sm text-gray-600">Engagement Value score (0-100) indicating the quality and potential of the lead interaction.</p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900">Review Flag</h4>
-                      <p className="text-sm text-gray-600">Indicates a conversation that needs human review due to potential issues or high EV score.</p>
-                    </div>
-                  </div>
 
-                  {/* Review Check Toggle */}
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-[#0e6537]/10 flex items-center justify-center flex-shrink-0">
-                      <Shield className="w-4 h-4 text-[#0e6537]" />
+                    {/* Review Flag */}
+                    <div className="flex items-start gap-3 relative">
+                      <div className="w-8 h-8 rounded-full bg-yellow-50 flex items-center justify-center flex-shrink-0">
+                        <Flag className="w-4 h-4 text-yellow-500" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900 flex items-center">Review Flag
+                          <span className="ml-2 relative group cursor-pointer">
+                            <span className="w-4 h-4 bg-gray-200 rounded-full flex items-center justify-center text-xs text-gray-600">?</span>
+                            <span className="absolute z-10 left-1/2 -translate-x-1/2 -top-8 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap">Indicates a conversation that needs human review due to potential issues or high EV score.</span>
+                          </span>
+                        </h4>
+                        <p className="text-sm text-gray-600">Indicates a conversation that needs human review due to potential issues or high EV score.</p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900">Review Check</h4>
-                      <p className="text-sm text-gray-600">When enabled (shield icon), AI will flag conversations for review. When disabled (shield-off icon), AI review checks are bypassed.</p>
-                    </div>
-                  </div>
 
-                  {/* Completion Status */}
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-[#0e6537]/10 flex items-center justify-center flex-shrink-0">
-                      <CheckCircle className="w-4 h-4 text-[#0e6537]" />
+                    {/* Review Check Toggle */}
+                    <div className="flex items-start gap-3 relative">
+                      <div className="w-8 h-8 rounded-full bg-[#0e6537]/10 flex items-center justify-center flex-shrink-0">
+                        <Shield className="w-4 h-4 text-[#0e6537]" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900 flex items-center">Review Check
+                          <span className="ml-2 relative group cursor-pointer">
+                            <span className="w-4 h-4 bg-gray-200 rounded-full flex items-center justify-center text-xs text-gray-600">?</span>
+                            <span className="absolute z-10 left-1/2 -translate-x-1/2 -top-8 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap">When enabled (shield icon), AI will flag conversations for review. When disabled (shield-off icon), AI review checks are bypassed.</span>
+                          </span>
+                        </h4>
+                        <p className="text-sm text-gray-600">When enabled (shield icon), AI will flag conversations for review. When disabled (shield-off icon), AI review checks are bypassed.</p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900">Completion Status</h4>
-                      <p className="text-sm text-gray-600">Shows whether a conversation has been completed or is still in progress.</p>
+
+                    {/* Completion Status */}
+                    <div className="flex items-start gap-3 relative">
+                      <div className="w-8 h-8 rounded-full bg-[#0e6537]/10 flex items-center justify-center flex-shrink-0">
+                        <CheckCircle className="w-4 h-4 text-[#0e6537]" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900 flex items-center">Completion Status
+                          <span className="ml-2 relative group cursor-pointer">
+                            <span className="w-4 h-4 bg-gray-200 rounded-full flex items-center justify-center text-xs text-gray-600">?</span>
+                            <span className="absolute z-10 left-1/2 -translate-x-1/2 -top-8 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap">Shows whether a conversation has been completed or is still in progress.</span>
+                          </span>
+                        </h4>
+                        <p className="text-sm text-gray-600">Shows whether a conversation has been completed or is still in progress.</p>
+                      </div>
                     </div>
                   </div>
                 </div>

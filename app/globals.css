@@ -214,11 +214,6 @@ body {
 }
 
 /* Text styles */
-h1, h2, h3, h4, h5, h6 {
-  color: var(--foreground);
-  font-family: var(--font-heading);
-  font-weight: 600;
-}
 
 p, span, div {
   font-family: var(--font-primary);
@@ -232,9 +227,6 @@ a:not(.MuiButton-root) {
   color: var(--accent);
 }
 
-a:hover:not(.MuiButton-root) {
-  color: var(--accent-light);
-}
 
 .text-muted {
   color: var(--text-muted);

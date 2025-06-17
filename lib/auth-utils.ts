@@ -1,14 +1,13 @@
 import { signOut } from 'next-auth/react';
+import { clearAuthData } from '../app/utils/auth';
 
 /**
  * Handles 401 unauthorized responses by redirecting to the unauthorized page
  */
 export const handleUnauthorized = () => {
-  // Clear all cookies
+  // Clear session_id cookie and other auth data
   if (typeof document !== 'undefined') {
-    document.cookie.split(";").forEach(function(c) { 
-      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
-    });
+    clearAuthData();
   }
 
   // Sign out from NextAuth
@@ -66,11 +65,9 @@ export const isUnauthorizedResponse = (response: Response): boolean => {
  */
 export const clearAllSessionData = () => {
   if (typeof document !== 'undefined') {
-    // Clear all cookies
-    document.cookie.split(";").forEach(function(c) { 
-      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
-    });
-
+    // Clear session_id cookie and other auth data
+    clearAuthData();
+    
     // Clear localStorage
     localStorage.clear();
     

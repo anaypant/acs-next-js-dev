@@ -122,6 +122,93 @@ const processLeadDataForReport = (conversationsData: any[], timeRange: 'day' | '
   };
 };
 
+// Helper to get interval config based on timeRange
+const getIntervalConfig = (timeRange: 'day' | 'week' | 'month' | 'year') => {
+  switch (timeRange) {
+    case 'day':
+      return { interval: 3, unit: 'hour', ticks: 8, format: 'ha' };
+    case 'week':
+      return { interval: 1, unit: 'day', ticks: 7, format: 'EEE' };
+    case 'month':
+      return { interval: 3, unit: 'day', ticks: 10, format: 'MMM d' };
+    case 'year':
+      return { interval: 1, unit: 'month', ticks: 12, format: 'MMM' };
+    default:
+      return { interval: 2, unit: 'hour', ticks: 12, format: 'ha' };
+  }
+};
+
+// Helper to add time
+const addTime = (date: Date, amount: number, unit: string) => {
+  const d = new Date(date);
+  switch (unit) {
+    case 'hour': d.setHours(d.getHours() + amount); break;
+    case 'day': d.setDate(d.getDate() + amount); break;
+    case 'month': d.setMonth(d.getMonth() + amount); break;
+    default: break;
+  }
+  return d;
+};
+
+// Helper to format date
+const formatTick = (date: Date, format: string) => {
+  if (format === 'ha') return date.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+  if (format === 'EEE') return date.toLocaleDateString('en-US', { weekday: 'short' });
+  if (format === 'MMM d') return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  if (format === 'MMM') return date.toLocaleDateString('en-US', { month: 'short' });
+  return date.toLocaleDateString();
+};
+
+// Aggregates lead growth data by interval
+const aggregateLeadGrowth = (conversationsData: any[], timeRange: 'day' | 'week' | 'month' | 'year') => {
+  type Interval = {
+    start: Date;
+    end: Date;
+    label: string;
+    count: number;
+    raw: any[];
+  };
+  const config = getIntervalConfig(timeRange);
+  const now = new Date();
+  let start: Date;
+  if (timeRange === 'day') {
+    start = new Date(now); start.setHours(0, 0, 0, 0);
+  } else if (timeRange === 'week') {
+    start = new Date(now); start.setDate(now.getDate() - 6); start.setHours(0, 0, 0, 0);
+  } else if (timeRange === 'month') {
+    start = new Date(now); start.setDate(now.getDate() - 29); start.setHours(0, 0, 0, 0);
+  } else {
+    start = new Date(now); start.setMonth(now.getMonth() - 11); start.setDate(1); start.setHours(0, 0, 0, 0);
+  }
+  const intervals: Interval[] = [];
+  let cursor = new Date(start);
+  for (let i = 0; i < config.ticks; i++) {
+    intervals.push({
+      start: new Date(cursor),
+      end: addTime(cursor, config.interval, config.unit),
+      label: formatTick(cursor, config.format),
+      count: 0,
+      raw: [],
+    });
+    cursor = addTime(cursor, config.interval, config.unit);
+  }
+  // Count leads in each interval
+  conversationsData.forEach(({ messages }) => {
+    if (messages.length > 0) {
+      const firstMsg = messages[0];
+      const ts = new Date(firstMsg.timestamp);
+      for (let i = 0; i < intervals.length; i++) {
+        if (ts >= intervals[i].start && ts < intervals[i].end) {
+          intervals[i].count++;
+          intervals[i].raw.push(firstMsg);
+          break;
+        }
+      }
+    }
+  });
+  return intervals;
+};
+
 const LeadReport: React.FC<LeadReportProps> = ({ userId, leadData, loading, timeRange, onRefresh }) => {
   const processedReportData = useMemo(() => {
     if (!loading && leadData && Array.isArray(leadData)) {
@@ -129,6 +216,16 @@ const LeadReport: React.FC<LeadReportProps> = ({ userId, leadData, loading, time
     }
     return null;
   }, [leadData, loading, timeRange]);
+
+  // New: aggregate lead growth for chart
+  const leadGrowthIntervals = useMemo(() => {
+    if (!loading && leadData && Array.isArray(leadData)) {
+      return aggregateLeadGrowth(leadData, timeRange);
+    }
+    return [];
+  }, [leadData, loading, timeRange]);
+
+  const config = getIntervalConfig(timeRange);
 
   const getTimeRangeText = () => {
     switch (timeRange) {
@@ -146,82 +243,107 @@ const LeadReport: React.FC<LeadReportProps> = ({ userId, leadData, loading, time
   };
 
   const handleDownloadReport = async () => {
-    // Ensure this runs only in the browser
     if (typeof window === 'undefined') {
       console.warn('html2pdf.js can only run in the browser.');
       return;
     }
-
-    // Dynamically import html2pdf.js here
     const html2pdf = (await import('html2pdf.js')).default;
-
     const element = document.getElementById('lead-report-content');
     if (element) {
-        html2pdf(element, {
-            margin: 10,
-            filename: 'lead-performance-report.pdf',
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2 },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        });
+      html2pdf(element, {
+        margin: 10,
+        filename: 'lead-performance-report.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      });
     }
   };
 
   return (
     <div className="bg-white p-6 rounded-lg border border-[#0e6537]/20 shadow-sm" id="lead-report-content">
-      <h3 className="text-lg font-semibold mb-4">Lead Performance Report</h3>
-      {loading ? (
-        <div className="flex items-center justify-center h-64 text-gray-600">Loading report data...</div>
-      ) : processedReportData ? (
-        <div>
-          {/* Summary Section */}
-          <div className="mb-6">
-            <h4 className="text-lg font-semibold mb-2">Summary</h4>
-            <p>Total Leads: {processedReportData.totalLeads}</p>
-            <p>New Leads {getTimeRangeText()}: {processedReportData.newLeads}</p>
-          </div>
-
-          {/* Leads per EV Stage */}
-          <div className="mb-6">
-            <h4 className="text-lg font-semibold mb-2">Leads by Engagement Value (EV) Stage</h4>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={processedReportData.leadsByStage} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" dataKey="count" />
-                <YAxis type="category" dataKey="name" width={100} tickFormatter={(value) => `${value} (${processedReportData.leadsByStage.find(stage => stage.name === value)?.evRange})`} />
-                <Tooltip formatter={(value: number, name: string, props: any) => [`${value} leads`, `EV Range: ${props.payload.evRange}`]} />
-                <Bar dataKey="count" fill="#0e6537" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Daily Lead Growth */}
-          <div className="mb-6">
-            <h4 className="text-lg font-semibold mb-2">Lead Growth {getTimeRangeText()}</h4>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={processedReportData.dailyLeadGrowth} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="day" />
-                <YAxis allowDecimals={false} />
-                <Tooltip />
-                <Line type="monotone" dataKey="count" stroke="#0e6537" activeDot={{ r: 8 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Performance Summary */}
-          <div className="mb-6">
-            <h4 className="text-lg font-semibold mb-2">Performance Summary</h4>
-            <p>Average Close Time: {processedReportData.performanceSummary.avgCloseTime}</p>
-          </div>
-
-          {/* Download Button */}
+      {/* Quick Actions */}
+      <div className="mb-6">
+        <h4 className="font-semibold mb-3 text-center">Quick Actions</h4>
+        <div className="flex justify-center items-center gap-4 flex-wrap w-full mb-2">
           <button
-            className="px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm"
+            className="px-5 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow text-base font-semibold focus:outline-none focus:ring-2 focus:ring-[#0e6537]/50"
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                const event = new CustomEvent('leadreport:track-journey');
+                window.dispatchEvent(event);
+              }
+            }}
+          >
+            Track Lead Journey
+          </button>
+          <button
+            className="px-5 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow text-base font-semibold focus:outline-none focus:ring-2 focus:ring-[#0e6537]/50 border-2 border-[#0e6537]"
+            style={{ boxShadow: '0 0 0 2px #0e6537' }}
+            disabled
+            title="You are viewing the Report"
+          >
+            Generate Report
+          </button>
+          <button
+            className="px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm text-base font-semibold focus:outline-none focus:ring-2 focus:ring-[#0e6537]/50"
             onClick={handleDownloadReport}
           >
             Download PDF Report
           </button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center h-64 text-gray-600">Loading report data...</div>
+      ) : processedReportData ? (
+        <div>
+          {/* Leads per EV Stage - Only show number ranges as labels */}
+          <div className="mb-6">
+            <h4 className="text-lg font-semibold mb-2">Leads by Engagement Value (EV) Stage</h4>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={processedReportData.leadsByStage} layout="vertical" margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" dataKey="count" tick={{ fontSize: 13 }} />
+                <YAxis type="category" dataKey="evRange" width={80} tick={{ fontSize: 14 }} />
+                <Tooltip formatter={(value: number, name: string, props: any) => [`${value} leads`, `EV Range: ${props.payload.evRange}`]} />
+                <Bar dataKey="count" fill="#0e6537" radius={[0, 6, 6, 0]} barSize={22} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Lead Growth Chart with Intervals */}
+          <div className="mb-6">
+            <h4 className="text-lg font-semibold mb-2">Lead Growth {getTimeRangeText()}</h4>
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={leadGrowthIntervals} margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="label"
+                  interval={0}
+                  ticks={leadGrowthIntervals.map(i => i.label)}
+                  tickFormatter={(label) => label}
+                  tick={{ fontSize: 13 }}
+                />
+                <YAxis allowDecimals={false} tick={{ fontSize: 13 }} />
+                <Tooltip 
+                  labelFormatter={(label: string, payload: any[]) => {
+                    const d = leadGrowthIntervals.find(i => i.label === label);
+                    if (!d) return '';
+                    if (timeRange === 'day') {
+                      return `${d.start.toLocaleDateString()} ${d.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${d.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                    } else if (timeRange === 'week' || timeRange === 'month') {
+                      return `${d.start.toLocaleDateString()} - ${d.end.toLocaleDateString()}`;
+                    } else {
+                      return `${d.start.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
+                    }
+                  }}
+                  formatter={(value: any) => [`${value} leads`, 'Leads']}
+                />
+                <Line type="monotone" dataKey="count" stroke="#0e6537" activeDot={{ r: 8 }} strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       ) : (
         <div className="flex items-center justify-center h-64 text-gray-600">No data available.</div>

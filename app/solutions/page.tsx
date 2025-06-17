@@ -671,7 +671,7 @@ export default function Solutions() {
 
                 <div className="relative">
                   {/* Central node */}
-                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-24 sm:w-32 h-24 sm:h-32 bg-white rounded-xl shadow-lg flex items-center justify-center z-20">
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-20 sm:w-24 h-20 sm:h-24 bg-white rounded-xl shadow-lg flex items-center justify-center z-20">
                     <div className="text-center">
                       <div className="text-[#002417] font-medium text-xs sm:text-sm">Lead Generation</div>
                       <div className="text-[#002417] font-medium text-xs sm:text-sm">Workflow</div>
@@ -679,7 +679,7 @@ export default function Solutions() {
                   </div>
 
                   {/* Social media nodes */}
-                  <div className="relative h-[250px] sm:h-[300px] w-[250px] sm:w-[300px] mx-auto">
+                  <div className="relative h-[200px] sm:h-[250px] w-[200px] sm:w-[250px] mx-auto">
                     {/* Facebook */}
                     <motion.div
                       initial={{ scale: 0.8, opacity: 0 }}
@@ -687,8 +687,8 @@ export default function Solutions() {
                       transition={{ delay: 0.2, duration: 0.5 }}
                       className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
                     >
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-[#1877F2] rounded-full flex items-center justify-center shadow-lg">
-                        <Facebook className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#1877F2] rounded-full flex items-center justify-center shadow-lg">
+                        <Facebook className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                       </div>
                     </motion.div>
 
@@ -699,8 +699,8 @@ export default function Solutions() {
                       transition={{ delay: 0.4, duration: 0.5 }}
                       className="absolute top-1/2 right-0 transform translate-x-1/2 -translate-y-1/2"
                     >
-                      <div className="w-12 sm:w-16 h-12 sm:h-16 bg-white rounded-full flex items-center justify-center shadow-lg">
-                        <svg className="w-6 sm:w-8 h-6 sm:h-8" viewBox="0 0 24 24">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-full flex items-center justify-center shadow-lg">
+                        <svg className="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24">
                           <path
                             fill="#4285F4"
                             d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -728,8 +728,8 @@ export default function Solutions() {
                       transition={{ delay: 0.6, duration: 0.5 }}
                       className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2"
                     >
-                      <div className="w-12 sm:w-16 h-12 sm:h-16 bg-[#0077B5] rounded-full flex items-center justify-center shadow-lg">
-                        <Linkedin className="w-6 sm:w-8 h-6 sm:h-8 text-white" />
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#0077B5] rounded-full flex items-center justify-center shadow-lg">
+                        <Linkedin className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                       </div>
                     </motion.div>
 
@@ -740,17 +740,17 @@ export default function Solutions() {
                       transition={{ delay: 0.8, duration: 0.5 }}
                       className="absolute top-1/2 left-0 transform -translate-x-1/2 -translate-y-1/2"
                     >
-                      <div className="w-12 sm:w-16 h-12 sm:h-16 bg-[#1DA1F2] rounded-full flex items-center justify-center shadow-lg">
-                        <Twitter className="w-6 sm:w-8 h-6 sm:h-8 text-white" />
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#1DA1F2] rounded-full flex items-center justify-center shadow-lg">
+                        <Twitter className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                       </div>
                     </motion.div>
 
                     {/* Connection lines */}
-                    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 300 300">
-                      <line x1="150" y1="0" x2="150" y2="120" stroke="#ddd" strokeWidth="2" strokeDasharray="5,5" />
-                      <line x1="300" y1="150" x2="180" y2="150" stroke="#ddd" strokeWidth="2" strokeDasharray="5,5" />
-                      <line x1="150" y1="300" x2="150" y2="180" stroke="#ddd" strokeWidth="2" strokeDasharray="5,5" />
-                      <line x1="0" y1="150" x2="120" y2="150" stroke="#ddd" strokeWidth="2" strokeDasharray="5,5" />
+                    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 200 200">
+                      <line x1="100" y1="0" x2="100" y2="80" stroke="#ddd" strokeWidth="2" strokeDasharray="5,5" />
+                      <line x1="200" y1="100" x2="120" y2="100" stroke="#ddd" strokeWidth="2" strokeDasharray="5,5" />
+                      <line x1="100" y1="200" x2="100" y2="120" stroke="#ddd" strokeWidth="2" strokeDasharray="5,5" />
+                      <line x1="0" y1="100" x2="80" y2="100" stroke="#ddd" strokeWidth="2" strokeDasharray="5,5" />
                     </svg>
                   </div>
                 </div>

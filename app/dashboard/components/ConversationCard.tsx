@@ -166,15 +166,7 @@ const ConversationCard = ({
         .map((n: string) => n[0].toUpperCase())
         .join('');
 
-    // Add logging for AI summary display
-    useEffect(() => {
-        console.log('[ConversationCard] Rendering card:', {
-            conversation_id: conv.conversation_id,
-            has_ai_summary: !!conv.ai_summary,
-            ai_summary_length: conv.ai_summary?.length,
-            ai_summary_value: conv.ai_summary || 'UNKNOWN'
-        });
-    }, [conv]);
+   
 
     return (
         <div
@@ -307,12 +299,7 @@ const ConversationCard = ({
                     Summary: <span className="not-italic text-gray-700">
                         {(() => {
                             const summary = conv.ai_summary;
-                            console.log('[ConversationCard] Displaying summary:', {
-                                conversation_id: conv.conversation_id,
-                                has_summary: !!summary,
-                                summary_length: summary?.length,
-                                summary_value: summary || 'UNKNOWN'
-                            });
+                            
                             return summary || 'No summary available';
                         })()}
                     </span>

@@ -49,13 +49,6 @@ export const useDashboard = () => {
         completion: false,
     });
 
-    // Load conversations on mount and when session changes
-    useEffect(() => {
-        if (session?.user?.id && status === 'authenticated') {
-            loadThreads();
-        }
-    }, [session?.user?.id, status, timeRange]);
-
     // Load threads - primarily used for manual refresh button
     const loadThreads = useCallback(async () => {
         if (!session?.user?.id || loadingConversations) {

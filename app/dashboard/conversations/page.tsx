@@ -332,9 +332,40 @@ export default function ConversationsPage() {
         <div className="bg-white rounded-lg border border-white/20 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             {loadingConversations ? (
-              <div className="flex items-center justify-center py-8">
-                <RefreshCw className="w-8 h-8 animate-spin text-[#0e6537]" />
-                <span className="ml-2 text-gray-600">Loading conversations...</span>
+              <div className="flex items-center justify-center py-12">
+                <div className="relative flex flex-col items-center">
+                  {/* Animated loading icon */}
+                  <div className="relative mb-4">
+                    {/* Outer pulsing ring */}
+                    <div className="absolute inset-0 w-16 h-16 rounded-full bg-gradient-to-r from-[#0e6537] via-[#157a42] to-[#0a5a2f] opacity-20 animate-ping" />
+                    
+                    {/* Main spinning icon */}
+                    <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-[#0e6537] via-[#157a42] to-[#0a5a2f] flex items-center justify-center shadow-lg">
+                      <RefreshCw className="w-6 h-6 text-white animate-spin" />
+                    </div>
+                    
+                    {/* Floating accent dots */}
+                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-[#0e6537] rounded-full opacity-60 animate-pulse" />
+                    <div className="absolute -bottom-1 -left-1 w-1.5 h-1.5 bg-[#157a42] rounded-full opacity-40 animate-pulse" style={{ animationDelay: '500ms' }} />
+                  </div>
+                  
+                  {/* Loading text */}
+                  <div className="text-center">
+                    <div className="text-lg font-semibold bg-gradient-to-r from-[#0e6537] via-[#157a42] to-[#0a5a2f] bg-clip-text text-transparent mb-1">
+                      Loading Conversations
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      Fetching your latest messages...
+                    </div>
+                  </div>
+                  
+                  {/* Animated dots */}
+                  <div className="flex space-x-1 mt-4">
+                    <div className="w-1.5 h-1.5 bg-[#0e6537] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-1.5 h-1.5 bg-[#157a42] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-1.5 h-1.5 bg-[#0a5a2f] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                </div>
               </div>
             ) : conversationsError ? (
               <div className="text-center py-8 text-red-500">Error loading conversations: {conversationsError}</div>

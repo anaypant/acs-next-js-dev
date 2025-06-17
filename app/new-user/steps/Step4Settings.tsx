@@ -30,7 +30,6 @@ const Step4Settings: React.FC<Step4SettingsProps> = ({
   // Only allow SMS notifications if phone is entered
   const canEnableSms = phone.replace(/[^0-9]/g, '').length > 0;
 
-  console.log(signature);
 
   return (
     <motion.div

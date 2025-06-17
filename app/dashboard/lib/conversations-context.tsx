@@ -77,7 +77,6 @@ export function ConversationsProvider({ children }: { children: React.ReactNode 
         setConversations(data.data);
         // Log all conversation IDs after setting
         const ids = data.data.map((conv: any) => conv.thread?.conversation_id);
-        console.log('[ConversationsProvider] Set conversations, IDs:', ids);
         setLastUpdated(new Date());
       } else {
         throw new Error(data.error || 'Failed to fetch conversations');
@@ -123,7 +122,6 @@ export function ConversationsProvider({ children }: { children: React.ReactNode 
   const getConversation = (conversationId: string) => {
     // Log the conversationId being looked up and all available IDs
     const ids = conversations.map(conv => conv.thread.conversation_id);
-    console.log('[getConversation] Looking for:', conversationId, 'Available:', ids);
     return conversations.find(conv => conv.thread.conversation_id === conversationId);
   };
 

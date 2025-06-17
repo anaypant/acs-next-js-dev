@@ -3,15 +3,16 @@
  * Purpose: Implements a collapsible sidebar navigation with context management and responsive design.
  * Author: acagliol
  * Date: 06/15/25
- * Version: 1.0.2
+ * Version: 1.1.0
  */
 
 "use client"
-import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, PanelLeft, AlertTriangle, RefreshCw, ChevronDown, X, Shield, ShieldOff, FileText, Menu, Trash2, CreditCard, LogOut } from "lucide-react"
+import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, PanelLeft, AlertTriangle, RefreshCw, ChevronDown, X, Shield, ShieldOff, FileText, Menu, Trash2, CreditCard, LogOut, ChevronLeft, ChevronRight } from "lucide-react"
 import type React from "react"
 import { useState, createContext, useContext, useEffect, useRef } from "react"
 import { useSession, signOut } from "next-auth/react"
 import type { Session } from "next-auth"
+import { clearAuthData } from '../../utils/auth'
 
 /**
  * SidebarContext
@@ -44,24 +45,25 @@ function Logo({ size = "lg" }: { size?: "sm" | "lg" }) {
 
   if (size === "sm") {
     return (
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 bg-gradient-to-br from-[#0a5a2f] via-[#0e6537] to-[#157a42] rounded-lg flex items-center justify-center shadow-sm">
-          <span className="font-bold text-sm bg-gradient-to-r from-[#0a5a2f] to-[#157a42] bg-clip-text text-transparent">ACS</span>
+      <div className="flex items-center justify-center">
+        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-[#0a5a2f] via-[#0e6537] to-[#157a42] rounded-xl flex items-center justify-center shadow-lg border border-white/10">
+          <span className="font-bold text-white text-xs sm:text-sm">ACS</span>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex items-center gap-3 px-3 py-4">
-      <div className="w-10 h-10 bg-gradient-to-br from-[#e6f5ec] via-[#f0f9f4] to-[#d8eee1] rounded-lg flex items-center justify-center shadow-sm border border-white/20">
-        <span className="font-bold text-lg bg-gradient-to-r from-[#0a5a2f] to-[#157a42] bg-clip-text text-transparent">
+    <div className="flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-4 sm:py-6">
+      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-[#0a5a2f] via-[#0e6537] to-[#157a42] rounded-xl flex items-center justify-center shadow-lg border border-white/10">
+        <span className="font-bold text-white text-base sm:text-lg">
           ACS
         </span>
       </div>
       {isOpen && (
         <div className="flex flex-col">
-          <span style={{ color: 'white' }} className="text-xs opacity-80"></span>
+          <span className="text-white text-base sm:text-lg font-semibold">ACS Dashboard</span>
+          <span className="text-white/70 text-xs sm:text-sm">Lead Management</span>
         </div>
       )}
     </div>
@@ -87,6 +89,7 @@ function SidebarProvider({ children }: { children: React.ReactNode }) {
       if (mobile) {
         setIsOpen(false)
       } else {
+        // On desktop, start with sidebar open
         setIsOpen(true)
       }
     }
@@ -137,10 +140,14 @@ function Sidebar({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className={`${
-        isOpen ? "w-64" : isMobile ? "w-0" : "w-16"
-      } transition-all duration-300 bg-gradient-to-b from-[#0a5a2f] via-[#0e6537] to-[#157a42] border-r border-[#0e6537]/20 fixed h-screen z-50 ${
-        isMobile && !isOpen ? "translate-x-[-100%]" : ""
+      className={`
+        ${isOpen
+          ? 'w-64 sm:w-64 md:w-72'
+          : isMobile
+            ? 'w-0'
+            : 'w-16 sm:w-16 md:w-24'}
+        transition-all duration-300 ease-in-out bg-gradient-to-b from-[#0a5a2f] via-[#0e6537] to-[#157a42] border-r border-white/10 fixed h-screen z-50 shadow-xl ${
+        isMobile && !isOpen ? 'translate-x-[-100%]' : ''
       }`}
     >
       {children}
@@ -157,7 +164,49 @@ function Sidebar({ children }: { children: React.ReactNode }) {
  * @returns {JSX.Element} Content container
  */
 function SidebarContent({ children }: { children: React.ReactNode }) {
-  return <div className="flex flex-col h-full">{children}</div>
+  const { isOpen, toggle } = useSidebar()
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  return (
+    <div className="flex flex-col h-full relative">
+      <div className="flex items-center justify-between px-4 py-4 border-b border-white/10">
+        <Logo size={isOpen ? "lg" : "sm"} />
+        <div className="flex items-center gap-2">
+          {isMobile && (
+            <button
+              onClick={toggle}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            >
+              <X className="h-5 w-5 text-white" />
+            </button>
+          )}
+          {!isMobile && (
+            <button
+              onClick={toggle}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors group"
+              title={isOpen ? "Collapse sidebar" : "Expand sidebar"}
+            >
+              {isOpen ? (
+                <ChevronLeft className="h-5 w-5 text-white group-hover:scale-110 transition-transform" />
+              ) : (
+                <ChevronRight className="h-5 w-5 text-white group-hover:scale-110 transition-transform" />
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+      {children}
+    </div>
+  )
 }
 
 /**
@@ -166,10 +215,22 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
  * 
  * @param {Object} props - Component props
  * @param {React.ReactNode} props.children - Child components
+ * @param {string} props.title - Group title (only shown when sidebar is open)
  * @returns {JSX.Element} Group container
  */
-function SidebarGroup({ children }: { children: React.ReactNode }) {
-  return <div className="px-3 py-4">{children}</div>
+function SidebarGroup({ children, title }: { children: React.ReactNode; title?: string }) {
+  const { isOpen } = useSidebar()
+  
+  return (
+    <div className="px-4 py-4">
+      {title && isOpen && (
+        <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3 px-2 !important text-white">
+          {title}
+        </h3>
+      )}
+      {children}
+    </div>
+  )
 }
 
 /**
@@ -182,7 +243,7 @@ function SidebarGroup({ children }: { children: React.ReactNode }) {
  * @returns {JSX.Element} Menu container
  */
 function SidebarMenu({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <nav className={`space-y-2 ${className || ''}`}>{children}</nav>
+  return <nav className={`space-y-1 ${className || ''}`}>{children}</nav>
 }
 
 /**
@@ -205,13 +266,23 @@ function SidebarMenuItem({ children }: { children: React.ReactNode }) {
  */
 function SidebarTrigger() {
   const { toggle } = useSidebar()
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   return (
-    <button 
-      onClick={toggle} 
-      className="p-2 hover:bg-gray-100 rounded-lg fixed top-4 right-4 z-50 md:relative md:top-0 md:right-0"
+    <button
+      onClick={toggle}
+      className="p-2 hover:bg-white/10 rounded-lg transition-colors"
     >
-      <Menu className="h-5 w-5" />
+      <Menu className="h-6 w-6 text-white" />
     </button>
   )
 }
@@ -245,8 +316,8 @@ function SidebarInset({ children, className }: SidebarInsetProps) {
   return (
     <div
       className={`${
-        isOpen ? "ml-64" : isMobile ? "ml-0" : "ml-16"
-      } transition-all duration-300 ${className || ''}`}
+        isOpen ? "ml-72" : isMobile ? "ml-0" : "ml-20"
+      } transition-all duration-300 ease-in-out ${className || ''}`}
     >
       {children}
     </div>
@@ -262,26 +333,31 @@ const mainNavigation = [
     title: "Dashboard",
     icon: Home,
     url: "/dashboard",
+    description: "Overview & Analytics"
   },
   {
     title: "Conversations",
     icon: MessageSquare,
     url: "/dashboard/conversations",
+    description: "Manage Leads"
+  },
+  {
+    title: "Resources",
+    icon: FileText,
+    url: "/dashboard/resources",
+    description: "Help & Documentation"
   },
   {
     title: "Junk",
     icon: Trash2,
     url: "/dashboard/junk",
+    description: "Spam & Filtered"
   },
-  // {
-  //   title: "Usage & Billing",
-  //   icon: CreditCard,
-  //   url: "/dashboard/usage",
-  // },
   {
     title: "Settings",
     icon: Settings,
     url: "/settings",
+    description: "Account & Preferences"
   },
 ]
 
@@ -294,16 +370,25 @@ const mainNavigation = [
 function LogoutButton() {
   const { isOpen } = useSidebar()
   const handleLogout = async () => {
+    // Clear session_id cookie before signing out
+    clearAuthData()
     await signOut({ callbackUrl: '/' })
   }
 
   return (
     <button
       onClick={handleLogout}
-      className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors w-full text-white hover:text-white hover:bg-[#0e6537]/30`}
+      className={`flex items-center gap-3 px-3 py-3 text-sm rounded-xl transition-all duration-200 w-full text-white hover:text-white hover:bg-white/10 group cursor-pointer ${
+        isOpen ? 'justify-start' : 'justify-center w-full'
+      }`}
     >
-      <LogOut className="h-4 w-4" style={{ color: 'white' }} />
-      {isOpen && <span>Logout</span>}
+      <LogOut className={`h-6 w-6 md:h-5 md:w-5 group-hover:scale-110 transition-transform ${!isOpen ? 'mx-auto' : ''}`} />
+      {isOpen && (
+        <div className="flex flex-col items-start">
+          <span className="font-medium">Logout</span>
+          <span className="text-xs text-white/60">Sign out of account</span>
+        </div>
+      )}
     </button>
   )
 }
@@ -356,24 +441,26 @@ function AppSidebar() {
   return (
     <Sidebar>
       <SidebarContent>
-        {/* Logo section */}
-        <Logo />
-
         {/* Main navigation section */}
-        <SidebarGroup>
-          <SidebarMenu className="space-y-0.5">
+        <SidebarGroup title="Navigation">
+          <SidebarMenu className="space-y-1">
             {mainNavigation.map((item) => (
               <SidebarMenuItem key={item.title}>
                 <a
                   href={item.url}
-                  className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors text-white hover:text-white hover:bg-[#0e6537]/30`}
+                  className={`flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm rounded-xl transition-all duration-200 text-white hover:text-white hover:bg-white/10 group cursor-pointer ${
+                    isOpen ? 'justify-start' : 'justify-center w-full'
+                  }`}
                 >
-                  <item.icon className="h-4 w-4" style={{ color: 'white' }} />
+                  <item.icon className={`h-6 w-6 md:h-5 md:w-5 group-hover:scale-110 transition-transform ${!isOpen ? 'mx-auto' : ''}`} />
                   {isOpen && (
                     <div className="flex items-center justify-between w-full">
-                      <span style={{ color: 'white' }}>{item.title}</span>
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">{item.title}</span>
+                        <span className="text-xs text-white/60">{item.description}</span>
+                      </div>
                       {item.title === "Junk" && unreadSpamCount > 0 && (
-                        <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                        <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-medium">
                           {unreadSpamCount}
                         </span>
                       )}
@@ -385,31 +472,60 @@ function AppSidebar() {
           </SidebarMenu>
         </SidebarGroup>
 
+        {/* User section */}
+        {isOpen && session?.user && (
+          <SidebarGroup title="Account">
+            <div className="px-3 py-3 bg-white/5 rounded-xl border border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-white/20 to-white/10 rounded-lg flex items-center justify-center">
+                  <span className="text-white font-semibold text-sm">
+                    {session.user.name?.charAt(0) || 'U'}
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-white font-medium text-sm">{session.user.name || 'User'}</span>
+                  <span className="text-white/60 text-xs">{session.user.email}</span>
+                </div>
+              </div>
+            </div>
+          </SidebarGroup>
+        )}
+
         {/* Logout button */}
-        <div className="px-3">
+        <div className="px-4 mt-auto">
           <LogoutButton />
         </div>
 
         {/* Footer section */}
-        <div className={`mt-auto px-3 py-4 border-t border-white/20 ${!isOpen ? 'hidden' : ''}`}>
-          <div className="flex flex-col gap-2 text-xs text-white/60">
-            <div className="flex flex-wrap gap-x-4 gap-y-1">
-              <a href="/legal/terms" className="hover:text-white transition-colors">Terms of Service</a>
-              <a href="/legal/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
-              <a href="/legal/cookies" className="hover:text-white transition-colors">Cookie Policy</a>
+        {isOpen && (
+          <div className="px-4 py-4 border-t border-white/10">
+            <div className="flex flex-col gap-3 text-xs text-white/60">
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                <a href="/legal/terms" className="hover:text-white transition-colors">Terms</a>
+                <a href="/legal/privacy" className="hover:text-white transition-colors">Privacy</a>
+                <a href="/legal/cookies" className="hover:text-white transition-colors">Cookies</a>
+              </div>
+              <span className="text-white/40">© 2025 ACS. All rights reserved.</span>
             </div>
-            <span className="text-white/40 mt-2">© 2025 ACS. All rights reserved.</span>
           </div>
-        </div>
+        )}
       </SidebarContent>
     </Sidebar>
   )
 }
 
-export { SidebarProvider, AppSidebar, SidebarTrigger, SidebarInset, Logo }
+export { SidebarProvider, AppSidebar, SidebarInset, Logo, useSidebar, SidebarTrigger }
 
 /**
  * Change Log:
+ * 06/15/25 - Version 1.1.0
+ * - Enhanced sidebar design with modern styling
+ * - Improved collapse functionality for desktop
+ * - Added user profile section
+ * - Better visual hierarchy and spacing
+ * - Enhanced hover effects and transitions
+ * - Improved accessibility and user experience
+ * 
  * 06/15/25 - Version 1.0.2
  * - Added mobile responsiveness
  * - Enhanced sidebar animations

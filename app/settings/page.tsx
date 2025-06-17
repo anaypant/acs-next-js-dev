@@ -10,10 +10,11 @@
 import { useSession, signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
-import { ArrowLeft, User, Bell, Shield, Database, Mail, Loader2, Globe, Clock, Eye, Palette, Smartphone, Building, MapPin, FileText } from "lucide-react"
+import { ArrowLeft, User, Bell, Shield, Database, Mail, Loader2, Globe, Clock, Eye, Palette, Smartphone, Building, MapPin, FileText, Trash2, CheckCircle, XCircle, AlertCircle, Settings as SettingsIcon, LogOut } from "lucide-react"
 import type { Session } from "next-auth"
 import type { SignupProvider } from "@/app/types/auth"
 import { Logo } from "@/app/dashboard/components/Sidebar"
+import { clearAuthData } from '../utils/auth'
 
 /**
  * Error handling function for 404 redirection
@@ -185,7 +186,6 @@ export default function SettingsPage() {
         });
 
         const responseText = await response.text();
-        console.log('responseText', responseText);
         if (!response.ok) {
           throw new Error(`Failed to fetch user data: ${response.status} ${responseText}`);
         }
@@ -199,7 +199,6 @@ export default function SettingsPage() {
 
         if (data.success && Array.isArray(data.items) && data.items.length > 0) {
           const userData = data.items[0];
-          console.log('userData', userData);
           
           // Set profile information
           const phone = userData.phone || '';
@@ -725,6 +724,8 @@ export default function SettingsPage() {
    */
   const handleLogout = async () => {
     try {
+        // Clear session_id cookie before signing out
+        clearAuthData()
         await signOut({ callbackUrl: '/' });
     } catch (error) {
         setError('Error logging out');

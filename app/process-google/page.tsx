@@ -14,9 +14,6 @@ export default function ProcessGoogle() {
         const processAuth = async () => {
             if (status === 'authenticated') {
                 try {
-                    console.log('[process-google] Session received:', session);
-                    console.log('[process-google] Session ID from session:', (session as any).sessionId);
-                    console.log('[process-google] Session cookie from session:', (session as any).sessionCookie);
                     
                     // Validate session
                     if (!validateSession(session)) {
@@ -30,7 +27,6 @@ export default function ProcessGoogle() {
                     const user = (session.user as any);
                     if (user && user.authType) {
                         const redirectPath = getAuthRedirectPath(user.authType);
-                        console.log('[process-google] Redirecting to:', redirectPath);
                         router.push(redirectPath);
                     }
                     else {
