@@ -6,16 +6,15 @@ import { useRouter } from 'next/navigation';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { ShieldX, LogOut, Home } from 'lucide-react';
+import { clearAuthData } from '../utils/auth';
 
 export default function UnauthorizedPage() {
   const router = useRouter();
 
   const handleLogout = async () => {
     try {
-      // Clear all cookies
-      document.cookie.split(";").forEach(function(c) { 
-        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
-      });
+      // Clear session_id cookie and other auth data
+      clearAuthData();
 
       // Sign out from NextAuth
       await signOut({ 

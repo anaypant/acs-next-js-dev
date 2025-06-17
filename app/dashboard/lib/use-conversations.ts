@@ -17,7 +17,6 @@ export function useConversationsData() {
   // Get a single conversation by ID
   const getConversationById = useCallback((conversationId: string) => {
     const conv = getConversation(conversationId);
-    console.log('[getConversationById] conversation:', conv);
     return conv;
   }, [getConversation]);
 

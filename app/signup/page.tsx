@@ -208,7 +208,6 @@ const SignupPage: React.FC = () => {
       
       // After successful signup, the backend already creates a session
       // We need to ensure NextAuth is synchronized with this session
-      console.log('[signup] Signup successful, creating NextAuth session');
       
       // Create a NextAuth session without triggering another login call
       const result = await signIn('credentials', {
@@ -220,7 +219,6 @@ const SignupPage: React.FC = () => {
         callbackUrl: '/dashboard'
       });
 
-      console.log('[signup] NextAuth session creation result:', result);
 
       if (result?.error) {
         console.error('[signup] NextAuth session creation error:', result.error);

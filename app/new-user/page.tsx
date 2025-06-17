@@ -322,15 +322,12 @@ export default function NewUserPage() {
         }
 
         const result = await response.json();
-        console.log('result', result);
         const items = result.items || [];
         if (Array.isArray(items) && items.length > 1) {
           goto404('500', 'Multiple entries found for this user', router);
           return;
         }
-        console.log(items);
         const userData = items[0] || null;
-        console.log(userData);
         setData(userData);
         
         // Set signature from user data if it exists

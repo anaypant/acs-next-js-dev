@@ -75,7 +75,6 @@ export async function POST(request: Request) {
         });
 
         const data = await response.json();
-        console.log('[signup] data from backend:', data);
 
         if (!response.ok) {
             return NextResponse.json(
@@ -103,7 +102,6 @@ export async function POST(request: Request) {
 
         // Handle the session_id cookie from the API response
         const setCookieHeader = response.headers.get('set-cookie');
-        console.log('[signup] set-cookie header from backend:', setCookieHeader);
         if (setCookieHeader) {
             // Forward all cookies if there are multiple
             setCookieHeader.split(',').forEach(cookie => {
@@ -113,10 +111,8 @@ export async function POST(request: Request) {
                     cookieToSet = cookieToSet.replace(/; ?secure/gi, '');
                 }
                 nextResponse.headers.append('set-cookie', cookieToSet);
-                console.log('[signup] set-cookie header forwarded to client:', cookieToSet);
             });
         } else {
-            console.log('[signup] No set-cookie header found in backend response');
         }
 
         return nextResponse;

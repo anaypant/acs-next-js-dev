@@ -296,8 +296,60 @@ export default function JunkPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1] flex items-center justify-center">
-        <div className="text-lg text-gray-600">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 flex items-center justify-center">
+        <div className="relative flex flex-col items-center">
+          <span className="sr-only">Loading junk emails...</span>
+          
+          {/* Main animated container */}
+          <div className="relative mb-8">
+            {/* Outer pulsing ring */}
+            <div className="absolute inset-0 w-20 h-20 rounded-full bg-gradient-to-r from-[#0e6537] via-[#157a42] to-[#0a5a2f] opacity-20 animate-ping" />
+            
+            {/* Middle rotating ring */}
+            <div className="absolute inset-2 w-16 h-16 rounded-full border-4 border-transparent border-t-[#0e6537] border-r-[#157a42] animate-spin" />
+            
+            {/* Inner core with gradient */}
+            <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-[#0e6537] via-[#157a42] to-[#0a5a2f] flex items-center justify-center shadow-lg">
+              <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            </div>
+            
+            {/* Floating particles */}
+            <div className="absolute -top-1 -right-1 w-2 h-2 bg-[#0e6537] rounded-full opacity-60 animate-pulse" />
+            <div className="absolute -bottom-1 -left-1 w-1.5 h-1.5 bg-[#157a42] rounded-full opacity-40 animate-pulse" style={{ animationDelay: '500ms' }} />
+          </div>
+          
+          {/* Loading text */}
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-[#0e6537] via-[#157a42] to-[#0a5a2f] bg-clip-text text-transparent mb-2">
+              Loading Junk Emails
+            </h2>
+            <p className="text-gray-600 font-medium">
+              Scanning for filtered messages...
+            </p>
+          </div>
+          
+          {/* Progress bar */}
+          <div className="w-56 h-1.5 bg-gray-200 rounded-full overflow-hidden mb-4">
+            <div className="h-full bg-gradient-to-r from-[#0e6537] via-[#157a42] to-[#0a5a2f] rounded-full animate-pulse" 
+                 style={{ 
+                   width: '55%',
+                   animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                 }} />
+          </div>
+          
+          {/* Animated dots */}
+          <div className="flex space-x-1.5">
+            <div className="w-1.5 h-1.5 bg-[#0e6537] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+            <div className="w-1.5 h-1.5 bg-[#157a42] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+            <div className="w-1.5 h-1.5 bg-[#0a5a2f] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+          </div>
+          
+          {/* Background decoration */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-1/3 left-1/4 w-32 h-32 bg-gradient-to-br from-[#0e6537]/5 to-transparent rounded-full blur-xl" />
+            <div className="absolute bottom-1/3 right-1/4 w-36 h-36 bg-gradient-to-tl from-[#157a42]/5 to-transparent rounded-full blur-xl" />
+          </div>
+        </div>
       </div>
     )
   }
