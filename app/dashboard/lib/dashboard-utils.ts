@@ -37,6 +37,7 @@ type ProcessedThread = {
     last_updated: string;
     created_at: string;
     updated_at: string;
+    flag: boolean;
 };
 
 export const ensureMessageFields = (msg: any): Message => ({
@@ -142,6 +143,7 @@ export const processThreadData = (rawData: any[], timeRange: TimeRange) => {
             last_updated: thread.last_updated || thread.updated_at || new Date().toISOString(),
             created_at: thread.created_at || new Date().toISOString(),
             updated_at: thread.updated_at || new Date().toISOString(),
+            flag: thread.flag === 'true' || thread.flag === true
         };
 
         return processedThread as unknown as Thread;

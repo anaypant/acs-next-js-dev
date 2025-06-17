@@ -88,6 +88,9 @@ export const authOptions = {
 
         // Check if this is a new user from Google's perspective
         if (!account.isNewUser) {
+          // Store the access token before making the login call
+          const googleAccessToken = account.access_token;
+          
           // call api/auth/login, pass in email, password, provider
           const loginData = {
             email: user.email,
@@ -122,6 +125,8 @@ export const authOptions = {
             // Set authType from the login response
             user.authType = loginResponseData.user?.authType || loginResponseData.authType || 'existing';
             user.id = loginResponseData.user.id;
+            // Ensure the Google access token is preserved
+            user.accessToken = googleAccessToken;
             return true;
           }
           return false;
@@ -190,6 +195,10 @@ export const authOptions = {
             token.name = user.name;
             token.provider = user.provider;
             token.authType = user.authType;
+            // Preserve accessToken from user object if it exists
+            if (user.accessToken) {
+                token.accessToken = user.accessToken;
+            }
             if ((user as any).sessionCookie) {
                 token.sessionCookie = (user as any).sessionCookie;
             }
@@ -203,7 +212,8 @@ export const authOptions = {
             session.user.email = token.email as string;
             session.user.provider = token.provider;
             session.user.authType = token.authType;
-            // Do not expose accessToken to the client-side
+            // Add accessToken to session for Google OAuth token revocation
+            session.user.accessToken = token.accessToken;
         }
         if ((token as any).sessionCookie) {
             session.sessionCookie = (token as any).sessionCookie;

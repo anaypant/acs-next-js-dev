@@ -10,6 +10,7 @@
 
 import { useSession } from 'next-auth/react';
 import type { Session } from 'next-auth';
+import { ConversationsProvider } from './lib/conversations-context';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -19,8 +20,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const { data: session } = useSession() as { data: Session | null };
   
   return (
-    <>
+    <ConversationsProvider>
       {children}
-    </>
+    </ConversationsProvider>
   );
 } 

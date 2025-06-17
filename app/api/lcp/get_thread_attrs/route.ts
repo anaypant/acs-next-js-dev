@@ -14,10 +14,18 @@ export async function POST(request: Request) {
       );
     }
     const url = `${config.API_URL}/lcp/get-thread-attrs`;
+    
+    // Get session_id from request cookies
+    const cookies = request.headers.get('cookie');
+    const sessionId = cookies?.split(';')
+      .find(cookie => cookie.trim().startsWith('session_id='))
+      ?.split('=')[1];
+
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(sessionId && { 'Cookie': `session_id=${sessionId}` })
       },
       credentials: 'include',
       body: JSON.stringify({ conversationId }),

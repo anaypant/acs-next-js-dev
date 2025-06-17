@@ -47,6 +47,7 @@ export interface Thread {
     spam: boolean;
     flag_for_review: boolean;
     flag_review_override: boolean;
+    flag: boolean;
     messages: Message[];
     last_updated: string;
     created_at: string;

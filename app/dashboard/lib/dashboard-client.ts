@@ -96,6 +96,8 @@ export const useDashboard = () => {
                 throw new Error('Invalid response format from API');
             }
             const { conversations, leadPerformance } = processThreadData(data.data, timeRange);
+            // log conversations
+            console.log('conversations', conversations);
             setConversations(conversations);
             setLeadPerformanceData(leadPerformance);
         } catch (error) {

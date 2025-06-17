@@ -8,10 +8,10 @@
 
 "use client"
 import { MessageSquare, RefreshCw, CheckCircle, Flag, Shield, ChevronDown } from "lucide-react"
-import type React from "react"
+import React, { useEffect, useMemo, Suspense } from "react"
 import { SidebarProvider, AppSidebar, SidebarTrigger, SidebarInset } from "./components/Sidebar"
 import { useSession } from "next-auth/react"
-import { useEffect, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import type { Thread, Message, TimeRange } from "@/app/types/lcp"
 import LeadFunnel from './components/LeadFunnel'
 import LeadReport from './components/LeadReport'
@@ -52,20 +52,65 @@ const getLatestEvaluableMessage = (messages: Message[]): Message | undefined => 
     });
 };
 
-/**
- * Page Component
- * Main dashboard component that displays the lead conversion pipeline and analytics
- * 
- * Features:
- * - Welcome section with active conversation count
- * - Lead statistics and performance metrics
- * - Recent conversations with AI scoring
- * - Lead performance analytics and trends
- * - Lead sources and activity tracking
- * 
- * @returns {JSX.Element} Complete dashboard view with sidebar integration
- */
-export default function Page() {
+// Additional type definitions that don't conflict with existing types
+interface Metrics {
+  newLeads: number;
+  pendingReplies: number;
+  unopenedLeads: number;
+}
+
+interface Filters {
+  unread: boolean;
+  review: boolean;
+  completion: boolean;
+}
+
+// Simple error boundary component
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode; fallback: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+          <h2 className="text-red-800 font-semibold mb-2">Something went wrong:</h2>
+          <pre className="text-red-600 text-sm mb-4">{this.state.error?.message}</pre>
+          <button
+            onClick={() => this.setState({ hasError: false, error: null })}
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+          >
+            Try again
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// Loading fallback component
+function LoadingFallback() {
+  return (
+    <div className="flex items-center justify-center py-8">
+      <RefreshCw className="w-8 h-8 animate-spin text-[#0e6537]" />
+      <span className="ml-2 text-base text-gray-600">Loading...</span>
+    </div>
+  );
+}
+
+// Main dashboard component
+function DashboardContent() {
   const {
     session,
     conversations,
@@ -107,14 +152,38 @@ export default function Page() {
     loadThreads();
   }, [status, session?.user?.id, loadThreads]);
 
+  // Optimize useEffect for visibility change
   useEffect(() => {
+    let idleTimeoutId: NodeJS.Timeout;
+    let isIdle = false;
+    let lastVisibilityChange = Date.now();
+
     const handleVisibility = () => {
+      const now = Date.now();
+      lastVisibilityChange = now;
+
       if (document.visibilityState === "visible") {
-        loadThreads();
+        // Only refresh if we were in idle state
+        if (isIdle) {
+          console.log("Returning from idle state, refreshing threads");
+          loadThreads();
+          isIdle = false;
+        }
+      } else {
+        // When visibility changes to hidden, start idle timer
+        clearTimeout(idleTimeoutId);
+        idleTimeoutId = setTimeout(() => {
+          console.log("User has been idle for 15 minutes");
+          isIdle = true;
+        }, 15 * 60 * 1000); // 15 minutes
       }
     };
+    
     document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      clearTimeout(idleTimeoutId);
+    };
   }, [loadThreads]);
 
   // Add a separate effect to log when session status changes
@@ -216,27 +285,32 @@ export default function Page() {
     };
   }, []);
 
-  // Memoize filter counts (should match the filteredConversations logic and exclude spam/junk)
+  // Optimize filter counts calculation
   const filterCounts = useMemo(() => {
-    const getCount = (filterKey: keyof typeof filters) => {
-      return conversations.filter((c: Thread) => {
-        if (c.spam) return false; // Exclude junk
-        if (filterKey === 'unread') return !c.read;
-        if (filterKey === 'review') return c.flag_for_review;
-        if (filterKey === 'completion') {
-          const evMessage = getLatestEvaluableMessage(c.messages);
-          const ev_score = evMessage?.ev_score ?? 0;
-          return ev_score > (c.lcp_flag_threshold ?? 70) && !c.flag_for_review;
-        }
-        return false;
-      }).length;
+    const counts = {
+      unread: 0,
+      review: 0,
+      completion: 0
     };
-    return {
-      unread: getCount('unread'),
-      review: getCount('review'),
-      completion: getCount('completion'),
-    };
-  }, [conversations, filters]);
+
+    for (const thread of conversations) {
+      if (thread.spam) continue;
+      
+      if (!thread.read) counts.unread++;
+      if (thread.flag_for_review) counts.review++;
+      
+      const evMessage = getLatestEvaluableMessage(thread.messages);
+      const ev_score = typeof evMessage?.ev_score === 'string' 
+        ? parseFloat(evMessage.ev_score) 
+        : evMessage?.ev_score ?? 0;
+      
+      if (ev_score > (thread.lcp_flag_threshold ?? 70) && !thread.flag_for_review) {
+        counts.completion++;
+      }
+    }
+
+    return counts;
+  }, [conversations]);
 
   // Memoize filtered leads based on time range
   const filteredLeads = useMemo(() => {
@@ -527,23 +601,18 @@ export default function Page() {
                             View All Conversations
                           </button>
                         </div>
-                        {filteredConversations.slice(0, 5).map((conv: Thread) => {
-                          // Find the original thread data from the conversations array
-                          const rawThread = conversations.find((t: Thread) => t.conversation_id === conv.conversation_id);
-                          return (
-                            <ConversationCard
-                              key={conv.conversation_id}
-                              conv={conv}
-                              rawThread={rawThread}
-                              updatingRead={updatingRead}
-                              updatingLcp={updatingLcp}
-                              deletingThread={deletingThread}
-                              handleMarkAsRead={handleMarkAsRead}
-                              handleLcpToggle={handleLcpToggle}
-                              handleDeleteThread={handleDeleteThread}
-                            />
-                          );
-                        })}
+                        {filteredConversations.slice(0, 5).map((conv: Thread) => (
+                          <ConversationCard
+                            key={conv.conversation_id}
+                            conv={conv}
+                            updatingRead={updatingRead}
+                            updatingLcp={updatingLcp}
+                            deletingThread={deletingThread}
+                            handleMarkAsRead={handleMarkAsRead}
+                            handleLcpToggle={handleLcpToggle}
+                            handleDeleteThread={handleDeleteThread}
+                          />
+                        ))}
                       </>
                     )}
                   </div>
@@ -765,7 +834,36 @@ export default function Page() {
         </SidebarInset>
       </SidebarProvider>
     </div>
-  )
+  );
+}
+
+// Export the wrapped dashboard component
+export default function Dashboard() {
+  return (
+    <ErrorBoundary fallback={
+      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+        <h2 className="text-red-800 font-semibold mb-2">Something went wrong</h2>
+        <p className="text-red-600 text-sm mb-4">Please try refreshing the page</p>
+      </div>
+    }>
+      <Suspense fallback={<LoadingFallback />}>
+        <DashboardContent />
+      </Suspense>
+    </ErrorBoundary>
+  );
+}
+
+// Add error handling for API calls
+async function safeApiCall<T>(apiCall: () => Promise<T>): Promise<{ data?: T; error?: string }> {
+  try {
+    const data = await apiCall();
+    return { data };
+  } catch (error) {
+    console.error('API call failed:', error);
+    return { 
+      error: error instanceof Error ? error.message : 'An unknown error occurred' 
+    };
+  }
 }
 
 /**

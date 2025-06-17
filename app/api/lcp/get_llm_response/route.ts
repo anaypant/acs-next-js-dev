@@ -16,11 +16,18 @@ export async function POST(request: Request) {
       );
     }
 
+    // Get session_id from request cookies
+    const cookies = request.headers.get('cookie');
+    const sessionId = cookies?.split(';')
+      .find(cookie => cookie.trim().startsWith('session_id='))
+      ?.split('=')[1];
+
     // Make request to the config API endpoint
     const response = await fetch(`${config.API_URL}/lcp/get-llm-response`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(sessionId && { 'Cookie': `session_id=${sessionId}` })
       },
       credentials: 'include',
       body: JSON.stringify({

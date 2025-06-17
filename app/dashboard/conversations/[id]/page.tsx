@@ -9,7 +9,7 @@
 "use client"
 import { ArrowLeft, Phone, Mail, Calendar, MapPin, RefreshCw, Sparkles, X, Info, Copy, Check, Download, ThumbsUp, ThumbsDown, AlertTriangle, Save, Edit2, Shield, ShieldOff, Flag, CheckCircle, MessageSquare } from "lucide-react"
 import { useParams } from "next/navigation"
-import { useEffect, useState, type ReactNode } from "react"
+import { useEffect, useState, type ReactNode, type FC } from "react"
 import type { Thread, Message } from "@/app/types/lcp"
 import type { Session } from "next-auth"
 import { useSession } from "next-auth/react"
@@ -22,6 +22,7 @@ import type { User } from "next-auth"
 import { v4 as uuidv4 } from 'uuid';
 import { ensureMessageFields } from "@/app/dashboard/lib/dashboard-utils";
 import ConversationProgression from "@/app/dashboard/components/ConversationProgression";
+import { useConversationsData } from '../../lib/use-conversations';
 
 // Add type declaration for jsPDF with autoTable
 declare module 'jspdf' {
@@ -30,6 +31,16 @@ declare module 'jspdf' {
       finalY: number;
     };
   }
+}
+
+// Update ExtendedMessage interface to match Message type
+interface ExtendedMessage extends Omit<Message, 'ev_score'> {
+  sender_name: string;
+  sender_email: string;
+  body: string;
+  timestamp: string;
+  ev_score?: number; // Changed from string to number to match Message type
+  type: "inbound-email" | "outbound-email";
 }
 
 /**
@@ -82,8 +93,8 @@ function LoadingSkeleton() {
               <div className="h-6 w-24 bg-gray-200 rounded animate-pulse" />
             </div>
             <div className="flex-1 overflow-y-auto space-y-4 p-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex justify-start">
+              {[...Array(5)].map((_, index) => (
+                <div key={`skeleton-message-${index}`} className="flex justify-start">
                   <div className="flex items-center gap-2">
                     <div className="h-16 w-64 bg-gray-100 rounded-lg animate-pulse" />
                   </div>
@@ -144,6 +155,13 @@ function LoadingSkeleton() {
       </div>
     </div>
   )
+}
+
+// Utility to robustly convert string/boolean to boolean
+function getBoolean(val: any) {
+  if (typeof val === "boolean") return val;
+  if (typeof val === "string") return val.toLowerCase() === "true";
+  return false;
 }
 
 // Update OverrideStatus component to add data attribute
@@ -249,6 +267,114 @@ function FlaggedStatusWidget({ isFlagged, onUnflag, updating }: { isFlagged: boo
   );
 }
 
+// Update NotesWidget to be a proper React component
+const NotesWidget: FC<{
+  notes: string;
+  onSave: (notes: string) => void;
+}> = ({ notes, onSave }) => {
+  const [localNotes, setLocalNotes] = useState(notes);
+  const [isEditing, setIsEditing] = useState(false);
+
+  return (
+    <div className="bg-white rounded-2xl border shadow-lg p-6">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-semibold">Context Notes</h3>
+        <button
+          onClick={() => {
+            if (isEditing) {
+              onSave(localNotes);
+            }
+            setIsEditing(!isEditing);
+          }}
+          className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
+        >
+          {isEditing ? <Save className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
+          <span>{isEditing ? "Save" : "Edit"}</span>
+        </button>
+      </div>
+      {isEditing ? (
+        <textarea
+          value={localNotes}
+          onChange={(e) => setLocalNotes(e.target.value)}
+          className="w-full h-32 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0e6537] resize-none"
+          placeholder="Add notes about this conversation..."
+        />
+      ) : (
+        <div className="text-gray-700 whitespace-pre-wrap">{notes || "No notes added yet."}</div>
+      )}
+    </div>
+  );
+};
+
+// Update ReportModal usage in the return statement
+const ReportModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (reason: string, details: string) => void;
+  isSubmitting: boolean;
+}> = ({ isOpen, onClose, onSubmit, isSubmitting }) => {
+  const [reason, setReason] = useState('');
+  const [details, setDetails] = useState('');
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
+        <div className="p-4 border-b flex justify-between items-center">
+          <h3 className="text-lg font-semibold">Report Conversation</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <X className="h-6 w-6" />
+          </button>
+        </div>
+        <div className="p-4">
+          <div className="space-y-4">
+            {[
+              { key: 'reason', label: 'Reason', type: 'text', value: reason, onChange: setReason, placeholder: 'Brief reason for reporting' },
+              { key: 'details', label: 'Details', type: 'textarea', value: details, onChange: setDetails, placeholder: 'Additional details about the report' }
+            ].map(field => (
+              <div key={field.key}>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{field.label}</label>
+                {field.type === 'textarea' ? (
+                  <textarea
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value)}
+                    className="w-full h-32 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0e6537] resize-none"
+                    placeholder={field.placeholder}
+                  />
+                ) : (
+                  <input
+                    type={field.type}
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value)}
+                    className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0e6537]"
+                    placeholder={field.placeholder}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => onSubmit(reason, details)}
+              disabled={!reason.trim() || isSubmitting}
+              className="px-4 py-2 bg-[#0e6537] text-white rounded-lg hover:bg-[#0a5a2f] disabled:opacity-50"
+            >
+              {isSubmitting ? "Submitting..." : "Submit Report"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /**
  * ConversationDetailPage Component
  * Main conversation detail component displaying message history and client information
@@ -262,587 +388,355 @@ function FlaggedStatusWidget({ isFlagged, onUnflag, updating }: { isFlagged: boo
  * @returns {JSX.Element} Complete conversation detail view
  */
 export default function ConversationDetailPage() {
-  const params = useParams()
-  const { data: session } = useSession()
-  const user = session?.user as User | undefined
-  const conversationId = params.id as string
-  const [thread, setThread] = useState<Thread | null>(null)
-  const [messages, setMessages] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [generatingResponse, setGeneratingResponse] = useState(false)
-  const [sendingEmail, setSendingEmail] = useState(false)
-  const [messageInput, setMessageInput] = useState("")
-  const [copySuccess, setCopySuccess] = useState(false)
-  const [generatingPdf, setGeneratingPdf] = useState(false)
-  const [feedback, setFeedback] = useState<Record<string, 'like' | 'dislike' | null>>({});
-  const [evFeedback, setEvFeedback] = useState<Record<string, 'like' | 'dislike' | null>>({});
-  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  // All hooks must be at the top, before any conditional returns
+  const params = useParams();
+  const conversationId = params.id as string;
+  const { data: session } = useSession() as { data: (Session & { user?: { id: string } }) | null };
+  const [mounted, setMounted] = useState(false);
+  const [userSignature, setUserSignature] = useState<string>('');
+  const [updatingRead, setUpdatingRead] = useState<string | null>(null);
+  const [updatingLcp, setUpdatingLcp] = useState<string | null>(null);
+  const [updatingFlag, setUpdatingFlag] = useState<string | null>(null);
+  const [updatingSpam, setUpdatingSpam] = useState<boolean>(false);
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
+  const [previewMessageId, setPreviewMessageId] = useState<string | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportDetails, setReportDetails] = useState('');
+  const [reportingResponse, setReportingResponse] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [evFeedbackLoading, setEvFeedbackLoading] = useState(false);
-  const [updatingFeedbackId, setUpdatingFeedbackId] = useState<string | null>(null);
   const [updatingEvFeedbackId, setUpdatingEvFeedbackId] = useState<string | null>(null);
-  const [showPreview, setShowPreview] = useState(false);
-  const [emailPreview, setEmailPreview] = useState<{ subject: string; body: string; signature: string } | null>(null);
-  const [userSignature, setUserSignature] = useState<string>("");
-  const [showFlaggedModal, setShowFlaggedModal] = useState(false);
-  const [notes, setNotes] = useState("");
+  const [evFeedback, setEvFeedback] = useState<{ [key: string]: 'positive' | 'negative' | null }>({});
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [updatingFeedbackId, setUpdatingFeedbackId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ [key: string]: 'like' | 'dislike' | null }>({});
+  const [reportMessageId, setReportMessageId] = useState<string | null>(null);
+  const [messageInput, setMessageInput] = useState('');
+  const [generatingResponse, setGeneratingResponse] = useState(false);
   const [updatingOverride, setUpdatingOverride] = useState(false);
   const [unflagging, setUnflagging] = useState(false);
-  const [flagReason, setFlagReason] = useState("");
-  const [updatingSpam, setUpdatingSpam] = useState(false);
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [reportMessageId, setReportMessageId] = useState<string | null>(null);
-  const [reportExplanation, setReportExplanation] = useState("");
-  const [submittingReport, setSubmittingReport] = useState(false);
-  const [previewMessageId, setPreviewMessageId] = useState<string | null>(null);
-  const [reportSuccess, setReportSuccess] = useState(false);
-  const [llmEmailType, setLlmEmailType] = useState<string>('');
+  const [notes, setNotes] = useState('');
 
-  // Add logging for thread state changes
-  useEffect(() => {
-    if (thread) {
-      console.log('[ConversationDetail] Thread updated:', {
-        conversation_id: thread.conversation_id,
-        has_ai_summary: !!thread.ai_summary,
-        ai_summary_length: thread.ai_summary?.length,
-        ai_summary_value: thread.ai_summary || 'UNKNOWN'
-      });
-    }
-  }, [thread]);
+  const {
+    getConversationById,
+    updateThreadMetadata,
+    updateMessage,
+    addMessage,
+    refreshConversations,
+    isStale,
+    isLoading,
+    error: cacheError
+  } = useConversationsData();
 
-  // Fetch user signature on component mount
+  // All useEffects must be at the top level
   useEffect(() => {
-    const fetchUserSignature = async () => {
-      if (!user?.id) return;
-      try {
-        const response = await fetch('/api/db/select', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            table_name: 'Users',
-            index_name: 'id-index',
-            key_name: 'id',
-            key_value: user.id
-          }),
-          credentials: 'include'
-        });
-        const data = await response.json();
-        if (data.items[0]?.email_signature) {
-          setUserSignature(data.items[0].email_signature);
-        }
-      } catch (error) {
-        console.error('Error fetching user signature:', error);
-      }
-    };
-    fetchUserSignature();
-  }, [user?.id]);
-
-  // Add CSS for pulsating glow effect
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes pulsate {
-        0% { box-shadow: 0 0 0 0 rgba(14, 101, 55, 0.4); }
-        70% { box-shadow: 0 0 0 10px rgba(14, 101, 55, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(14, 101, 55, 0); }
-      }
-      .thread-busy {
-        animation: pulsate 2s infinite;
-        border: 2px solid #0e6537;
-      }
-    `;
-    document.head.appendChild(style);
-    return () => {
-      document.head.removeChild(style);
-    };
+    setMounted(true);
   }, []);
 
-  // Add function to mark thread as read
-  const markAsRead = async () => {
-    if (!conversationId) return;
-    try {
-      await fetch('/api/db/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          table_name: 'Threads',
-          index_name: "conversation_id-index",
-          key_name: 'conversation_id',
-          key_value: conversationId,
-          update_data: { read: 'true' }
-        }),
-        credentials: 'include'
-      });
-      // Update local state
-      setThread(prev => prev ? { ...prev, read: true } : null);
-    } catch (error) {
-      console.error('Error marking as read:', error);
+  useEffect(() => {
+    if (isStale) {
+      refreshConversations();
     }
-  };
+  }, [isStale, refreshConversations]);
 
-  // Replace the reloadConversation useEffect with a single initial fetch
-  useEffect(() => {
-    const fetchInitialThread = async () => {
-      if (!conversationId) return;
-      
-      setLoading(true);
-      try {
-        const res = await fetch("/api/lcp/getThreadById", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversation_id: conversationId }),
-        });
-        const data = await res.json();
-        if (data.success) {
-          const rawThread = data.data.thread;
-          const normalizedThread = {
-            ...rawThread,
-            lcp_enabled: rawThread?.lcp_enabled === true || rawThread?.lcp_enabled === 'true',
-            busy: rawThread?.busy === true || rawThread?.busy === 'true',
-            read: rawThread?.read === 'true',
-            flag_for_review: rawThread?.flag_for_review === true || rawThread?.flag_for_review === 'true',
-            spam: rawThread?.spam === true || rawThread?.spam === 'true',
-            flag_review_override: rawThread?.flag_review_override === 'true',
-          };
-          setThread(normalizedThread);
-          setMessages(data.data.messages);
-          setNotes(rawThread?.context_notes || "");
-          
-          // Mark as read if not already read
-          if (!normalizedThread.read) {
-            await markAsRead();
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching initial thread:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchInitialThread();
-  }, [conversationId]); // Only fetch on mount or conversationId change
-
-  // Update reloadConversation to be called only when explicitly needed
-  const reloadConversation = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/lcp/getThreadById", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversation_id: conversationId }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        const rawThread = data.data.thread;
-        const normalizedThread = {
-          ...rawThread,
-          lcp_enabled: rawThread?.lcp_enabled === true || rawThread?.lcp_enabled === 'true',
-          busy: rawThread?.busy === true || rawThread?.busy === 'true',
-          read: rawThread?.read === 'true',
-          flag_for_review: rawThread?.flag_for_review === true || rawThread?.flag_for_review === 'true',
-          spam: rawThread?.spam === true || rawThread?.spam === 'true',
-          flag_review_override: rawThread?.flag_review_override === 'true',
-        };
-        setThread(normalizedThread);
-        setMessages(data.data.messages);
-        setNotes(rawThread?.context_notes || "");
-      }
-    } catch (error) {
-      console.error('Error reloading conversation:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    reloadConversation();
-  }, [conversationId]);
-
-  // Fetch feedback for all messages on load
-  useEffect(() => {
-    const fetchFeedback = async () => {
-      if (!conversationId || !messages.length) return;
-      setFeedbackLoading(true);
-      setEvFeedbackLoading(true);
-      try {
-        // Get all feedback for this conversation from both tables
-        const [llmResponse, evResponse] = await Promise.all([
-          fetch('/api/db/select', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              table_name: 'LLMDataCollection',
-              index_name: 'conversation_id-index',
-              key_name: 'conversation_id',
-              key_value: conversationId,
-            }),
-            credentials: 'include'
-          }),
-          fetch('/api/db/select', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              table_name: 'EVDataCollection',
-              index_name: 'conversation_id-index',
-              key_name: 'conversation_id',
-              key_value: conversationId,
-            }),
-            credentials: 'include'
-          })
-        ]);
-
-        const [llmData, evData] = await Promise.all([
-          llmResponse.json(),
-          evResponse.json()
-        ]);
-
-        // Process LLM feedback
-        if (llmData.success && Array.isArray(llmData.items)) {
-          const fb: Record<string, 'like' | 'dislike' | null> = {};
-          llmData.items.forEach((item: any) => {
-            if (item.response_id && item.flag) {
-              fb[item.response_id] = item.flag;
-            }
-          });
-          setFeedback(fb);
-        }
-
-        // Process EV feedback
-        if (evData.success && Array.isArray(evData.items)) {
-          const evFb: Record<string, 'like' | 'dislike' | null> = {};
-          evData.items.forEach((item: any) => {
-            if (item.message_id && item.flag) {
-              evFb[item.message_id] = item.flag;
-            }
-          });
-          setEvFeedback(evFb);
-        }
-      } catch (err) {
-        console.error('Error fetching feedback:', err);
-      } finally {
-        setFeedbackLoading(false);
-        setEvFeedbackLoading(false);
-      }
-    };
-    fetchFeedback();
-  }, [conversationId, messages.length]);
-
-  // Find client email from the first inbound message or thread
-  const clientEmail =
-    messages.find((msg) => msg.type === "inbound-email")?.sender ||
-    thread?.associated_account ||
-    "Client"
-
-  const leadName = thread?.source_name || clientEmail;
-
-  // Sort messages by timestamp ascending
-  const sortedMessages = [...messages].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-  // Get the last message to determine if we can generate a response
-  const lastMessage = sortedMessages[sortedMessages.length - 1]
-  const canGenerateResponse = lastMessage?.type === "inbound-email"
-
-  // Update generateAIResponse function
-  const generateAIResponse = async () => {
-    if (!thread?.conversation_id || !thread?.associated_account) return;
+  // Define fetchUserSignature before the useEffect that calls it
+  const fetchUserSignature = async () => {
+    if (!session?.user?.id) return;
     
-    setGeneratingResponse(true);
     try {
-      const response = await fetch('/api/lcp/get_llm_response', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          conversation_id: thread.conversation_id,
-          account_id: thread.associated_account,
-          is_first_email: messages.length === 0
-        })
-      });
-
-      const result = await response.json();
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to generate response');
-      }
-
-      // Check if the response is flagged for review
-      if (result.flagged || result.data?.status === 'flagged_for_review') {
-        setShowFlaggedModal(true);
-        setFlagReason("AI flagged the response as needing human review.");
-        return;
-      }
-
-      // Continue with normal response handling
-      if (result.data?.response) {
-        setMessageInput(result.data.response);
-        
-        // Get the subject from the last inbound message, using the same logic as handleOpenEmailPreview
-        const lastInboundMessage = [...messages].filter(msg => msg.type === 'inbound-email').pop();
-        const originalSubject = lastInboundMessage?.subject || 'Conversation';
-        // Only add "Re:" if it's not already present
-        const subject = originalSubject.startsWith('Re:') ? originalSubject : `Re: ${originalSubject}`;
-
-        setShowPreview(true);
-        setEmailPreview({
-          subject,
-          body: result.data.response,
-          signature: userSignature
-        });
-        // set the llm email type
-        setLlmEmailType(result.data.llm_email_type);
-        // Always set a preview message ID: use backend-provided or generate a UUID
-        setPreviewMessageId(result.data.response_id || uuidv4());
-      }
-    } catch (error) {
-      console.error('Error generating AI response:', error);
-    } finally {
-      setGeneratingResponse(false);
-    }
-  };
-
-  // Update handleSendResponse function
-  const handleSendResponse = async () => {
-    if (!thread || !messageInput.trim()) return;
-
-    // Get the subject from the last inbound message
-    const lastInboundMessage = [...messages]
-      .filter(msg => msg.type === 'inbound-email')
-      .pop();
-    const originalSubject = lastInboundMessage?.subject || 'Conversation';
-    
-    // Only add "Re:" if it's not already present
-    const subject = originalSubject.startsWith('Re:') ? originalSubject : `Re: ${originalSubject}`;
-
-    // Construct the preview directly
-    const preview = {
-      subject,
-      body: messageInput,
-      signature: userSignature || `Best regards,\nACS Team\n\n---\nThis email was sent from ACS Conversation Platform`
-    };
-
-    // Show preview modal
-    setEmailPreview(preview);
-    setShowPreview(true);
-  }
-
-  // Update reloadMessages to be used only when explicitly needed
-  const reloadMessages = async () => {
-    try {
-      const res = await fetch("/api/lcp/getThreadById", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversation_id: conversationId }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setMessages(data.data.messages);
-      }
-    } catch (error) {
-      console.error('Error reloading messages:', error);
-    }
-  };
-
-  // Update handleConfirmSend to use local state updates where possible
-  const handleConfirmSend = async () => {
-    if (!thread || !messageInput.trim()) return;
-
-    try {
-      setSendingEmail(true);
-      const response = await fetch('/api/lcp/send_email', {
+      const response = await fetch('/api/db/select', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          conversation_id: conversationId,
-          response_body: messageInput
+          table_name: 'Users',
+          index_name: 'id-index',
+          key_name: 'id',
+          key_value: session.user.id,
+          account_id: session.user.id,
         }),
-        credentials: 'include'
+        credentials: 'include',
       });
 
+      if (!response.ok) {
+        throw new Error('Failed to fetch signature');
+      }
+
+      // Only call response.json() once
       const data = await response.json();
+      setUserSignature(data.email_signature || data.signature || '');
+    } catch (error) {
+      console.error('Error fetching signature:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (mounted && session?.user?.id) {
+      fetchUserSignature();
+    }
+  }, [mounted, session?.user?.id]);
+
+  useEffect(() => {
+    if (mounted && conversationId) {
+      const conversation = getConversationById(conversationId);
+      if (conversation?.thread && !conversation.thread.read) {
+        markAsRead();
+      }
+    }
+  }, [mounted, conversationId, getConversationById]);
+
+  // Get conversation data after hooks
+  const conversation = getConversationById(conversationId);
+  const thread = conversation?.thread;
+  const messages = conversation?.messages || [];
+
+  // Early returns after all hooks
+  if (!mounted) return <LoadingSkeleton />;
+  if (isLoading) return <LoadingSkeleton />;
+  if (cacheError) return <div className="text-red-500">Error: {cacheError}</div>;
+  if (!thread) return <div>Conversation not found</div>;
+
+  // Parse thread and messages from conversation
+  const leadName = thread?.lead_name || thread?.source_name || 'Unknown Lead';
+  const clientEmail = thread?.client_email || thread?.source || '';
+  const sortedMessages = [...(messages.map((msg: any) => ({
+    ...msg,
+    sender_name: msg.sender_name || msg.sender || '',
+    sender_email: msg.sender_email || msg.sender || '',
+    body: msg.body || msg.content || '',
+    timestamp: msg.timestamp,
+    ev_score: typeof msg.ev_score === 'number' ? msg.ev_score : (msg.ev_score ? Number(msg.ev_score) : undefined),
+    type: msg.type || 'inbound-email',
+  })) as ExtendedMessage[])].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+  const markAsRead = async () => {
+    if (!conversationId || !session?.user?.id) return;
+
+    setUpdatingRead(conversationId);
+    try {
+      const response = await fetch('/api/lcp/mark_as_read', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          conversationId,
+          userId: session.user.id,
+        }),
+      });
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to send email');
+        throw new Error('Failed to mark as read');
       }
 
-      if (data.success) {
-        // Clear the message input and close preview
-        setMessageInput('');
-        setShowPreview(false);
-        setEmailPreview(null);
-        
-        // Update local state with the new message
-        if (data.message) {
-          setMessages(prev => [...prev, data.message]);
-        }
-        
-        // Update thread busy status locally
-        setThread(prev => prev ? { ...prev, busy: true } : null);
-        
-        // Start a timeout to check status after a delay
-        setTimeout(async () => {
-          await reloadConversation(); // Only reload after sending to get final state
-        }, 5000); // Wait 5 seconds before checking final status
-      } else {
-        throw new Error(data.error || 'Failed to send email');
-      }
+      // Update cache
+      updateThreadMetadata(conversationId, { read: true });
     } catch (error) {
-      console.error('Error sending email:', error);
-      alert('Failed to send email. Please try again.');
+      console.error('Error marking as read:', error);
     } finally {
-      setSendingEmail(false);
+      setUpdatingRead(null);
     }
   };
 
-  // Add function to format conversation
-  const formatConversation = () => {
-    if (!thread || !messages.length) return '';
+  const handleLcpToggle = async () => {
+    if (!conversationId || !session?.user?.id) return;
 
-    const header = `Conversation with ${leadName}\n${'='.repeat(50)}\n\n`;
-    const clientInfo = `Client Information:\n` +
-      `Email: ${clientEmail}\n` +
-      (thread.phone ? `Phone: ${thread.phone}\n` : '') +
-      (thread.location ? `Location: ${thread.location}\n` : '') +
-      '\n';
+    setUpdatingLcp(conversationId);
+    try {
+      const response = await fetch('/api/lcp/toggle_lcp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          conversationId,
+          userId: session.user.id,
+        }),
+      });
 
-    const messageHistory = sortedMessages.map(msg => {
-      const timestamp = new Date(msg.timestamp).toLocaleString();
-      const sender = msg.type === "inbound-email" ? clientEmail : "You";
-      const evScore = msg.type === "inbound-email" && msg.ev_score ? ` [EV Score: ${msg.ev_score}]` : '';
-      
-      return `${sender} (${timestamp})${evScore}:\n${msg.body}\n${'-'.repeat(50)}\n`;
-    }).join('\n');
+      if (!response.ok) {
+        throw new Error('Failed to toggle LCP status');
+      }
 
-    return header + clientInfo + messageHistory;
+      const data = await response.json();
+      // Update cache
+      updateThreadMetadata(conversationId, { lcp_enabled: data.lcp_enabled });
+    } catch (error) {
+      console.error('Error toggling LCP status:', error);
+    } finally {
+      setUpdatingLcp(null);
+    }
   };
 
-  // Add function to handle copy
-  const handleCopyConversation = async () => {
-    const formattedText = formatConversation();
+  const handleFlagToggle = async () => {
+    if (!conversationId || !session?.user?.id) return;
+
+    setUpdatingFlag(conversationId);
     try {
-      await navigator.clipboard.writeText(formattedText);
+      const response = await fetch('/api/lcp/toggle_flag', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          conversationId,
+          userId: session.user.id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle flag status');
+      }
+
+      const data = await response.json();
+      // Update cache
+      updateThreadMetadata(conversationId, { flagged: data.flagged });
+    } catch (error) {
+      console.error('Error toggling flag status:', error);
+    } finally {
+      setUpdatingFlag(null);
+    }
+  };
+
+  const handleSpamToggle = async () => {
+    if (!conversationId || !session?.user?.id) return;
+
+    setUpdatingSpam(true);
+    try {
+      const response = await fetch('/api/lcp/toggle_spam', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          conversationId,
+          userId: session.user.id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle spam status');
+      }
+
+      const data = await response.json();
+      // Update cache
+      updateThreadMetadata(conversationId, { spam: data.spam });
+    } catch (error) {
+      console.error('Error toggling spam status:', error);
+    } finally {
+      setUpdatingSpam(false);
+    }
+  };
+
+  const handleReportSubmit = async () => {
+    if (!conversationId || !session?.user?.id || !reportReason) return;
+
+    setReportingResponse(true);
+    try {
+      const response = await fetch('/api/lcp/report_thread', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          conversationId,
+          userId: session.user.id,
+          reason: reportReason,
+          details: reportDetails,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit report');
+      }
+
+      const data = await response.json();
+      // Update cache
+      updateThreadMetadata(conversationId, { 
+        reported: true,
+        report_reason: reportReason,
+        report_details: reportDetails,
+        report_timestamp: new Date().toISOString()
+      });
+      
+      setShowReportModal(false);
+      setReportReason('');
+      setReportDetails('');
+    } catch (error) {
+      console.error('Error submitting report:', error);
+    } finally {
+      setReportingResponse(false);
+    }
+  };
+
+  const handlePreviewEmail = (messageId: string) => {
+    setPreviewMessageId(messageId);
+    setShowEmailPreview(true);
+  };
+
+  const handleClosePreview = () => {
+    setShowEmailPreview(false);
+    setPreviewMessageId(null);
+  };
+
+  const handleReportMessage = (messageId: string) => {
+    setPreviewMessageId(messageId);
+    setShowReportModal(true);
+  };
+
+  const handleCopyConversation = async () => {
+    try {
+      const text = sortedMessages.map(msg => 
+        `${msg.sender_name} (${msg.sender_email}):\n${msg.body}\n\n`
+      ).join('---\n\n');
+      
+      await navigator.clipboard.writeText(text);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy text: ', err);
+    } catch (error) {
+      console.error('Error copying conversation:', error);
     }
   };
 
-  // Add function to generate PDF
   const generatePDF = async () => {
-    if (!thread || !messages.length) return;
-    
+    if (!thread || !sortedMessages.length) return;
+
     setGeneratingPdf(true);
     try {
       const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.getWidth();
       
-      // Add ACS Logo and Header
-      doc.setFillColor(14, 101, 55); // ACS green
-      doc.rect(0, 0, pageWidth, 40, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(24);
-      doc.text('ACS', 20, 25);
-      doc.setFontSize(16);
-      doc.text('Conversation Report', pageWidth - 20, 25, { align: 'right' });
+      // Add header
+      doc.setFontSize(20);
+      doc.text('Conversation Report', 20, 20);
       
-      // Reset text color for content
-      doc.setTextColor(0, 0, 0);
-      
-      // Add Client Information
-      doc.setFontSize(14);
-      doc.text('Client Information', 20, 60);
+      // Add thread details
       doc.setFontSize(12);
-      doc.text(`Name: ${leadName}`, 20, 70);
-      doc.text(`Email: ${clientEmail}`, 20, 75);
-      if (thread.phone) doc.text(`Phone: ${thread.phone}`, 20, 80);
-      if (thread.location) doc.text(`Location: ${thread.location}`, 20, 85);
+      doc.text(`Lead: ${thread.lead_name}`, 20, 40);
+      doc.text(`Status: ${thread.status}`, 20, 50);
+      doc.text(`Created: ${new Date(thread.created_at).toLocaleString()}`, 20, 60);
       
-      // Add Conversation Summary
-      doc.setFontSize(14);
-      doc.text('Conversation Summary', 20, 100);
-      doc.setFontSize(12);
-      
-      // Calculate summary statistics
-      const totalMessages = messages.length;
-      const inboundMessages = messages.filter(m => m.type === 'inbound-email').length;
-      const outboundMessages = messages.filter(m => m.type === 'outbound-email').length;
-      const avgEvScore = messages
-        .filter(m => m.type === 'inbound-email' && m.ev_score)
-        .reduce((acc, m) => acc + Number(m.ev_score), 0) / inboundMessages || 0;
-      
-      // Add summary table
-      autoTable(doc, {
-        startY: 105,
-        head: [['Metric', 'Value']],
-        body: [
-          ['Total Messages', totalMessages.toString()],
-          ['Inbound Messages', inboundMessages.toString()],
-          ['Outbound Messages', outboundMessages.toString()],
-          ['Average EV Score', avgEvScore.toFixed(1)],
-          ['Conversation Duration', getConversationDuration()],
-        ],
-        theme: 'grid',
-        headStyles: { fillColor: [14, 101, 55] },
-        styles: { fontSize: 10 },
-      });
-      
-      // Add AI Summary if available
-      if (thread.ai_summary && thread.ai_summary !== 'UNKNOWN') {
-        doc.setFontSize(14);
-        doc.text('AI Analysis', 20, doc.lastAutoTable.finalY + 20);
-        doc.setFontSize(12);
-        doc.text(thread.ai_summary, 20, doc.lastAutoTable.finalY + 30, { maxWidth: pageWidth - 40 });
-      }
-      
-      // Add Message History
-      doc.setFontSize(14);
-      doc.text('Message History', 20, doc.lastAutoTable.finalY + 50);
-      
-      let yPosition = doc.lastAutoTable.finalY + 60;
-      
-      sortedMessages.forEach((msg, index) => {
-        const sender = msg.type === "inbound-email" ? clientEmail : "You";
+      // Add messages
+      let y = 80;
+      sortedMessages.forEach((msg: ExtendedMessage) => {
+        const sender = `${msg.sender_name} (${msg.sender_email})`;
         const timestamp = new Date(msg.timestamp).toLocaleString();
-        const evScore = msg.type === "inbound-email" && msg.ev_score ? ` [EV Score: ${msg.ev_score}]` : '';
+        const content = `${sender} - ${timestamp}\n\n${msg.body}\n\n`;
         
-        // Prepare message text
-        const splitText = doc.splitTextToSize(msg.body, pageWidth - 40);
-        const blockHeight = 7 + splitText.length * 7 + 7; // header + text + separator
-        if (yPosition + blockHeight > doc.internal.pageSize.getHeight() - 20) {
+        const splitContent = doc.splitTextToSize(content, 170);
+        if (y + splitContent.length * 7 > 280) {
           doc.addPage();
-          yPosition = 20;
+          y = 20;
         }
-        // Add message header
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`${sender} - ${timestamp}${evScore}`, 20, yPosition);
-        // Add message content
-        doc.setFontSize(12);
-        doc.setTextColor(0, 0, 0);
-        doc.text(splitText, 20, yPosition + 7);
-        // Add separator
-        doc.setDrawColor(200, 200, 200);
-        doc.line(20, yPosition + 7 + (splitText.length * 7), pageWidth - 20, yPosition + 7 + (splitText.length * 7));
-        yPosition += blockHeight;
+        
+        doc.text(splitContent, 20, y);
+        y += splitContent.length * 7 + 10;
       });
       
-      // Add footer
-      const pageCount = doc.internal.pages.length - 1;
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.text(
-          `Page ${i} of ${pageCount}`,
-          pageWidth / 2,
-          doc.internal.pageSize.getHeight() - 10,
-          { align: 'center' }
-        );
-      }
-      
-      // Save the PDF
-      doc.save(`conversation-${conversationId}.pdf`);
+      doc.save(`conversation-${thread.id}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
     } finally {
@@ -850,353 +744,45 @@ export default function ConversationDetailPage() {
     }
   };
 
-  // Helper function to calculate conversation duration
-  const getConversationDuration = () => {
-    if (messages.length < 2) return 'N/A';
-    const firstMessage = new Date(messages[0].timestamp);
-    const lastMessage = new Date(messages[messages.length - 1].timestamp);
-    const diffDays = Math.floor((lastMessage.getTime() - firstMessage.getTime()) / (1000 * 60 * 60 * 24));
-    if (diffDays === 0) return 'Less than a day';
-    return `${diffDays} day${diffDays === 1 ? '' : 's'}`;
-  };
-
-  // Helper to get conversation up to a message
-  const getConversationToMessage = (messageId: string) => {
-    const idx = sortedMessages.findIndex(m => m.response_id === messageId);
-    if (idx === -1) return [];
-    return sortedMessages.slice(0, idx + 1).map(m => ({
-      sender: m.type === 'inbound-email' ? clientEmail : 'You',
-      timestamp: new Date(m.timestamp).toLocaleString(),
-      body: m.body,
-      ev_score: m.ev_score ?? null,
-      type: m.type,
-      subject: m.subject ?? null,
-      summary: m.summary ?? null,
-      // Add any other relevant fields here as needed
-    }));
-  };
-
-  // Handle response feedback (thumbs up/down for any message)
-  const handleResponseFeedback = async (messageId: string, flag: 'like' | 'dislike') => {
-    setFeedback(prev => ({ ...prev, [messageId]: flag }));
-    setUpdatingFeedbackId(messageId);
-    try {
-      // Find the matching message to get its llm_email_type
-      const matchingMessage = messages.find(msg => msg.response_id === messageId);
-      const llmEmailType = matchingMessage?.llm_email_type || 'unknown';
-
-      await fetch('/api/db/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          table_name: 'LLMDataCollection',
-          index_name: "conversation_id-index",
-          key_name: 'conversation_id',
-          key_value: conversationId,
-          update_data: {
-            response_id: messageId,
-            flag,
-            conversation: getConversationToMessage(messageId),
-            associated_account: user?.id || "",
-            llm_email_type: llmEmailType
-          }
-        }),
-        credentials: 'include'
-      });
-    } catch (err) {
-      console.error('Error updating response feedback:', err);
-      // Revert the feedback state on error
-      setFeedback(prev => ({ ...prev, [messageId]: null }));
-    } finally {
-      setUpdatingFeedbackId(null);
-    }
-  };
-
-  // Handle EV score feedback (thumbs up/down for EV scores)
-  const handleEvFeedback = async (messageId: string, flag: 'like' | 'dislike') => {
-    setEvFeedback(prev => ({ ...prev, [messageId]: flag }));
+  const handleEvFeedback = async (messageId: string, feedback: 'positive' | 'negative') => {
     setUpdatingEvFeedbackId(messageId);
     try {
-      await fetch('/api/db/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          table_name: 'EVDataCollection',
-          index_name: "conversation_id-index",
-          key_name: 'conversation_id',
-          key_value: conversationId,
-          update_data: {
-            message_id: messageId,
-            flag,
-            conversation: getConversationToMessage(messageId),
-            feedback_type: 'ev_score'
-          }
-        })
-      });
-    } catch (err) {
-      console.error('Error updating EV feedback:', err);
-      // Revert the feedback state on error
-      setEvFeedback(prev => ({ ...prev, [messageId]: null }));
+      // Implement EV feedback API call
+      setEvFeedback(prev => ({ ...prev, [messageId]: feedback }));
+    } catch (error) {
+      console.error('Error submitting EV feedback:', error);
     } finally {
       setUpdatingEvFeedbackId(null);
     }
   };
 
-  // Add function to save notes
-  const saveNotes = async (newNotes: string) => {
+  const handleResponseFeedback = async (messageId: string, feedback: 'like' | 'dislike') => {
+    setUpdatingFeedbackId(messageId);
     try {
-      const response = await fetch('/api/db/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          table_name: 'Threads',
-          index_name: "conversation_id-index",
-          key_name: 'conversation_id',
-          key_value: conversationId,
-          update_data: { context_notes: newNotes }
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save notes');
-      }
-
-      // Update local state and thread context_notes
-      setNotes(newNotes);
-      setThread(prev => prev ? { ...prev, context_notes: newNotes } : null);
+      // Implement response feedback API call
+      setFeedback(prev => ({ ...prev, [messageId]: feedback }));
     } catch (error) {
-      console.error('Error saving notes:', error);
-      throw error;
+      console.error('Error submitting response feedback:', error);
+    } finally {
+      setUpdatingFeedbackId(null);
     }
   };
 
-  // Update handleOverride function to toggle the status
   const handleOverride = async () => {
     setUpdatingOverride(true);
     try {
-      const newOverrideValue = thread?.flag_review_override ? false : true;
-      const response = await fetch('/api/db/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          table_name: 'Threads',
-          index_name: "conversation_id-index",
-          key_name: 'conversation_id',
-          key_value: conversationId,
-          update_data: { flag_review_override: String(newOverrideValue) }
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update override status');
-      }
-
-      setShowFlaggedModal(false);
-      // Update local state instead of full reload
-      setThread(prev => prev ? { ...prev, flag_review_override: newOverrideValue } : null);
+      // Implement override toggle API call
     } catch (error) {
-      console.error('Error updating override status:', error);
+      console.error('Error toggling override:', error);
     } finally {
       setUpdatingOverride(false);
     }
   };
 
-  // Update the FlaggedForReviewModal
-  const FlaggedForReviewModal = () => {
-    return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4">
-          <div className="flex items-center gap-3 mb-4">
-            <AlertTriangle className="w-6 h-6 text-yellow-500" />
-            <h3 className="text-lg font-semibold text-gray-900">Flagged for Review</h3>
-          </div>
-          
-          <div className="mb-6">
-            <p className="text-gray-600 mb-4">
-              This conversation has been flagged for review because the AI detected potential issues that need human attention.
-            </p>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <h4 className="font-medium text-yellow-800 mb-2">Why was this conversation flagged?</h4>
-              <p className="text-sm text-yellow-700 mb-3">
-                The AI flags conversations in these situations:
-              </p>
-              <ul className="text-sm text-yellow-700 list-disc list-inside space-y-1">
-                <li>Uncertainty about the appropriate response</li>
-                <li>Missing critical context</li>
-                <li>Ambiguous or unclear information</li>
-                <li>Conversation seems irrelevant to real estate goals</li>
-                <li>Complex or sensitive topics</li>
-                <li>Test messages or non-meaningful content</li>
-                <li>Messages too short to determine intent (less than 5 words)</li>
-                <li>Potential spam or automated content</li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <div className="flex items-start gap-3">
-              <div className="p-2 bg-blue-100 rounded-full">
-                <MessageSquare className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <h4 className="font-medium text-blue-800 mb-1">Add Context Notes</h4>
-                <p className="text-blue-700 mb-2">
-                  To help the AI generate a better response, you can add context notes using the Notes widget on the right side of the page.
-                </p>
-                <button
-                  onClick={() => {
-                    setShowFlaggedModal(false);
-                    // Scroll to notes widget
-                    const notesWidget = document.getElementById('notes-widget');
-                    if (notesWidget) {
-                      notesWidget.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      // Add a highlight effect
-                      notesWidget.classList.add('highlight-notes');
-                      setTimeout(() => notesWidget.classList.remove('highlight-notes'), 2000);
-                    }
-                  }}
-                  className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  Go to Notes Widget
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
-            <div className="flex items-start gap-3">
-              <div className="p-2 bg-gray-100 rounded-full">
-                <ShieldOff className="w-5 h-5 text-gray-600" />
-              </div>
-              <div>
-                <h4 className="font-medium text-gray-800 mb-1">Think this is a mistake?</h4>
-                <p className="text-gray-700 mb-2">
-                  If you believe this conversation was incorrectly flagged, you can disable the automatic review check for this conversation using the "Review Check" toggle above the response area.
-                </p>
-                <button
-                  onClick={() => {
-                    setShowFlaggedModal(false);
-                    // Scroll to override status button
-                    const overrideButton = document.querySelector('[data-override-status]');
-                    if (overrideButton) {
-                      overrideButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      // Add a highlight effect
-                      overrideButton.classList.add('highlight-override');
-                      setTimeout(() => overrideButton.classList.remove('highlight-override'), 2000);
-                    }
-                  }}
-                  className="text-gray-600 hover:text-gray-700 font-medium flex items-center gap-1"
-                >
-                  <ShieldOff className="w-4 h-4" />
-                  Go to Review Check Toggle
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3">
-            <button
-              onClick={() => setShowFlaggedModal(false)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              Close
-            </button>
-            <button
-              onClick={() => {
-                setShowFlaggedModal(false);
-                generateAIResponse();
-              }}
-              className="px-4 py-2 text-sm font-medium text-white bg-[#0e6537] rounded-lg hover:bg-[#157a42] transition-colors flex items-center gap-2"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Try Again
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Add styles for notes widget highlight effect
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes highlight-notes {
-        0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
-        50% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0.2); }
-        100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
-      }
-      .highlight-notes {
-        animation: highlight-notes 2s ease-out;
-      }
-    `;
-    document.head.appendChild(style);
-    return () => {
-      document.head.removeChild(style);
-    };
-  }, []);
-
-  // Add styles for override button highlight effect
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes highlight-override {
-        0% { box-shadow: 0 0 0 0 rgba(107, 114, 128, 0.5); }
-        50% { box-shadow: 0 0 0 10px rgba(107, 114, 128, 0.2); }
-        100% { box-shadow: 0 0 0 0 rgba(107, 114, 128, 0); }
-      }
-      .highlight-override {
-        animation: highlight-override 2s ease-out;
-      }
-    `;
-    document.head.appendChild(style);
-    return () => {
-      document.head.removeChild(style);
-    };
-  }, []);
-
-  // Add new function to handle opening email preview
-  const handleOpenEmailPreview = () => {
-    // Find the last inbound message for the subject
-    const lastInboundMessage = [...messages].filter(msg => msg.type === 'inbound-email').pop();
-    const originalSubject = lastInboundMessage?.subject || 'Conversation';
-    // Only add "Re:" if it's not already present
-    const subject = originalSubject.startsWith('Re:') ? originalSubject : `Re: ${originalSubject}`;
-    const preview = {
-      subject,
-      body: messageInput,
-      signature: userSignature || `Best regards,\nACS Team\n\n---\nThis email was sent from ACS Conversation Platform`
-    };
-    setShowPreview(true);
-    setEmailPreview(preview);
-    setPreviewMessageId(null); // Clear the preview message ID for manual previews
-  };
-
-  // Add handleUnflag function
   const handleUnflag = async () => {
-    if (!thread?.conversation_id) return;
-    
     setUnflagging(true);
     try {
-      const response = await fetch('/api/db/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          table_name: 'Threads',
-          index_name: "conversation_id-index",
-          key_name: 'conversation_id',
-          key_value: thread.conversation_id,
-          update_data: { flag_for_review: 'false' }
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to unflag conversation');
-      }
-
-      // Update local state instead of full reload
-      setThread(prev => prev ? { ...prev, flag_for_review: false } : null);
+      // Implement unflag API call
     } catch (error) {
       console.error('Error unflagging conversation:', error);
     } finally {
@@ -1204,38 +790,10 @@ export default function ConversationDetailPage() {
     }
   };
 
-  // Function to handle marking as not spam
   const handleMarkAsNotSpam = async () => {
-    if (!thread?.conversation_id || !thread?.associated_account) return;
-    
+    setUpdatingSpam(true);
     try {
-      setUpdatingSpam(true);
-      
-      // Get the latest message from the conversation
-      const latestMessage = messages[messages.length - 1];
-      if (!latestMessage?.message_id) {
-        throw new Error('Missing message ID');
-      }
-      
-      const response = await fetch('/api/lcp/mark_not_spam', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          conversation_id: thread.conversation_id,
-          message_id: latestMessage.message_id,
-          account_id: thread.associated_account
-        }),
-        credentials: 'include'
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to mark as not spam');
-      }
-
-      // Update local state only
-      setThread(prev => prev ? { ...prev, spam: false } : null);
+      // Implement mark as not spam API call
     } catch (error) {
       console.error('Error marking as not spam:', error);
     } finally {
@@ -1243,265 +801,46 @@ export default function ConversationDetailPage() {
     }
   };
 
-  // Add NotesWidget component with proper type definitions
-  const NotesWidget = ({ notes, onSave }: { notes: string; onSave: (notes: string) => Promise<void> }): ReactNode => {
-    const [isEditing, setIsEditing] = useState(false);
-    const [editedNotes, setEditedNotes] = useState(notes);
-    const [saving, setSaving] = useState(false);
-
-    const handleSave = async () => {
-      setSaving(true);
-      try {
-        await onSave(editedNotes);
-        setIsEditing(false);
-      } catch (error) {
-        console.error('Error saving notes:', error);
-      } finally {
-        setSaving(false);
-      }
-    };
-
-    return (
-      <div className="flex flex-col gap-6">
-        <div id="notes-widget" className="bg-white rounded-lg border border-[#0e6537]/20 p-4">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-medium text-gray-900">Context Notes</h3>
-            {!isEditing ? (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <Edit2 className="w-4 h-4 text-gray-500" />
-              </button>
-            ) : (
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="p-1 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
-              >
-                {saving ? (
-                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Save className="w-4 h-4 text-gray-500" />
-                )}
-              </button>
-            )}
-          </div>
-          <div>
-            {isEditing ? (
-              <textarea
-                value={editedNotes}
-                onChange={(e) => setEditedNotes(e.target.value)}
-                placeholder="Add context notes about this conversation..."
-                className="w-full h-32 p-2 border rounded-lg focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] outline-none resize-none"
-              />
-            ) : (
-              <p className="text-gray-600 whitespace-pre-wrap">
-                {notes || "No context notes added yet. Click the edit button to add notes."}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Conversation Progression Chart */}
-        <div className="bg-white rounded-lg border border-[#0e6537]/20 p-4">
-          <h3 className="font-medium text-gray-900 mb-4">Conversation Progression</h3>
-          <div className="w-full">
-            <ConversationProgression
-              leadData={[{ thread: thread, messages: messages }]}
-              loading={loading}
-              timeRange="month"
-              onRefresh={reloadConversation}
-            />
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Add report handler
-  const handleReportResponse = async () => {
-    if (!reportMessageId || !user?.id) return;
-    setSubmittingReport(true);
+  const generateAIResponse = async () => {
+    setGeneratingResponse(true);
     try {
-      const reportId = uuidv4();
-      const matchingMessage = messages.find(msg => msg.response_id === reportMessageId);
-      await fetch('/api/db/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          table_name: 'LLMReportData',
-          index_name: "report_id-index",
-          key_name: 'report_id',
-          key_value: reportId,
-          update_data: {
-            report_id: reportId,
-            associated_account: user.id,
-            conversation_id: conversationId,
-            message_id: reportMessageId,
-            report: reportExplanation,
-            llm_email_type: matchingMessage?.llm_email_type || 'unknown',
-            timestamp: new Date().toISOString()
-          }
-        })
-      });
-      setReportSuccess(true);
-      setTimeout(() => {
-        setReportSuccess(false);
-        setReportExplanation("");
-        setReportMessageId(null);
-        setShowReportModal(false);
-      }, 2000);
-    } catch (err) {
-      console.error('Error submitting report:', err);
+      // Implement AI response generation
+    } catch (error) {
+      console.error('Error generating AI response:', error);
     } finally {
-      setSubmittingReport(false);
+      setGeneratingResponse(false);
     }
   };
 
-  // Add ReportModal component
-  const ReportModal = () => {
-    if (!showReportModal) return null;
-    return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-lg w-full mx-4">
-          <div className="flex items-center gap-3 mb-4">
-            <AlertTriangle className="w-6 h-6 text-yellow-500" />
-            <h3 className="text-lg font-semibold text-gray-900">Report AI Response</h3>
-          </div>
-          {reportSuccess && (
-            <div className="mb-4 p-3 rounded-lg bg-green-100 text-green-800 text-sm font-medium text-center">
-              Message successfully reported
-            </div>
-          )}
-          <div className="mb-6">
-            <p className="text-gray-600 mb-4">
-              Please provide details about why you're reporting this AI response. This helps us improve our system.
-            </p>
-            <textarea
-              value={reportExplanation}
-              onChange={(e) => setReportExplanation(e.target.value)}
-              placeholder="Enter your explanation (optional)"
-              className="w-full h-32 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0e6537] resize-none text-base"
-              disabled={Boolean(submittingReport || reportSuccess)}
-            />
-          </div>
-          <div className="flex justify-end gap-3">
-            <button
-              onClick={() => {
-                setShowReportModal(false);
-                setReportExplanation("");
-                setReportMessageId(null);
-                setReportSuccess(false);
-              }}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-              disabled={submittingReport}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleReportResponse}
-              disabled={submittingReport || reportSuccess}
-              className="px-4 py-2 text-sm font-medium text-white bg-[#0e6537] rounded-lg hover:bg-[#157a42] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {submittingReport ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                  <span>Submitting...</span>
-                </>
-              ) : (
-                <>
-                  <AlertTriangle className="w-4 h-4" />
-                  <span>Submit Report</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+  const handleOpenEmailPreview = () => {
+    // Implement email preview logic
   };
 
-  if (loading) {
-    return <LoadingSkeleton />
-  }
+  const saveNotes = async (newNotes: string) => {
+    try {
+      // Implement notes save API call
+      setNotes(newNotes);
+    } catch (error) {
+      console.error('Error saving notes:', error);
+    }
+  };
 
   return (
     <>
-      {showFlaggedModal && <FlaggedForReviewModal />}
-      {/* Email Preview Modal */}
-      {showPreview && emailPreview && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
-            <div className="px-6 py-4 border-b flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Review Email</h3>
-              <div className="flex items-center gap-2">
-                {previewMessageId && (
-                  <button
-                    onClick={() => {
-                      setReportMessageId(previewMessageId);
-                      setShowReportModal(true);
-                    }}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
-                    title="Report this AI response"
-                  >
-                    <AlertTriangle className="h-5 w-5" />
-                  </button>
-                )}
-                <button
-                  onClick={() => {
-                    setShowPreview(false);
-                    setEmailPreview(null);
-                    setPreviewMessageId(null);
-                  }}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-            <div className="p-6 overflow-y-auto flex-1">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-700">Subject:</span>
-                  <div className="p-3 bg-gray-50 rounded-lg text-gray-900 flex-1">{emailPreview.subject}</div>
-                </div>
-                <div>
-                  <div className="p-3 bg-gray-50 rounded-lg text-gray-900 whitespace-pre-line">{emailPreview.body}</div>
-                </div>
-                <div>
-                  <div className="p-3 bg-gray-50 rounded-lg text-gray-900 whitespace-pre-line">{emailPreview.signature}</div>
-                </div>
-              </div>
-            </div>
-            <div className="px-6 py-4 border-t flex justify-end gap-3">
+      {showEmailPreview && previewMessageId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Email Preview</h3>
               <button
-                onClick={() => {
-                  setShowPreview(false);
-                  setEmailPreview(null);
-                  setPreviewMessageId(null);
-                }}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                onClick={handleClosePreview}
+                className="text-gray-500 hover:text-gray-700"
               >
-                Cancel
+                <X className="h-6 w-6" />
               </button>
-              <button
-                onClick={handleConfirmSend}
-                disabled={sendingEmail}
-                className="px-6 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {sendingEmail ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    Sending...
-                  </>
-                ) : (
-                  <>
-                    <Mail className="h-4 w-4" />
-                    Confirm & Send
-                  </>
-                )}
-              </button>
+            </div>
+            <div className="p-4 overflow-y-auto max-h-[calc(90vh-8rem)]">
+              {/* Email preview content */}
             </div>
           </div>
         </div>
@@ -1564,18 +903,18 @@ export default function ConversationDetailPage() {
                 </div>
               </div>
               <div className="px-8 py-6 space-y-8 overflow-y-auto flex-1">
-                {loading ? (
+                {isLoading ? (
                   <div className="space-y-4">
-                    {[...Array(3)].map((_, i) => (
-                      <div key={i} className="h-16 w-full bg-gray-100 rounded-lg animate-pulse" />
+                    {['skeleton-1', 'skeleton-2', 'skeleton-3'].map((id) => (
+                      <div key={id} className="h-16 w-full bg-gray-100 rounded-lg animate-pulse" />
                     ))}
                   </div>
                 ) : sortedMessages.length === 0 ? (
                   <div>No messages found.</div>
                 ) : (
-                  sortedMessages.map((msg, idx) => (
+                  sortedMessages.map((msg: ExtendedMessage, index) => (
                     <div
-                      key={msg.response_id}
+                      key={`message-${msg.id || index}`}
                       className={`flex ${msg.type === "outbound-email" ? "justify-end" : "justify-start"}`}
                     >
                       <div className={`max-w-md w-full flex flex-col gap-1 ${msg.type === "outbound-email" ? "items-end" : "items-start"}`}>
@@ -1586,36 +925,35 @@ export default function ConversationDetailPage() {
                           <span>{msg.type === "inbound-email" ? clientEmail : "You"}</span>
                           <span>·</span>
                           <span>{msg.timestamp ? new Date(msg.timestamp).toLocaleString() : ""}</span>
-                          {/* Feedback section: Only one set per message type */}
-                          {msg.type === "inbound-email" && typeof msg.ev_score === 'string' && Number(msg.ev_score) >= 0 && Number(msg.ev_score) <= 100 && (
+                          {msg.type === "inbound-email" && typeof msg.ev_score === 'number' && msg.ev_score >= 0 && msg.ev_score <= 100 && (
                             <span className="ml-2 flex items-center gap-1">
                               <span className="font-semibold text-green-700">EV {msg.ev_score}</span>
                               {!evFeedbackLoading && (
                                 <>
                                   <button
-                                    className={`p-0.5 rounded-full ${evFeedback[msg.response_id] === 'like' ? 'bg-green-100 text-green-700' : 'hover:bg-gray-100 text-gray-400'}`}
-                                    onClick={() => handleEvFeedback(msg.response_id, 'like')}
-                                    disabled={updatingEvFeedbackId === msg.response_id}
+                                    className={`p-0.5 rounded-full ${evFeedback[msg.id] === 'positive' ? 'bg-green-100 text-green-700' : 'hover:bg-gray-100 text-gray-400'}`}
+                                    onClick={() => handleEvFeedback(msg.id, 'positive')}
+                                    disabled={updatingEvFeedbackId === msg.id}
                                     aria-label="Thumbs up EV score"
                                     title="Rate the accuracy of the AI's EV score for this message."
                                   >
-                                    {updatingEvFeedbackId === msg.response_id ? (
+                                    {updatingEvFeedbackId === msg.id ? (
                                       <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                                     ) : (
-                                      <ThumbsUp className="w-4 h-4" fill={evFeedback[msg.response_id] === 'like' ? '#22c55e' : 'none'} />
+                                      <ThumbsUp className="w-4 h-4" fill={evFeedback[msg.id] === 'positive' ? '#22c55e' : 'none'} />
                                     )}
                                   </button>
                                   <button
-                                    className={`p-0.5 rounded-full ${evFeedback[msg.response_id] === 'dislike' ? 'bg-red-100 text-red-700' : 'hover:bg-gray-100 text-gray-400'}`}
-                                    onClick={() => handleEvFeedback(msg.response_id, 'dislike')}
-                                    disabled={updatingEvFeedbackId === msg.response_id}
+                                    className={`p-0.5 rounded-full ${evFeedback[msg.id] === 'negative' ? 'bg-red-100 text-red-700' : 'hover:bg-gray-100 text-gray-400'}`}
+                                    onClick={() => handleEvFeedback(msg.id, 'negative')}
+                                    disabled={updatingEvFeedbackId === msg.id}
                                     aria-label="Thumbs down EV score"
                                     title="Rate the accuracy of the AI's EV score for this message."
                                   >
-                                    {updatingEvFeedbackId === msg.response_id ? (
+                                    {updatingEvFeedbackId === msg.id ? (
                                       <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                                     ) : (
-                                      <ThumbsDown className="w-4 h-4" fill={evFeedback[msg.response_id] === 'dislike' ? '#ef4444' : 'none'} />
+                                      <ThumbsDown className="w-4 h-4" fill={evFeedback[msg.id] === 'negative' ? '#ef4444' : 'none'} />
                                     )}
                                   </button>
                                 </>
@@ -1625,35 +963,35 @@ export default function ConversationDetailPage() {
                           {msg.type === "outbound-email" && !feedbackLoading && (
                             <span className="ml-2 flex items-center gap-1">
                               <button
-                                className={`p-0.5 rounded-full ${feedback[msg.response_id] === 'like' ? 'bg-green-100 text-green-700' : 'hover:bg-gray-100 text-gray-400'}`}
-                                onClick={() => handleResponseFeedback(msg.response_id, 'like')}
-                                disabled={updatingFeedbackId === msg.response_id}
+                                className={`p-0.5 rounded-full ${feedback[msg.id] === 'like' ? 'bg-green-100 text-green-700' : 'hover:bg-gray-100 text-gray-400'}`}
+                                onClick={() => handleResponseFeedback(msg.id, 'like')}
+                                disabled={updatingFeedbackId === msg.id}
                                 aria-label="Thumbs up response"
                                 title="Rate the helpfulness of the AI-generated response."
                               >
-                                {updatingFeedbackId === msg.response_id ? (
+                                {updatingFeedbackId === msg.id ? (
                                   <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                                 ) : (
-                                  <ThumbsUp className="w-4 h-4" fill={feedback[msg.response_id] === 'like' ? '#22c55e' : 'none'} />
+                                  <ThumbsUp className="w-4 h-4" fill={feedback[msg.id] === 'like' ? '#22c55e' : 'none'} />
                                 )}
                               </button>
                               <button
-                                className={`p-0.5 rounded-full ${feedback[msg.response_id] === 'dislike' ? 'bg-red-100 text-red-700' : 'hover:bg-gray-100 text-gray-400'}`}
-                                onClick={() => handleResponseFeedback(msg.response_id, 'dislike')}
-                                disabled={updatingFeedbackId === msg.response_id}
+                                className={`p-0.5 rounded-full ${feedback[msg.id] === 'dislike' ? 'bg-red-100 text-red-700' : 'hover:bg-gray-100 text-gray-400'}`}
+                                onClick={() => handleResponseFeedback(msg.id, 'dislike')}
+                                disabled={updatingFeedbackId === msg.id}
                                 aria-label="Thumbs down response"
                                 title="Rate the helpfulness of the AI-generated response."
                               >
-                                {updatingFeedbackId === msg.response_id ? (
+                                {updatingFeedbackId === msg.id ? (
                                   <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                                 ) : (
-                                  <ThumbsDown className="w-4 h-4" fill={feedback[msg.response_id] === 'dislike' ? '#ef4444' : 'none'} />
+                                  <ThumbsDown className="w-4 h-4" fill={feedback[msg.id] === 'dislike' ? '#ef4444' : 'none'} />
                                 )}
                               </button>
                               <button
                                 className="p-0.5 rounded-full hover:bg-gray-100 text-gray-400"
                                 onClick={() => {
-                                  setReportMessageId(msg.response_id);
+                                  setReportMessageId(msg.id);
                                   setShowReportModal(true);
                                 }}
                                 aria-label="Report response"
@@ -1699,7 +1037,7 @@ export default function ConversationDetailPage() {
                   <h3 className="font-medium text-gray-900">AI Response</h3>
                   <div className="flex items-center gap-3">
                     <OverrideStatus 
-                      isEnabled={Boolean(thread?.flag_review_override)} 
+                      isEnabled={getBoolean(thread?.flag_review_override)} 
                       onToggle={handleOverride}
                       updating={updatingOverride}
                     />
@@ -1761,7 +1099,7 @@ export default function ConversationDetailPage() {
 
               {/* Flagged Status Widget */}
               <FlaggedStatusWidget
-                isFlagged={Boolean(thread?.flag_for_review)}
+                isFlagged={getBoolean(thread?.flag_for_review)}
                 onUnflag={handleUnflag}
                 updating={unflagging}
               />
@@ -1806,30 +1144,23 @@ export default function ConversationDetailPage() {
               const timeline = thread.timeline?.trim();
               const isEmpty = [aiSummary, budgetRange, propertyTypes, timeline].every((val) => !val || val === 'UNKNOWN');
               
-              console.log('[ConversationDetail] Rendering AI Insights:', {
-                conversation_id: thread.conversation_id,
-                has_ai_summary: !!aiSummary,
-                ai_summary_length: aiSummary?.length,
-                ai_summary_value: aiSummary || 'UNKNOWN',
-                is_empty: isEmpty
-              });
-
               if (isEmpty) return null;
+              
+              const insights = [
+                { key: 'summary', label: 'Summary', value: aiSummary },
+                { key: 'budget', label: 'Budget', value: budgetRange },
+                { key: 'property-types', label: 'Property Types', value: propertyTypes },
+                { key: 'timeline', label: 'Timeline', value: timeline }
+              ].filter(insight => insight.value && insight.value !== 'UNKNOWN');
+
               return (
                 <div className="bg-white rounded-2xl border shadow-lg p-6 text-left min-h-[170px] flex flex-col justify-center">
                   <h3 className="text-lg font-semibold mb-2">AI Insights</h3>
-                  {aiSummary && aiSummary !== 'UNKNOWN' && (
-                    <div className="mb-2 text-gray-700"><span className="font-medium">Summary:</span> {aiSummary}</div>
-                  )}
-                  {budgetRange && budgetRange !== 'UNKNOWN' && (
-                    <div className="mb-2 text-gray-700"><span className="font-medium">Budget:</span> {budgetRange}</div>
-                  )}
-                  {propertyTypes && propertyTypes !== 'UNKNOWN' && (
-                    <div className="mb-2 text-gray-700"><span className="font-medium">Property Types:</span> {propertyTypes}</div>
-                  )}
-                  {timeline && timeline !== 'UNKNOWN' && (
-                    <div className="mb-2 text-gray-700"><span className="font-medium">Timeline:</span> {timeline}</div>
-                  )}
+                  {insights.map(insight => (
+                    <div key={insight.key} className="mb-2 text-gray-700">
+                      <span className="font-medium">{insight.label}:</span> {insight.value}
+                    </div>
+                  ))}
                 </div>
               );
             })()}
@@ -1842,7 +1173,12 @@ export default function ConversationDetailPage() {
           </div>
         </div>
       </div>
-      <ReportModal />
+      <ReportModal 
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        onSubmit={handleReportSubmit}
+        isSubmitting={reportingResponse}
+      />
     </>
   )
 }

@@ -178,10 +178,11 @@ function SidebarGroup({ children }: { children: React.ReactNode }) {
  * 
  * @param {Object} props - Component props
  * @param {React.ReactNode} props.children - Child components
+ * @param {string} props.className - Additional CSS classes
  * @returns {JSX.Element} Menu container
  */
-function SidebarMenu({ children }: { children: React.ReactNode }) {
-  return <nav className="space-y-2">{children}</nav>
+function SidebarMenu({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <nav className={`space-y-2 ${className || ''}`}>{children}</nav>
 }
 
 /**
@@ -272,11 +273,11 @@ const mainNavigation = [
     icon: Trash2,
     url: "/dashboard/junk",
   },
-  {
-    title: "Usage & Billing",
-    icon: CreditCard,
-    url: "/dashboard/usage",
-  },
+  // {
+  //   title: "Usage & Billing",
+  //   icon: CreditCard,
+  //   url: "/dashboard/usage",
+  // },
   {
     title: "Settings",
     icon: Settings,
@@ -405,7 +406,7 @@ function AppSidebar() {
   )
 }
 
-export { SidebarProvider, AppSidebar, SidebarTrigger, SidebarInset }
+export { SidebarProvider, AppSidebar, SidebarTrigger, SidebarInset, Logo }
 
 /**
  * Change Log:
