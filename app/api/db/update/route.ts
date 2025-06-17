@@ -19,8 +19,8 @@ export async function POST(request: Request) {
     const session = await getServerSession(authOptions) as Session & { user: { id: string } };
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: 'No authenticated user found' },
-        { status: 404 }
+        { error: 'Unauthorized - No authenticated user found' },
+        { status: 401 }
       );
     }
 
@@ -54,38 +54,73 @@ export async function POST(request: Request) {
       credentials: 'include',
     });
 
+    // Get the response text
+    const responseText = await response.text();
+    
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Update failed:', {
+      console.error('[db/update] Response not ok:', {
         status: response.status,
         statusText: response.statusText,
-        error: errorText
+        error: responseText,
+        url: apiUrl,
+        requestBody: {
+          table_name,
+          index_name,
+          key_name,
+          key_value: typeof key_value === 'string' ? key_value.substring(0, 10) + '...' : key_value,
+          update_data
+        }
       });
-      throw new Error(`API request failed with status ${response.status}: ${errorText}`);
+      
+      // If the backend returns 401, we should also return 401
+      if (response.status === 401) {
+        return NextResponse.json(
+          { 
+            error: 'Unauthorized - Session expired or invalid',
+            details: responseText,
+            status: response.status
+          },
+          { status: 401 }
+        );
+      }
+      
+      return NextResponse.json(
+        { 
+          error: 'Database update failed',
+          details: responseText,
+          status: response.status
+        },
+        { status: response.status }
+      );
     }
-
-    const responseText = await response.text();
 
     // Parse the response text
-    let proxyResponse;
+    let data;
     try {
-      proxyResponse = JSON.parse(responseText);
+      data = JSON.parse(responseText);
     } catch (parseError) {
-      console.error('Error parsing response:', parseError);
-      throw new Error('Invalid response format from API');
+      console.error('[db/update] Failed to parse response:', parseError);
+      return NextResponse.json(
+        { error: 'Invalid JSON response from database' },
+        { status: 500 }
+      );
     }
-    
 
-    // Return the updated_item from the response
     return NextResponse.json({
       success: true,
-      updated_item: proxyResponse.updated_item
+      data: data
     });
 
   } catch (error) {
-    console.error('Error in db/update route:', error);
+    console.error('[db/update] Unexpected error:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return NextResponse.json(
-      { error: 'Internal server error from db/update route' },
+      { 
+        error: 'Internal server error from db/update route',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

@@ -205,7 +205,33 @@ const SignupPage: React.FC = () => {
       // Clear form data and redirect
       clearAuthData();
       setAuthType('new');
-      router.push('/login?success=true');
+      
+      // After successful signup, the backend already creates a session
+      // We need to ensure NextAuth is synchronized with this session
+      console.log('[signup] Signup successful, creating NextAuth session');
+      
+      // Create a NextAuth session without triggering another login call
+      const result = await signIn('credentials', {
+        email: formData.email,
+        password: formData.password,
+        name: formData.name,
+        provider: 'form',
+        redirect: false,
+        callbackUrl: '/dashboard'
+      });
+
+      console.log('[signup] NextAuth session creation result:', result);
+
+      if (result?.error) {
+        console.error('[signup] NextAuth session creation error:', result.error);
+        // Even if NextAuth session creation fails, the backend session exists
+        // Redirect to dashboard anyway
+        router.push('/process-form?authType=new');
+        return;
+      }
+
+      // Redirect to dashboard
+      router.push('/process-form?authType=new');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
       setError(errorMessage);
@@ -225,7 +251,7 @@ const SignupPage: React.FC = () => {
     setError(null);
 
     try {
-      await signIn('google', { callbackUrl: '/dashboard' });
+      await signIn('google', { callbackUrl: '/process-google' });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
       setError(errorMessage);

@@ -23,9 +23,10 @@ import type {
 } from '@/app/types/lcp';
 import { goto404 } from '@/app/utils/error';
 import { ensureMessageFields, getLatestEvaluableMessage, calculateMetrics, processThreadData } from '@/app/dashboard/lib/dashboard-utils';
+import { authFetch, authFetchJson } from '@/lib/auth-utils';
 
 export const useDashboard = () => {
-    const { data: session, status } = useSession() as { data: Session | null, status: string };
+    const { data: session, status } = useSession() as { data: Session & { user: { id: string } } | null, status: string };
     const router = useRouter();
     const [conversations, setConversations] = useState<Thread[]>([]);
     const [loadingConversations, setLoadingConversations] = useState(false);
@@ -34,98 +35,74 @@ export const useDashboard = () => {
     const [deletingThread, setDeletingThread] = useState<string | null>(null);
     const [updatingSpam, setUpdatingSpam] = useState<string | null>(null);
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-    const [threadToDelete, setThreadToDelete] = useState<{ id: string; name: string } | null>(null);
-    const [showFunnel, setShowFunnel] = useState(true);
+    const [threadToDelete, setThreadToDelete] = useState<string | null>(null);
+    const [showFunnel, setShowFunnel] = useState(false);
     const [showProgression, setShowProgression] = useState(false);
-    const [timeRange, setTimeRange] = useState<TimeRange>('week');
+    const [timeRange, setTimeRange] = useState<TimeRange>('year');
     const [showTimeRangeDropdown, setShowTimeRangeDropdown] = useState(false);
     const [leadPerformanceData, setLeadPerformanceData] = useState<LeadPerformanceData[]>([]);
     const [loadingLeadPerformance, setLoadingLeadPerformance] = useState(false);
     const [refreshingLeadPerformance, setRefreshingLeadPerformance] = useState(false);
-    const [filters, setFilters] = useState<DashboardFilters>({ unread: false, review: false, completion: false });
+    const [filters, setFilters] = useState<DashboardFilters>({
+        unread: false,
+        review: false,
+        completion: false,
+    });
 
-    // Handle authentication
+    // Load conversations on mount and when session changes
     useEffect(() => {
-        if (status === "unauthenticated") {
-            goto404("401", "No active session found", router);
+        if (session?.user?.id && status === 'authenticated') {
+            loadThreads();
         }
-    }, [status, router]);
+    }, [session?.user?.id, status, timeRange]);
 
-    // Memoize filtered conversations to prevent recalculation on every render
-    const filteredConversations = useMemo(() => {
-        return conversations.filter(conv => {
-            if (conv.spam) return false;
-            if (filters.unread && !conv.read) return true;
-            if (filters.review && conv.flag_for_review) return true;
-            if (filters.completion) {
-                const evMessage = getLatestEvaluableMessage(conv.messages);
-                return (evMessage?.ev_score ?? 0) > conv.lcp_flag_threshold && !conv.flag_for_review;
-            }
-            return !filters.unread && !filters.review && !filters.completion;
-        });
-    }, [conversations, filters, timeRange]);
-
-    // Memoize metrics to prevent recalculation on every render
-    const metrics = useMemo(() => {
-        return calculateMetrics(conversations, timeRange);
-    }, [conversations, timeRange]);
-
-    // Update timeRange effect - only update the processed data, don't reload from API
-    useEffect(() => {
-        if (!conversations.length) return;
-        
-        const { leadPerformance } = processThreadData(conversations, timeRange);
-        setLeadPerformanceData(leadPerformance);
-    }, [timeRange, conversations]);
-
-    // Manual refresh function - only used for manual refresh button
+    // Load threads - primarily used for manual refresh button
     const loadThreads = useCallback(async () => {
-        if (!session?.user?.id || loadingConversations) return;
+        if (!session?.user?.id || loadingConversations) {
+            return;
+        }
         setLoadingConversations(true);
         setLoadingLeadPerformance(true);
         try {
-            const response = await fetch('/api/lcp/get_all_threads', {
+            const data = await authFetchJson('/api/lcp/get_all_threads', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify({ userId: session.user.id }),
             });
-            if (!response.ok) throw new Error('Failed to fetch threads');
-            const data = await response.json();
+            
             if (!data.success || !data.data) {
                 throw new Error('Invalid response format from API');
             }
             const { conversations, leadPerformance } = processThreadData(data.data, timeRange);
             // log conversations
-            console.log('conversations', conversations);
             setConversations(conversations);
             setLeadPerformanceData(leadPerformance);
         } catch (error) {
-            console.error('Error fetching threads:', error);
+            console.error('[Dashboard] Error fetching threads:', error);
             setConversations([]);
             setLeadPerformanceData([]);
         } finally {
             setLoadingConversations(false);
             setLoadingLeadPerformance(false);
         }
-    }, [session?.user?.id]);
+    }, [session?.user?.id, timeRange]);
 
     const markAsRead = useCallback(async (conversationId: string) => {
         if (!session?.user?.id) return;
         setUpdatingRead(conversationId);
         try {
-            const response = await fetch('/api/db/update', {
+            const response = await authFetch('/api/db/update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify({
                     table_name: 'Threads',
                     index_name: 'conversation_id-index',
                     key_name: 'conversation_id',
                     key_value: conversationId,
-                    update_data: { read: true }
+                    update_data: { read: 'true' }
                 }),
             });
+            
             if (!response.ok) throw new Error('Failed to mark as read');
             
             // Update local state instead of reloading
@@ -141,14 +118,14 @@ export const useDashboard = () => {
         }
     }, [session?.user?.id]);
 
-    const toggleLeadConversion = useCallback(async (conversationId: string, currentStatus: boolean) => {
+    const toggleLeadConversion = useCallback(async (conversationId: string) => {
         if (!session?.user?.id) return;
+        const currentStatus = conversations.find(c => c.conversation_id === conversationId)?.lcp_enabled || false;
         setUpdatingLcp(conversationId);
         try {
-            const response = await fetch('/api/db/update', {
+            const response = await authFetch('/api/db/update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify({
                     table_name: 'Threads',
                     index_name: 'conversation_id-index',
@@ -157,6 +134,7 @@ export const useDashboard = () => {
                     update_data: { lcp_enabled: (!currentStatus).toString() }
                 }),
             });
+            
             if (!response.ok) throw new Error('Failed to update LCP status');
             
             // Update local state instead of reloading
@@ -176,12 +154,12 @@ export const useDashboard = () => {
         if (!session?.user?.id) return;
         setDeletingThread(conversationId);
         try {
-            const response = await fetch('/api/lcp/delete_thread', {
+            const response = await authFetch('/api/lcp/delete_thread', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify({ conversation_id: conversationId }),
             });
+            
             if (!response.ok) throw new Error('Failed to delete thread');
             
             // Update local state instead of reloading
@@ -196,18 +174,18 @@ export const useDashboard = () => {
     const handleMarkAsNotSpam = async (conversationId: string) => {
         setUpdatingSpam(conversationId);
         try {
-            const response = await fetch('/api/db/update', {
+            const response = await authFetch('/api/db/update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify({
                     table_name: 'Threads',
                     index_name: 'conversation_id-index',
                     key_name: 'conversation_id',
                     key_value: conversationId,
-                    update_data: { spam: false },
+                    update_data: { spam: 'false' }
                 }),
             });
+            
             if (!response.ok) throw new Error('Failed to mark as not spam');
             
             // Update local state instead of reloading
@@ -223,24 +201,28 @@ export const useDashboard = () => {
         }
     };
 
-    const confirmDelete = (thread: { id: string; name: string }) => {
-        setThreadToDelete(thread);
-        setDeleteModalOpen(true);
-    };
-    
+    const confirmDelete = useCallback(() => {
+        if (threadToDelete) {
+            deleteThread(threadToDelete);
+            setDeleteModalOpen(false);
+            setThreadToDelete(null);
+        }
+    }, [threadToDelete, deleteThread]);
+
     const refreshLeadPerformance = useCallback(async () => {
         if (!session?.user?.id) return;
         setRefreshingLeadPerformance(true);
         try {
-            const response = await fetch('/api/lcp/get_all_threads', {
+            const data = await authFetchJson('/api/lcp/get_all_threads', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify({ userId: session.user.id }),
             });
-            if (!response.ok) throw new Error('Failed to refresh lead performance');
-            const data = await response.json();
-            setLeadPerformanceData(data.leadPerformance);
+            if (!data.success || !data.data) {
+                throw new Error('Failed to refresh lead performance');
+            }
+            const { leadPerformance } = processThreadData(data.data, timeRange);
+            setLeadPerformanceData(leadPerformance);
         } catch (error) {
             console.error('Error refreshing lead performance:', error);
         } finally {
@@ -252,8 +234,28 @@ export const useDashboard = () => {
         setFilters(prev => ({ ...prev, [filter]: !prev[filter] }));
     };
 
+    // Memoize filtered conversations to prevent recalculation on every render
+    const filteredConversations = useMemo(() => {
+        return conversations.filter(conv => {
+            if (conv.spam) return false;
+            if (filters.unread && !conv.read) return true;
+            if (filters.review && conv.flag_for_review) return true;
+            if (filters.completion) {
+                const evMessage = getLatestEvaluableMessage(conv.messages);
+                return (evMessage?.ev_score ?? 0) > conv.lcp_flag_threshold && !conv.flag_for_review;
+            }
+            return !filters.unread && !filters.review && !filters.completion;
+        });
+    }, [conversations, filters]);
+
+    // Memoize metrics to prevent recalculation on every render
+    const metrics = useMemo(() => {
+        return calculateMetrics(conversations, timeRange);
+    }, [conversations, timeRange]);
+
     return {
         session,
+        status,
         conversations,
         loadingConversations,
         updatingLcp,

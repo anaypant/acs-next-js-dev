@@ -20,8 +20,8 @@ export async function POST(request: Request) {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: 'No authenticated user found' },
-        { status: 404 }
+        { error: 'Unauthorized - No authenticated user found' },
+        { status: 401 }
       );
     }
 
@@ -71,6 +71,19 @@ export async function POST(request: Request) {
           key_value: typeof key_value === 'string' ? key_value.substring(0, 10) + '...' : key_value
         }
       });
+      
+      // If the backend returns 401, we should also return 401
+      if (response.status === 401) {
+        return NextResponse.json(
+          { 
+            error: 'Unauthorized - Session expired or invalid',
+            details: responseText,
+            status: response.status
+          },
+          { status: 401 }
+        );
+      }
+      
       return NextResponse.json(
         { 
           error: 'Database query failed',

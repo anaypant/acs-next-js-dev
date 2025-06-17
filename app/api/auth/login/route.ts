@@ -25,22 +25,24 @@ export async function POST(request: Request) {
         });
 
         const data = await response.json();
+        console.log('[login] data from backend:', data);
 
         if (!response.ok) {
             return NextResponse.json({ error: 'Login failed.' }, { status: response.status });
         }
 
         // Get the session cookie from the API response
-        const sessionCookie = response.headers.get('set-cookie');
+        const setCookieHeader = response.headers.get('set-cookie');
 
         // Compose user fields for the frontend
         const user = {
             id: data.id || data._id,
             email: email,
-            name: name,
-            authType: data.authType || 'existing',
+            name: data.name || data.user?.name || name,
+            authType: data.authType || data.authType || data.authtype || 'existing',
             provider: provider || 'form',
         };
+        console.log('[login] user object to return:', user);
         
         const nextResponse = NextResponse.json({
             success: true,
@@ -48,8 +50,17 @@ export async function POST(request: Request) {
             user,
         }, { status: 200 });
 
-        if (sessionCookie) {
-            nextResponse.headers.set('set-cookie', sessionCookie);
+        // Handle the session_id cookie from the API response
+        if (setCookieHeader) {
+            // Forward all cookies if there are multiple
+            setCookieHeader.split(',').forEach(cookie => {
+                let cookieToSet = cookie.trim();
+                if (process.env.NODE_ENV !== 'production') {
+                    // Remove Secure attribute for local development
+                    cookieToSet = cookieToSet.replace(/; ?secure/gi, '');
+                }
+                nextResponse.headers.append('set-cookie', cookieToSet);
+            });
         }
 
         return nextResponse;

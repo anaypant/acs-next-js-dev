@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: 'No authenticated user found' },
+        { error: 'Unauthorized - No authenticated user found' },
         { status: 401 }
       );
     }
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
 
     if (!sessionId) {
       return NextResponse.json(
-        { error: 'Session ID is required' },
+        { error: 'Unauthorized - Session ID is required' },
         { status: 401 }
       );
     }
@@ -57,6 +57,21 @@ export async function POST(request: Request) {
     });
 
     if (!conversationsResponse.ok) {
+      const errorText = await conversationsResponse.text();
+      console.error('[delete_thread] Failed to delete conversations:', {
+        status: conversationsResponse.status,
+        statusText: conversationsResponse.statusText,
+        error: errorText,
+        conversation_id
+      });
+      
+      // If the backend returns 401, we should also return 401
+      if (conversationsResponse.status === 401) {
+        return NextResponse.json(
+          { error: 'Unauthorized - Session expired or invalid' },
+          { status: 401 }
+        );
+      }
       
       throw new Error(`Failed to delete conversations: ${conversationsResponse.statusText}`);
     }
@@ -79,6 +94,22 @@ export async function POST(request: Request) {
     });
 
     if (!threadResponse.ok) {
+      const errorText = await threadResponse.text();
+      console.error('[delete_thread] Failed to delete thread:', {
+        status: threadResponse.status,
+        statusText: threadResponse.statusText,
+        error: errorText,
+        conversation_id
+      });
+      
+      // If the backend returns 401, we should also return 401
+      if (threadResponse.status === 401) {
+        return NextResponse.json(
+          { error: 'Unauthorized - Session expired or invalid' },
+          { status: 401 }
+        );
+      }
+      
       throw new Error(`Failed to delete thread: ${threadResponse.statusText}`);
     }
 
@@ -88,7 +119,10 @@ export async function POST(request: Request) {
     });
 
   } catch (error: any) {
-    console.error('Error in delete_thread route:', error);
+    console.error('[delete_thread] Unexpected error:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return NextResponse.json(
       { 
         success: false,
