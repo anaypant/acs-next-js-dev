@@ -24,11 +24,18 @@ export async function POST(request: Request) {
       );
     }
 
+    // Get session_id from request cookies
+    const cookies = request.headers.get('cookie');
+    const sessionId = cookies?.split(';')
+      .find(cookie => cookie.trim().startsWith('session_id='))
+      ?.split('=')[1];
+
     // First, get the specific thread
     const threadResponse = await fetch(`${config.API_URL}/db/select`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(sessionId && { 'Cookie': `session_id=${sessionId}` })
       },
       body: JSON.stringify({
         table_name: 'Threads',
@@ -37,6 +44,7 @@ export async function POST(request: Request) {
         key_value: conversation_id,
         account_id: session.user.id
       }),
+      credentials: 'include',
     });
 
     if (!threadResponse.ok) {
@@ -57,6 +65,7 @@ export async function POST(request: Request) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(sessionId && { 'Cookie': `session_id=${sessionId}` })
       },
       body: JSON.stringify({
         table_name: 'Conversations',
@@ -65,9 +74,8 @@ export async function POST(request: Request) {
         key_value: conversation_id,
         account_id: session.user.id
       }),
+      credentials: 'include',
     });
-
-
 
     if (!messagesResponse.ok) {
       // log the error

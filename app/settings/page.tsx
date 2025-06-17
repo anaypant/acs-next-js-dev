@@ -10,7 +10,7 @@
 import { useSession, signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
-import { ArrowLeft, User, Bell, Shield, Database, Mail, Loader2 } from "lucide-react"
+import { ArrowLeft, User, Bell, Shield, Database, Mail, Loader2, Globe, Clock, Eye, Palette, Smartphone, Building, MapPin, FileText } from "lucide-react"
 import type { Session } from "next-auth"
 import type { SignupProvider } from "@/app/types/auth"
 import { Logo } from "@/app/dashboard/components/Sidebar"
@@ -73,14 +73,27 @@ export default function SettingsPage() {
 
   // Profile form state
   const [profileForm, setProfileForm] = useState({
-    firstName: "",
-    lastName: "",
+    name: "",
     email: "",
     phone: ""
   })
   const [profileLoading, setProfileLoading] = useState(false)
   const [profileError, setProfileError] = useState<string | null>(null)
   const [profileSuccess, setProfileSuccess] = useState(false)
+
+  // Bio information state (from new-user flow)
+  const [bioForm, setBioForm] = useState({
+    bio: "",
+    location: "",
+    state: "",
+    country: "",
+    zipcode: "",
+    company: "",
+    jobTitle: ""
+  })
+  const [bioLoading, setBioLoading] = useState(false)
+  const [bioError, setBioError] = useState<string | null>(null)
+  const [bioSuccess, setBioSuccess] = useState(false)
 
   // Email signature state
   const [signatureForm, setSignatureForm] = useState({
@@ -106,29 +119,55 @@ export default function SettingsPage() {
   const [lcpError, setLcpError] = useState<string | null>(null)
   const [lcpSuccess, setLcpSuccess] = useState(false)
 
+  // New settings state
+  const [preferencesForm, setPreferencesForm] = useState({
+    timezone: "America/New_York",
+    language: "en",
+    theme: "system",
+    emailNotifications: true,
+    smsNotifications: false,
+    marketingEmails: false,
+    dataSharing: false
+  })
+  const [preferencesLoading, setPreferencesLoading] = useState(false)
+  const [preferencesError, setPreferencesError] = useState<string | null>(null)
+  const [preferencesSuccess, setPreferencesSuccess] = useState(false)
+
+  // Security settings state
+  const [securityForm, setSecurityForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+    twoFactorEnabled: false
+  })
+  const [securityLoading, setSecurityLoading] = useState(false)
+  const [securityError, setSecurityError] = useState<string | null>(null)
+  const [securitySuccess, setSecuritySuccess] = useState(false)
+
+  // Add loading state for data fetching
+  const [dataLoading, setDataLoading] = useState(true);
+
   // Initialize profile form with session data
   useEffect(() => {
     if (session?.user) {
       const nameParts = session.user.name?.split(' ') || ['', '']
       setProfileForm({
-        firstName: nameParts[0] || '',
-        lastName: nameParts.slice(1).join(' ') || '',
+        name: session.user.name || '',
         email: session.user.email || '',
-        phone: '' // Phone will need to be fetched from database if needed
+        phone: '' // Phone will be fetched from database
       })
     }
   }, [session])
 
-  // Initialize signature form with session data
+  // Update the data fetching useEffect to include loading state
   useEffect(() => {
-    const fetchSignature = async () => {
-      // Wait for session to be loaded and authenticated
+    const fetchUserData = async () => {
       if (status === "loading" || !session?.user?.id) {
         return;
       }
 
+      setDataLoading(true);
       try {
-        setSignatureLoading(true);
         const requestBody = {
           table_name: 'Users',
           index_name: 'id-index',
@@ -146,8 +185,9 @@ export default function SettingsPage() {
         });
 
         const responseText = await response.text();
+        console.log('responseText', responseText);
         if (!response.ok) {
-          throw new Error(`Failed to fetch signature: ${response.status} ${responseText}`);
+          throw new Error(`Failed to fetch user data: ${response.status} ${responseText}`);
         }
 
         let data;
@@ -157,79 +197,60 @@ export default function SettingsPage() {
           throw new Error('Invalid response format from API');
         }
 
-        // Check if data.items is an array and has items
-        if (Array.isArray(data.items) && data.items.length > 0) {
-          const signature = data.items[0].email_signature;
-          const autoEmailsEnabled = data.items[0].lcp_automatic_enabled === 'true';
-          setSignatureForm({ email_signature: signature || '' });
+        if (data.success && Array.isArray(data.items) && data.items.length > 0) {
+          const userData = data.items[0];
+          console.log('userData', userData);
+          
+          // Set profile information
+          const phone = userData.phone || '';
+          setProfileForm(prev => ({ ...prev, phone }));
+          
+          // Set signature and auto emails
+          const signature = userData.email_signature || '';
+          const autoEmailsEnabled = userData.lcp_automatic_enabled === 'true';
+          setSignatureForm({ email_signature: signature });
           setAutoEmails(autoEmailsEnabled);
-        } else {
-          setSignatureForm({ email_signature: '' });
-          setAutoEmails(true); // Default to true if not set
-        }
-      } catch (err) {
-        setSignatureError(err instanceof Error ? err.message : 'Failed to fetch signature');
-      } finally {
-        setSignatureLoading(false);
-      }
-    };
-
-    fetchSignature();
-  }, [session?.user?.id, status]);
-
-  // Add useEffect to fetch LCP settings
-  useEffect(() => {
-    const fetchLcpSettings = async () => {
-      if (status === "loading" || !session?.user?.id) {
-        return;
-      }
-
-      try {
-        setLcpLoading(true);
-        const requestBody = {
-          table_name: 'Users',
-          index_name: 'id-index',
-          key_name: 'id',
-          key_value: session.user.id,
-        };
-
-        const response = await fetch('/api/db/select', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestBody),
-          credentials: 'include',
-        });
-
-        const responseText = await response.text();
-        if (!response.ok) {
-          throw new Error(`Failed to fetch LCP settings: ${response.status} ${responseText}`);
-        }
-
-        let data;
-        try {
-          data = JSON.parse(responseText);
-        } catch (parseError) {
-          throw new Error('Invalid response format from API');
-        }
-
-        if (Array.isArray(data.items) && data.items.length > 0) {
-          const settings = data.items[0];
+          
+          // Set LCP settings
           setLcpSettings({
-            tone: settings.lcp_tone || "professional",
-            style: settings.lcp_style || "concise",
-            samplePrompt: settings.lcp_sample_prompt || ""
+            tone: userData.lcp_tone || "professional",
+            style: userData.lcp_style || "concise",
+            samplePrompt: userData.lcp_sample_prompt || ""
+          });
+          
+          // Set bio information
+          setBioForm({
+            bio: userData.bio || "",
+            location: userData.location || "",
+            state: userData.state || "",
+            country: userData.country || "",
+            zipcode: userData.zipcode || "",
+            company: userData.company || "",
+            jobTitle: userData.job_title || ""
+          });
+
+          // Set preferences (with defaults)
+          setPreferencesForm({
+            timezone: userData.timezone || "America/New_York",
+            language: userData.language || "en",
+            theme: userData.theme || "system",
+            emailNotifications: userData.email_notifications !== 'false',
+            smsNotifications: userData.sms_notifications === 'true',
+            marketingEmails: userData.marketing_emails === 'true',
+            dataSharing: userData.data_sharing === 'true'
           });
         }
       } catch (err) {
-        setLcpError(err instanceof Error ? err.message : 'Failed to fetch LCP settings');
+        console.error('Error fetching user data:', err);
+        // Set error states for individual sections if needed
+        setSignatureError(err instanceof Error ? err.message : 'Failed to fetch user data');
+        setLcpError(err instanceof Error ? err.message : 'Failed to fetch user data');
       } finally {
-        setLcpLoading(false);
+        setDataLoading(false);
       }
     };
 
-    fetchLcpSettings();
+    fetchUserData();
   }, [session?.user?.id, status]);
 
   // Handle profile form changes
@@ -241,6 +262,40 @@ export default function SettingsPage() {
     }))
     setProfileError(null)
     setProfileSuccess(false)
+  }
+
+  // Handle bio form changes
+  const handleBioChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target
+    setBioForm(prev => ({
+      ...prev,
+      [name]: value
+    }))
+    setBioError(null)
+    setBioSuccess(false)
+  }
+
+  // Handle preferences form changes
+  const handlePreferencesChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target
+    const checked = (e.target as HTMLInputElement).checked
+    setPreferencesForm(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }))
+    setPreferencesError(null)
+    setPreferencesSuccess(false)
+  }
+
+  // Handle security form changes
+  const handleSecurityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target
+    setSecurityForm(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }))
+    setSecurityError(null)
+    setSecuritySuccess(false)
   }
 
   // Handle profile update
@@ -265,7 +320,7 @@ export default function SettingsPage() {
           key_name: 'id',
           key_value: session.user.id,
           update_data: {
-            name: `${profileForm.firstName} ${profileForm.lastName}`.trim(),
+            name: profileForm.name,
             email: profileForm.email,
             phone: profileForm.phone || null,
             updated_at: new Date().toISOString()
@@ -280,31 +335,12 @@ export default function SettingsPage() {
         throw new Error(data.error || 'Failed to update profile')
       }
 
-      // If database update was successful, update the NextAuth session
-      const result = await fetch('/api/auth/session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user: {
-            ...session.user,
-            name: `${profileForm.firstName} ${profileForm.lastName}`.trim(),
-            email: profileForm.email
-          }
-        })
-      })
-
-      if (!result.ok) {
-        throw new Error('Failed to update session')
-      }
-
       // Update the session in the client
       await sessionResult.update({
         ...session,
         user: {
           ...session.user,
-          name: `${profileForm.firstName} ${profileForm.lastName}`.trim(),
+          name: profileForm.name,
           email: profileForm.email
         }
       })
@@ -572,14 +608,26 @@ export default function SettingsPage() {
     return null
   }
 
+  // Show loading screen while fetching user data
+  if (dataLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-[#0e6537] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your settings...</p>
+        </div>
+      </div>
+    )
+  }
+
   /**
    * Handles account deletion initiation
    * Opens the confirmation dialog
    */
   const handleDeleteAccount = async () => {
     try {
-        const response = await fetch('/api/user/delete', {
-            method: 'DELETE',
+        const response = await fetch('/api/auth/delete', {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: session?.user?.id })
         });
@@ -683,6 +731,166 @@ export default function SettingsPage() {
     }
   }
 
+  // Handle bio update
+  const handleBioUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!session?.user?.id) return
+
+    setBioLoading(true)
+    setBioError(null)
+    setBioSuccess(false)
+
+    try {
+      const response = await fetch('/api/db/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          table_name: 'Users',
+          index_name: 'id-index',
+          key_name: 'id',
+          key_value: session.user.id,
+          update_data: {
+            bio: bioForm.bio,
+            location: bioForm.location,
+            state: bioForm.state,
+            country: bioForm.country,
+            zipcode: bioForm.zipcode,
+            company: bioForm.company || null,
+            job_title: bioForm.jobTitle || null,
+            updated_at: new Date().toISOString()
+          }
+        }),
+        credentials: 'include',
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update bio information')
+      }
+
+      setBioSuccess(true)
+    } catch (err) {
+      setBioError(err instanceof Error ? err.message : 'Failed to update bio information')
+    } finally {
+      setBioLoading(false)
+    }
+  }
+
+  // Handle preferences update
+  const handlePreferencesUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!session?.user?.id) return
+
+    setPreferencesLoading(true)
+    setPreferencesError(null)
+    setPreferencesSuccess(false)
+
+    try {
+      const response = await fetch('/api/db/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          table_name: 'Users',
+          index_name: 'id-index',
+          key_name: 'id',
+          key_value: session.user.id,
+          update_data: {
+            timezone: preferencesForm.timezone,
+            language: preferencesForm.language,
+            theme: preferencesForm.theme,
+            email_notifications: preferencesForm.emailNotifications ? 'true' : 'false',
+            sms_notifications: preferencesForm.smsNotifications ? 'true' : 'false',
+            marketing_emails: preferencesForm.marketingEmails ? 'true' : 'false',
+            data_sharing: preferencesForm.dataSharing ? 'true' : 'false',
+            updated_at: new Date().toISOString()
+          }
+        }),
+        credentials: 'include',
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update preferences')
+      }
+
+      setPreferencesSuccess(true)
+    } catch (err) {
+      setPreferencesError(err instanceof Error ? err.message : 'Failed to update preferences')
+    } finally {
+      setPreferencesLoading(false)
+    }
+  }
+
+  // Handle security update
+  const handleSecurityUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!session?.user?.id) return
+
+    setSecurityLoading(true)
+    setSecurityError(null)
+    setSecuritySuccess(false)
+
+    try {
+      // Validate passwords
+      if (securityForm.newPassword && securityForm.newPassword !== securityForm.confirmPassword) {
+        throw new Error('New passwords do not match')
+      }
+
+      if (securityForm.newPassword && securityForm.newPassword.length < 8) {
+        throw new Error('Password must be at least 8 characters long')
+      }
+
+      const updateData: any = {
+        updated_at: new Date().toISOString()
+      }
+
+      // Only update password if provided
+      if (securityForm.newPassword) {
+        updateData.password = securityForm.newPassword
+      }
+
+      const response = await fetch('/api/db/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          table_name: 'Users',
+          index_name: 'id-index',
+          key_name: 'id',
+          key_value: session.user.id,
+          update_data: updateData
+        }),
+        credentials: 'include',
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update security settings')
+      }
+
+      setSecuritySuccess(true)
+      // Clear password fields
+      setSecurityForm(prev => ({
+        ...prev,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      }))
+    } catch (err) {
+      setSecurityError(err instanceof Error ? err.message : 'Failed to update security settings')
+    } finally {
+      setSecurityLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1]">
       <div className="max-w-4xl mx-auto p-6">
@@ -702,90 +910,138 @@ export default function SettingsPage() {
           {/* Settings Navigation */}
           <div className="bg-white p-4 rounded-lg border-[#d8eee1] border shadow-sm h-fit sticky top-6">
             <nav className="space-y-2">
-              <button
-                onClick={() => {
-                  setActiveSection("profile")
-                  document.getElementById("profile")?.scrollIntoView({ behavior: "smooth" })
-                }}
-                className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg w-full text-left transition-all duration-200 ${
-                  activeSection === "profile"
-                    ? "bg-gradient-to-r from-[#0a5a2f] to-[#0e6537] text-white"
-                    : "text-gray-600 hover:bg-[#0e6537]/5"
-                }`}
-              >
-                <User className="h-4 w-4" />
-                Profile
-              </button>
-              <button
-                onClick={() => {
-                  setActiveSection("session")
-                  document.getElementById("session")?.scrollIntoView({ behavior: "smooth" })
-                }}
-                className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg w-full text-left transition-all duration-200 ${
-                  activeSection === "session"
-                    ? "bg-gradient-to-r from-[#0a5a2f] to-[#0e6537] text-white"
-                    : "text-gray-600 hover:bg-[#0e6537]/5"
-                }`}
-              >
-                <Shield className="h-4 w-4" />
-                Session
-              </button>
-              <button
-                onClick={() => {
-                  setActiveSection("notifications")
-                  document.getElementById("notifications")?.scrollIntoView({ behavior: "smooth" })
-                }}
-                className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg w-full text-left transition-all duration-200 ${
-                  activeSection === "notifications"
-                    ? "bg-gradient-to-r from-[#0a5a2f] to-[#0e6537] text-white"
-                    : "text-gray-600 hover:bg-[#0e6537]/5"
-                }`}
-              >
-                <Bell className="h-4 w-4" />
-                Notifications
-              </button>
-              <button
-                onClick={() => {
-                  setActiveSection("security")
-                  document.getElementById("security")?.scrollIntoView({ behavior: "smooth" })
-                }}
-                className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg w-full text-left transition-all duration-200 ${
-                  activeSection === "security"
-                    ? "bg-gradient-to-r from-[#0a5a2f] to-[#0e6537] text-white"
-                    : "text-gray-600 hover:bg-[#0e6537]/5"
-                }`}
-              >
-                <Shield className="h-4 w-4" />
-                Security
-              </button>
-              <button
-                onClick={() => {
-                  setActiveSection("customize")
-                  document.getElementById("customize")?.scrollIntoView({ behavior: "smooth" })
-                }}
-                className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg w-full text-left transition-all duration-200 ${
-                  activeSection === "customize"
-                    ? "bg-gradient-to-r from-[#0a5a2f] to-[#0e6537] text-white"
-                    : "text-gray-600 hover:bg-[#0e6537]/5"
-                }`}
-              >
-                <Mail className="h-4 w-4" />
-                Customize
-              </button>
-              <button
-                onClick={() => {
-                  setActiveSection("danger")
-                  document.getElementById("danger")?.scrollIntoView({ behavior: "smooth" })
-                }}
-                className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg w-full text-left transition-all duration-200 ${
-                  activeSection === "danger"
-                    ? "bg-gradient-to-r from-[#0a5a2f] to-[#0e6537] text-white"
-                    : "text-gray-600 hover:bg-[#0e6537]/5"
-                }`}
-              >
-                <Database className="h-4 w-4" />
-                Danger Zone
-              </button>
+              {/* Profile & Bio Section */}
+              <div className="mb-4">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Profile</h3>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => {
+                      setActiveSection("profile")
+                      document.getElementById("profile")?.scrollIntoView({ behavior: "smooth" })
+                    }}
+                    className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg w-full text-left transition-all duration-200 ${
+                      activeSection === "profile"
+                        ? "bg-gradient-to-r from-[#0a5a2f] to-[#0e6537] text-white"
+                        : "text-gray-600 hover:bg-[#0e6537]/5"
+                    }`}
+                  >
+                    <User className="h-4 w-4" />
+                    Basic Info
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveSection("bio")
+                      document.getElementById("bio")?.scrollIntoView({ behavior: "smooth" })
+                    }}
+                    className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg w-full text-left transition-all duration-200 ${
+                      activeSection === "bio"
+                        ? "bg-gradient-to-r from-[#0a5a2f] to-[#0e6537] text-white"
+                        : "text-gray-600 hover:bg-[#0e6537]/5"
+                    }`}
+                  >
+                    <FileText className="h-4 w-4" />
+                    Bio & Location
+                  </button>
+                </div>
+              </div>
+
+              {/* Communication Section */}
+              <div className="mb-4">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Communication</h3>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => {
+                      setActiveSection("customize")
+                      document.getElementById("customize")?.scrollIntoView({ behavior: "smooth" })
+                    }}
+                    className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg w-full text-left transition-all duration-200 ${
+                      activeSection === "customize"
+                        ? "bg-gradient-to-r from-[#0a5a2f] to-[#0e6537] text-white"
+                        : "text-gray-600 hover:bg-[#0e6537]/5"
+                    }`}
+                  >
+                    <Mail className="h-4 w-4" />
+                    Email Settings
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveSection("notifications")
+                      document.getElementById("notifications")?.scrollIntoView({ behavior: "smooth" })
+                    }}
+                    className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg w-full text-left transition-all duration-200 ${
+                      activeSection === "notifications"
+                        ? "bg-gradient-to-r from-[#0a5a2f] to-[#0e6537] text-white"
+                        : "text-gray-600 hover:bg-[#0e6537]/5"
+                    }`}
+                  >
+                    <Bell className="h-4 w-4" />
+                    Notifications
+                  </button>
+                </div>
+              </div>
+
+              {/* Preferences Section */}
+              <div className="mb-4">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Preferences</h3>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => {
+                      setActiveSection("preferences")
+                      document.getElementById("preferences")?.scrollIntoView({ behavior: "smooth" })
+                    }}
+                    className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg w-full text-left transition-all duration-200 ${
+                      activeSection === "preferences"
+                        ? "bg-gradient-to-r from-[#0a5a2f] to-[#0e6537] text-white"
+                        : "text-gray-600 hover:bg-[#0e6537]/5"
+                    }`}
+                  >
+                    <Palette className="h-4 w-4" />
+                    App Settings
+                  </button>
+                </div>
+              </div>
+
+              {/* Security Section */}
+              <div className="mb-4">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Security</h3>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => {
+                      setActiveSection("security")
+                      document.getElementById("security")?.scrollIntoView({ behavior: "smooth" })
+                    }}
+                    className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg w-full text-left transition-all duration-200 ${
+                      activeSection === "security"
+                        ? "bg-gradient-to-r from-[#0a5a2f] to-[#0e6537] text-white"
+                        : "text-gray-600 hover:bg-[#0e6537]/5"
+                    }`}
+                  >
+                    <Shield className="h-4 w-4" />
+                    Password & Security
+                  </button>
+                </div>
+              </div>
+
+              {/* Danger Zone */}
+              <div className="mb-4">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Account</h3>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => {
+                      setActiveSection("danger")
+                      document.getElementById("danger")?.scrollIntoView({ behavior: "smooth" })
+                    }}
+                    className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg w-full text-left transition-all duration-200 ${
+                      activeSection === "danger"
+                        ? "bg-gradient-to-r from-[#0a5a2f] to-[#0e6537] text-white"
+                        : "text-gray-600 hover:bg-[#0e6537]/5"
+                    }`}
+                  >
+                    <Database className="h-4 w-4" />
+                    Danger Zone
+                  </button>
+                </div>
+              </div>
             </nav>
           </div>
 
@@ -811,30 +1067,19 @@ export default function SettingsPage() {
             {/* Profile Settings */}
             <div
               id="profile"
-              className="bg-white p-6 rounded-lg border-[#d8eee1] border shadow-sm bg-gradient-to-br from-[#e6f5ec] to-[#f0f9f4] scroll-mt-6"
+              className="bg-white p-6 rounded-xl border border-green-100 shadow-lg hover:shadow-2xl transition-shadow duration-200 bg-gradient-to-br from-[#e6f5ec] to-[#f0f9f4] scroll-mt-6"
             >
               <h2 className="text-lg font-semibold mb-4">Profile Information</h2>
               <form onSubmit={handleProfileUpdate} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
                     <input
                       type="text"
-                      name="firstName"
-                      value={profileForm.firstName}
+                      name="name"
+                      value={profileForm.name}
                       onChange={handleProfileChange}
-                      className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
-                    <input
-                      type="text"
-                      name="lastName"
-                      value={profileForm.lastName}
-                      onChange={handleProfileChange}
-                      className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
+                      className="w-full px-3 py-2 border border-green-200 rounded-lg bg-[#f7fcfa] focus:outline-none focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] transition-all duration-150 shadow-sm placeholder-gray-400"
                       required
                     />
                   </div>
@@ -845,7 +1090,7 @@ export default function SettingsPage() {
                       name="email"
                       value={profileForm.email}
                       onChange={handleProfileChange}
-                      className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
+                      className="w-full px-3 py-2 border border-green-200 rounded-lg bg-[#f7fcfa] focus:outline-none focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] transition-all duration-150 shadow-sm placeholder-gray-400"
                       required
                     />
                   </div>
@@ -856,7 +1101,7 @@ export default function SettingsPage() {
                       name="phone"
                       value={profileForm.phone}
                       onChange={handleProfileChange}
-                      className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
+                      className="w-full px-3 py-2 border border-green-200 rounded-lg bg-[#f7fcfa] focus:outline-none focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] transition-all duration-150 shadow-sm placeholder-gray-400"
                     />
                   </div>
                 </div>
@@ -876,10 +1121,129 @@ export default function SettingsPage() {
               </form>
             </div>
 
+            {/* Bio Information Settings */}
+            <div
+              id="bio"
+              className="bg-white p-6 rounded-xl border border-green-100 shadow-lg hover:shadow-2xl transition-shadow duration-200 bg-gradient-to-br from-[#e6f5ec] to-[#f0f9f4] scroll-mt-6"
+            >
+              <h2 className="text-lg font-semibold mb-4">Bio & Location Information</h2>
+              <form onSubmit={handleBioUpdate} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
+                  <textarea
+                    name="bio"
+                    value={bioForm.bio}
+                    onChange={handleBioChange}
+                    className="w-full h-24 px-3 py-2 border border-green-200 rounded-lg bg-[#f7fcfa] focus:outline-none focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] transition-all duration-150 shadow-sm placeholder-gray-400"
+                    placeholder="Tell us about yourself..."
+                  />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Company</label>
+                    <input
+                      type="text"
+                      name="company"
+                      value={bioForm.company}
+                      onChange={handleBioChange}
+                      className="w-full px-3 py-2 border border-green-200 rounded-lg bg-[#f7fcfa] focus:outline-none focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] transition-all duration-150 shadow-sm placeholder-gray-400"
+                      placeholder="Your company name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Job Title</label>
+                    <input
+                      type="text"
+                      name="jobTitle"
+                      value={bioForm.jobTitle}
+                      onChange={handleBioChange}
+                      className="w-full px-3 py-2 border border-green-200 rounded-lg bg-[#f7fcfa] focus:outline-none focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] transition-all duration-150 shadow-sm placeholder-gray-400"
+                      placeholder="Your job title"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">City/Location</label>
+                    <input
+                      type="text"
+                      name="location"
+                      value={bioForm.location}
+                      onChange={handleBioChange}
+                      className="w-full px-3 py-2 border border-green-200 rounded-lg bg-[#f7fcfa] focus:outline-none focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] transition-all duration-150 shadow-sm placeholder-gray-400"
+                      placeholder="Your city"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">State/Province</label>
+                    <input
+                      type="text"
+                      name="state"
+                      value={bioForm.state}
+                      onChange={handleBioChange}
+                      className="w-full px-3 py-2 border border-green-200 rounded-lg bg-[#f7fcfa] focus:outline-none focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] transition-all duration-150 shadow-sm placeholder-gray-400"
+                      placeholder="Your state or province"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
+                    <select
+                      name="country"
+                      value={bioForm.country}
+                      onChange={handleBioChange}
+                      className="w-full px-3 py-2 border border-green-200 rounded-lg bg-[#f7fcfa] focus:outline-none focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] transition-all duration-150 shadow-sm placeholder-gray-400"
+                    >
+                      <option value="">Select Country</option>
+                      <option value="United States">United States</option>
+                      <option value="Canada">Canada</option>
+                      <option value="United Kingdom">United Kingdom</option>
+                      <option value="Australia">Australia</option>
+                      <option value="Germany">Germany</option>
+                      <option value="France">France</option>
+                      <option value="Spain">Spain</option>
+                      <option value="Italy">Italy</option>
+                      <option value="Netherlands">Netherlands</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Zip/Postal Code</label>
+                    <input
+                      type="text"
+                      name="zipcode"
+                      value={bioForm.zipcode}
+                      onChange={handleBioChange}
+                      className="w-full px-3 py-2 border border-green-200 rounded-lg bg-[#f7fcfa] focus:outline-none focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] transition-all duration-150 shadow-sm placeholder-gray-400"
+                      placeholder="Your zip or postal code"
+                    />
+                  </div>
+                </div>
+
+                {bioError && (
+                  <p className="text-sm text-red-600 mt-2">{bioError}</p>
+                )}
+                {bioSuccess && (
+                  <p className="text-sm text-green-600 mt-2">Bio information updated successfully!</p>
+                )}
+                <button
+                  type="submit"
+                  disabled={bioLoading}
+                  className="mt-4 px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm disabled:opacity-50"
+                >
+                  {bioLoading ? 'Saving...' : 'Save Bio Information'}
+                </button>
+              </form>
+            </div>
+
             {/* Customize Settings */}
             <div
               id="customize"
-              className="bg-white p-6 rounded-lg border-[#d8eee1] border shadow-sm bg-gradient-to-br from-[#e6f5ec] to-[#f0f9f4] scroll-mt-6"
+              className="bg-white p-6 rounded-xl border border-green-100 shadow-lg hover:shadow-2xl transition-shadow duration-200 bg-gradient-to-br from-[#e6f5ec] to-[#f0f9f4] scroll-mt-6"
             >
               <h2 className="text-lg font-semibold mb-4">Email Settings</h2>
               
@@ -897,7 +1261,7 @@ export default function SettingsPage() {
                         name="tone"
                         value={lcpSettings.tone}
                         onChange={handleLcpSettingsChange}
-                        className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
+                        className="w-full px-3 py-2 border border-green-200 rounded-lg bg-[#f7fcfa] focus:outline-none focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] transition-all duration-150 shadow-sm placeholder-gray-400"
                       >
                         <option value="professional">Professional</option>
                         <option value="friendly">Friendly</option>
@@ -913,7 +1277,7 @@ export default function SettingsPage() {
                         name="style"
                         value={lcpSettings.style}
                         onChange={handleLcpSettingsChange}
-                        className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
+                        className="w-full px-3 py-2 border border-green-200 rounded-lg bg-[#f7fcfa] focus:outline-none focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] transition-all duration-150 shadow-sm placeholder-gray-400"
                       >
                         <option value="concise">Concise</option>
                         <option value="detailed">Detailed</option>
@@ -930,7 +1294,7 @@ export default function SettingsPage() {
                       name="samplePrompt"
                       value={lcpSettings.samplePrompt}
                       onChange={handleLcpSettingsChange}
-                      className="w-full h-32 px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
+                      className="w-full h-32 px-3 py-2 border border-green-200 rounded-lg bg-[#f7fcfa] focus:outline-none focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] transition-all duration-150 shadow-sm placeholder-gray-400"
                       placeholder="Enter a sample email that represents your preferred writing style..."
                     />
                     <p className="text-xs text-gray-500 mt-1">
@@ -1000,7 +1364,7 @@ export default function SettingsPage() {
                       name="email_signature"
                       value={signatureForm.email_signature}
                       onChange={handleSignatureChange}
-                      className="w-full h-64 px-4 py-8 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537] font-mono text-sm whitespace-pre-wrap"
+                      className="w-full h-64 px-4 py-8 border border-green-200 rounded-lg bg-[#f7fcfa] focus:outline-none focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] transition-all duration-150 shadow-sm placeholder-gray-400"
                       placeholder="Enter your email signature here..."
                       style={{ 
                         fontFamily: 'monospace',
@@ -1032,73 +1396,219 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Notification Settings @TODO: Implement */}
-            {/* <div
+            {/* Notification Settings */}
+            <div
               id="notifications"
-              className="bg-white p-6 rounded-lg border-[#d8eee1] border shadow-sm bg-gradient-to-br from-[#e6f5ec] to-[#f0f9f4] scroll-mt-6"
+              className="bg-white p-6 rounded-xl border border-green-100 shadow-lg hover:shadow-2xl transition-shadow duration-200 bg-gradient-to-br from-[#e6f5ec] to-[#f0f9f4] scroll-mt-6"
             >
               <h2 className="text-lg font-semibold mb-4">Notification Preferences</h2>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">New Lead Notifications</p>
-                    <p className="text-sm text-gray-600">Get notified when new leads come in</p>
+              <form onSubmit={handlePreferencesUpdate} className="space-y-4">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-medium">Email Notifications</p>
+                      <p className="text-sm text-gray-600">Receive email notifications for important updates</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      name="emailNotifications"
+                      checked={preferencesForm.emailNotifications}
+                      onChange={handlePreferencesChange}
+                      className="w-4 h-4 text-[#0e6537] rounded focus:ring-[#0e6537]"
+                    />
                   </div>
-                  <input type="checkbox" defaultChecked className="w-4 h-4 text-[#0e6537]" />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Email Reminders</p>
-                    <p className="text-sm text-gray-600">Receive email reminders for follow-ups</p>
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-medium">SMS Notifications</p>
+                      <p className="text-sm text-gray-600">Get SMS alerts for urgent matters</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      name="smsNotifications"
+                      checked={preferencesForm.smsNotifications}
+                      onChange={handlePreferencesChange}
+                      className="w-4 h-4 text-[#0e6537] rounded focus:ring-[#0e6537]"
+                    />
                   </div>
-                  <input type="checkbox" defaultChecked className="w-4 h-4 text-[#0e6537]" />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">SMS Notifications</p>
-                    <p className="text-sm text-gray-600">Get SMS alerts for urgent matters</p>
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-medium">Marketing Emails</p>
+                      <p className="text-sm text-gray-600">Receive updates about new features and promotions</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      name="marketingEmails"
+                      checked={preferencesForm.marketingEmails}
+                      onChange={handlePreferencesChange}
+                      className="w-4 h-4 text-[#0e6537] rounded focus:ring-[#0e6537]"
+                    />
                   </div>
-                  <input type="checkbox" className="w-4 h-4 text-[#0e6537]" />
                 </div>
-              </div>
-            </div> */}
+                {preferencesError && (
+                  <p className="text-sm text-red-600 mt-2">{preferencesError}</p>
+                )}
+                {preferencesSuccess && (
+                  <p className="text-sm text-green-600 mt-2">Notification preferences updated successfully!</p>
+                )}
+                <button
+                  type="submit"
+                  disabled={preferencesLoading}
+                  className="mt-4 px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm disabled:opacity-50"
+                >
+                  {preferencesLoading ? 'Saving...' : 'Save Notification Preferences'}
+                </button>
+              </form>
+            </div>
+
+            {/* App Preferences Settings */}
+            <div
+              id="preferences"
+              className="bg-white p-6 rounded-xl border border-green-100 shadow-lg hover:shadow-2xl transition-shadow duration-200 bg-gradient-to-br from-[#e6f5ec] to-[#f0f9f4] scroll-mt-6"
+            >
+              <h2 className="text-lg font-semibold mb-4">App Settings</h2>
+              <form onSubmit={handlePreferencesUpdate} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Timezone</label>
+                    <select
+                      name="timezone"
+                      value={preferencesForm.timezone}
+                      onChange={handlePreferencesChange}
+                      className="w-full px-3 py-2 border border-green-200 rounded-lg bg-[#f7fcfa] focus:outline-none focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] transition-all duration-150 shadow-sm placeholder-gray-400"
+                    >
+                      <option value="America/New_York">Eastern Time (ET)</option>
+                      <option value="America/Chicago">Central Time (CT)</option>
+                      <option value="America/Denver">Mountain Time (MT)</option>
+                      <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                      <option value="America/Anchorage">Alaska Time (AKT)</option>
+                      <option value="Pacific/Honolulu">Hawaii Time (HST)</option>
+                      <option value="Europe/London">London (GMT)</option>
+                      <option value="Europe/Paris">Paris (CET)</option>
+                      <option value="Asia/Tokyo">Tokyo (JST)</option>
+                      <option value="Australia/Sydney">Sydney (AEST)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
+                    <select
+                      name="language"
+                      value={preferencesForm.language}
+                      onChange={handlePreferencesChange}
+                      className="w-full px-3 py-2 border border-green-200 rounded-lg bg-[#f7fcfa] focus:outline-none focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] transition-all duration-150 shadow-sm placeholder-gray-400"
+                    >
+                      <option value="en">English</option>
+                      <option value="es">Español</option>
+                      <option value="fr">Français</option>
+                      <option value="de">Deutsch</option>
+                      <option value="it">Italiano</option>
+                      <option value="pt">Português</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Theme</label>
+                  <select
+                    name="theme"
+                    value={preferencesForm.theme}
+                    onChange={handlePreferencesChange}
+                    className="w-full px-3 py-2 border border-green-200 rounded-lg bg-[#f7fcfa] focus:outline-none focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] transition-all duration-150 shadow-sm placeholder-gray-400"
+                  >
+                    <option value="system">System Default</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="font-medium">Data Sharing</p>
+                    <p className="text-sm text-gray-600">Allow us to use your data to improve our services (anonymized)</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    name="dataSharing"
+                    checked={preferencesForm.dataSharing}
+                    onChange={handlePreferencesChange}
+                    className="w-4 h-4 text-[#0e6537] rounded focus:ring-[#0e6537]"
+                  />
+                </div>
+
+                {preferencesError && (
+                  <p className="text-sm text-red-600 mt-2">{preferencesError}</p>
+                )}
+                {preferencesSuccess && (
+                  <p className="text-sm text-green-600 mt-2">App settings updated successfully!</p>
+                )}
+                <button
+                  type="submit"
+                  disabled={preferencesLoading}
+                  className="mt-4 px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm disabled:opacity-50"
+                >
+                  {preferencesLoading ? 'Saving...' : 'Save App Settings'}
+                </button>
+              </form>
+            </div>
 
             {/* Security Settings */}
             <div
               id="security"
-              className="bg-white p-6 rounded-lg border-[#d8eee1] border shadow-sm bg-gradient-to-br from-[#e6f5ec] to-[#f0f9f4] scroll-mt-6"
+              className="bg-white p-6 rounded-xl border border-green-100 shadow-lg hover:shadow-2xl transition-shadow duration-200 bg-gradient-to-br from-[#e6f5ec] to-[#f0f9f4] scroll-mt-6"
             >
-              <h2 className="text-lg font-semibold mb-4">Security</h2>
-              <div className="space-y-4">
+              <h2 className="text-lg font-semibold mb-4">Password & Security</h2>
+              <form onSubmit={handleSecurityUpdate} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
                   <input
                     type="password"
-                    className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
+                    name="currentPassword"
+                    value={securityForm.currentPassword}
+                    onChange={handleSecurityChange}
+                    className="w-full px-3 py-2 border border-green-200 rounded-lg bg-[#f7fcfa] focus:outline-none focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] transition-all duration-150 shadow-sm placeholder-gray-400"
+                    placeholder="Enter your current password"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
                   <input
                     type="password"
-                    className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
+                    name="newPassword"
+                    value={securityForm.newPassword}
+                    onChange={handleSecurityChange}
+                    className="w-full px-3 py-2 border border-green-200 rounded-lg bg-[#f7fcfa] focus:outline-none focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] transition-all duration-150 shadow-sm placeholder-gray-400"
+                    placeholder="Enter your new password"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Password must be at least 8 characters long</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
                   <input
                     type="password"
-                    className="w-full px-3 py-2 border-[#d8eee1] border rounded-lg focus:outline-none focus:ring-[#0e6537]"
+                    name="confirmPassword"
+                    value={securityForm.confirmPassword}
+                    onChange={handleSecurityChange}
+                    className="w-full px-3 py-2 border border-green-200 rounded-lg bg-[#f7fcfa] focus:outline-none focus:ring-2 focus:ring-[#0e6537] focus:border-[#0e6537] transition-all duration-150 shadow-sm placeholder-gray-400"
+                    placeholder="Confirm your new password"
                   />
                 </div>
-                <button className="px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm">
-                  Update Password
+                {securityError && (
+                  <p className="text-sm text-red-600 mt-2">{securityError}</p>
+                )}
+                {securitySuccess && (
+                  <p className="text-sm text-green-600 mt-2">Password updated successfully!</p>
+                )}
+                <button
+                  type="submit"
+                  disabled={securityLoading}
+                  className="px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm disabled:opacity-50"
+                >
+                  {securityLoading ? 'Updating...' : 'Update Password'}
                 </button>
-              </div>
+              </form>
             </div>
 
             {/* Danger Zone */}
-            <div id="danger" className="bg-red-50 p-6 rounded-lg border-2 border-red-200 shadow-sm scroll-mt-6">
+            <div id="danger" className="bg-red-50 p-6 rounded-xl border-2 border-red-200 shadow-sm scroll-mt-6">
               <h2 className="text-lg font-semibold mb-2 text-red-800">Danger Zone</h2>
               <p className="text-sm text-red-600 mb-4">
                 Once you delete your account, there is no going back. Please be certain.

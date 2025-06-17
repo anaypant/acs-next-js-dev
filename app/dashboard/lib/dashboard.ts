@@ -52,6 +52,7 @@ class DashboardServerApi {
             headers: { 'Content-Type': 'application/json' },
             body: body ? JSON.stringify(body) : undefined,
             next: { tags },
+            credentials: 'include',
         }).then(async (response) => {
             if (!response.ok) {
                 throw new Error(`API error: ${response.status} ${response.statusText}`);

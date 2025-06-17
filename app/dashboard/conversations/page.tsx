@@ -15,6 +15,7 @@ import type { Thread } from "@/app/types/lcp"
 import Slider from '@mui/material/Slider';
 import { useRouter } from "next/navigation"
 import { goto404 } from "@/app/utils/error"
+import { useConversationsData } from '../lib/use-conversations';
 
 // Add type for message
 type Message = {
@@ -110,9 +111,6 @@ function parseBoolean(value: any): boolean {
 export default function ConversationsPage() {
   const { data: session, status } = useSession() as { data: (Session & { user?: { id: string } }) | null, status: string };
   const [mounted, setMounted] = useState(false);
-  const [conversations, setConversations] = useState<Thread[]>([]);
-  const [rawThreads, setRawThreads] = useState<any[]>([]);
-  const [loadingConversations, setLoadingConversations] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>(null);
@@ -122,6 +120,14 @@ export default function ConversationsPage() {
     aiScoreRange: [0, 100],
   });
   const router = useRouter();
+
+  const {
+    conversations: cachedConversations,
+    isLoading: loadingConversations,
+    error: conversationsError,
+    refreshConversations,
+    isStale
+  } = useConversationsData();
 
   useEffect(() => {
     setMounted(true);
@@ -134,179 +140,69 @@ export default function ConversationsPage() {
     }
   }, [status, router]);
 
-  // Function to fetch threads
-  const fetchThreads = async () => {
-    if (!mounted || status !== 'authenticated' || !session?.user?.id) return;
-
-    try {
-      setLoadingConversations(true);
-      const response = await fetch('/api/lcp/get_all_threads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: session.user.id
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch threads');
-      }
-
-      const { data } = await response.json();
-      
-      if (!Array.isArray(data)) {
-        throw new Error('Invalid response format');
-      }
-
-      const sortedData = [...data].sort((a: any, b: any) => {
-        const aMessages = a.messages || [];
-        const bMessages = b.messages || [];
-        const dateA = aMessages.length > 0 ? new Date(aMessages[aMessages.length - 1].timestamp).getTime() : 0;
-        const dateB = bMessages.length > 0 ? new Date(bMessages[bMessages.length - 1].timestamp).getTime() : 0;
-        return dateB - dateA;
-      });
-
-      const parsedConversations = sortedData.map((item: any) => ({
-        conversation_id: item.thread?.conversation_id || '',
-        associated_account: item.thread?.associated_account || '',
-        lcp_enabled: parseBoolean(item.thread?.lcp_enabled),
-        read: parseBoolean(item.thread?.read),
-        source: item.thread?.source || '',
-        source_name: item.thread?.source_name || '',
-        lcp_flag_threshold: typeof item.thread?.lcp_flag_threshold === 'number' ? item.thread.lcp_flag_threshold : Number(item.thread?.lcp_flag_threshold) || 0,
-        ai_summary: item.thread?.ai_summary || '',
-        budget_range: item.thread?.budget_range || '',
-        preferred_property_types: item.thread?.preferred_property_types || '',
-        timeline: item.thread?.timeline || '',
-        busy: parseBoolean(item.thread?.busy),
-        spam: parseBoolean(item.thread?.spam),
-        flag_for_review: parseBoolean(item.thread?.flag_for_review),
-        flag_review_override: parseBoolean(item.thread?.flag_review_override),
-        messages: item.messages || [],
-        last_updated: item.thread?.last_updated || new Date().toISOString(),
-        created_at: item.thread?.created_at || new Date().toISOString()
-      }));
-      setConversations(parsedConversations);
-      setRawThreads(sortedData);
-    } catch (error) {
-      console.error('Error fetching threads:', error);
-    } finally {
-      setLoadingConversations(false);
-    }
-  };
-
-  // Fetch threads when session is available
+  // Refresh conversations if stale
   useEffect(() => {
-    if (mounted && status === 'authenticated' && session?.user?.id) {
-      fetchThreads();
+    if (mounted && status === 'authenticated' && isStale) {
+      refreshConversations();
     }
-  }, [session?.user?.id, status, mounted]);
-
-  // Handle sort click
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      if (sortDirection === "asc") {
-        setSortDirection("desc")
-      } else if (sortDirection === "desc") {
-        setSortField(null)
-        setSortDirection(null)
-      } else {
-        setSortDirection("asc")
-      }
-    } else {
-      setSortField(field)
-      setSortDirection("asc")
-    }
-  }
-
-  // Get sort icon for a field
-  const getSortIcon = (field: SortField) => {
-    if (sortField !== field) return <ChevronsUpDown className="h-4 w-4" />
-    if (sortDirection === "asc") return <ChevronUp className="h-4 w-4" />
-    if (sortDirection === "desc") return <ChevronDown className="h-4 w-4" />
-    return <ChevronsUpDown className="h-4 w-4" />
-  }
+  }, [mounted, status, isStale, refreshConversations]);
 
   // Filter and sort conversations
-  const filteredAndSortedConversations = rawThreads
-    .filter((threadData) => {
-      const thread = threadData.thread;
-      const messages = threadData.messages || [];
-      const latestMessage = messages[0];
+  const filteredAndSortedConversations = cachedConversations
+    .filter(conv => {
+      const thread = conv.thread;
+      const messages = conv.messages;
       
-      // Search term filter
-      const searchMatch = 
-        thread.source_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        thread.ai_summary?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        latestMessage?.body?.toLowerCase().includes(searchQuery.toLowerCase());
-
-      // Date filter
-      let dateMatch = true;
-      if (latestMessage?.timestamp) {
-        const messageDate = new Date(latestMessage.timestamp);
-        const filterDate = new Date(latestMessage.timestamp);
-        dateMatch = messageDate.toDateString() === filterDate.toDateString();
+      // Search filter
+      if (searchQuery) {
+        const searchLower = searchQuery.toLowerCase();
+        const matchesSearch = 
+          thread.conversation_id.toLowerCase().includes(searchLower) ||
+          messages.some(msg => 
+            msg.subject?.toLowerCase().includes(searchLower) ||
+            msg.body?.toLowerCase().includes(searchLower)
+          );
+        if (!matchesSearch) return false;
       }
-
-      // Find the most recent message with a valid ev_score
-      const evMessage = messages
-        .sort((a: Message, b: Message) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()) // Sort by most recent first
-        .find((msg: Message) => {
-          const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
-          return typeof score === 'number' && !isNaN(score) && score >= 0 && score <= 100;
-        });
-
-      const evScore = evMessage ? (typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score) : 0;
-      const conversationStatus = calculateStatus(evScore);
 
       // Status filter
-      const statusMatch = filters.status.includes(conversationStatus);
-      
-      // AI Score range filter
-      const scoreMatch = evScore >= filters.aiScoreRange[0] && evScore <= filters.aiScoreRange[1];
-
-      return searchMatch && dateMatch && statusMatch && scoreMatch;
-    })
-    .map((threadData) => {
-      const thread = threadData.thread;
-      const messages = threadData.messages || [];
-      const latestMessage = messages[0];
-      
-      const evMessage = messages
-        .sort((a: Message, b: Message) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()) // Sort by most recent first
-        .find((msg: Message) => {
-          const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
-          return typeof score === 'number' && !isNaN(score) && score >= 0 && score <= 100;
-        });
-
-      const evScore = evMessage ? (typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score) : 0;
+      const evMessage = messages.find(msg => {
+        const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
+        return score !== undefined && score !== null && !isNaN(score);
+      });
+      const evScore = evMessage ? (typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score) : -1;
       const status = calculateStatus(evScore);
+      if (!filters.status.includes(status)) return false;
 
-      return {
-        id: thread.conversation_id,
-        name: thread.source_name || thread.associated_account || "Unknown Client",
-        aiScore: evScore,
-        summary: thread.ai_summary || "No summary available",
-        lastMessage: latestMessage?.body || "No messages",
-        date: latestMessage?.timestamp || new Date().toISOString(),
-        time: latestMessage?.timestamp ? getTimeAgo(latestMessage.timestamp) : "Unknown",
-        status,
-        propertyTypes: thread.preferred_property_types || "Not specified",
-        budget: thread.budget_range || "Not specified",
-        busy: parseBoolean(thread.busy),
-      };
+      // AI Score range filter
+      if (evScore < filters.aiScoreRange[0] || evScore > filters.aiScoreRange[1]) return false;
+
+      return true;
     })
     .sort((a, b) => {
-      if (!sortField || !sortDirection) return 0;
+      if (!sortField) return 0;
 
-      if (sortField === "aiScore") {
-        return sortDirection === "asc" ? a.aiScore - b.aiScore : b.aiScore - a.aiScore;
+      const aMessages = a.messages;
+      const bMessages = b.messages;
+
+      if (sortField === 'date') {
+        const dateA = aMessages.length > 0 ? new Date(aMessages[0].timestamp).getTime() : 0;
+        const dateB = bMessages.length > 0 ? new Date(bMessages[0].timestamp).getTime() : 0;
+        return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
       }
 
-      if (sortField === "date") {
-        const dateA = new Date(a.date).getTime();
-        const dateB = new Date(b.date).getTime();
-        return sortDirection === "asc" ? dateA - dateB : dateB - dateA;
+      if (sortField === 'aiScore') {
+        const getScore = (messages: any[]) => {
+          const evMessage = messages.find(msg => {
+            const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
+            return score !== undefined && score !== null && !isNaN(score);
+          });
+          return evMessage ? (typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score) : -1;
+        };
+
+        const scoreA = getScore(aMessages);
+        const scoreB = getScore(bMessages);
+        return sortDirection === 'asc' ? scoreA - scoreB : scoreB - scoreA;
       }
 
       return 0;
@@ -406,7 +302,7 @@ export default function ConversationsPage() {
               )}
             </div>
             <button
-              onClick={fetchThreads}
+              onClick={refreshConversations}
               disabled={loadingConversations}
               className="p-2 hover:bg-white/10 rounded-lg"
             >
@@ -440,6 +336,8 @@ export default function ConversationsPage() {
                 <RefreshCw className="w-8 h-8 animate-spin text-[#0e6537]" />
                 <span className="ml-2 text-gray-600">Loading conversations...</span>
               </div>
+            ) : conversationsError ? (
+              <div className="text-center py-8 text-red-500">Error loading conversations: {conversationsError}</div>
             ) : filteredAndSortedConversations.length === 0 ? (
               <div className="text-center py-8 text-gray-600">No conversations found.</div>
             ) : (
@@ -449,22 +347,26 @@ export default function ConversationsPage() {
                     <th className="text-left p-4 font-medium text-gray-600">Client</th>
                     <th className="text-left p-4 font-medium text-gray-600">
                       <button
-                        onClick={() => handleSort("aiScore")}
+                        onClick={() => setSortField("aiScore")}
                         className="flex items-center gap-1 hover:text-[#0e6537] transition-colors"
                       >
                         AI Score
-                        {getSortIcon("aiScore")}
+                        {sortField === "aiScore" && (
+                          <ChevronUp className="h-4 w-4" />
+                        )}
                       </button>
                     </th>
                     <th className="text-left p-4 font-medium text-gray-600">Summary</th>
                     <th className="text-left p-4 font-medium text-gray-600">Last Message</th>
                     <th className="text-left p-4 font-medium text-gray-600">
                       <button
-                        onClick={() => handleSort("date")}
+                        onClick={() => setSortField("date")}
                         className="flex items-center gap-1 hover:text-[#0e6537] transition-colors"
                       >
                         Date
-                        {getSortIcon("date")}
+                        {sortField === "date" && (
+                          <ChevronUp className="h-4 w-4" />
+                        )}
                       </button>
                     </th>
                     <th className="text-left p-4 font-medium text-gray-600">Status</th>
@@ -473,18 +375,18 @@ export default function ConversationsPage() {
                 <tbody>
                   {filteredAndSortedConversations.map((conversation) => (
                     <tr
-                      key={conversation.id}
+                      key={conversation.thread.conversation_id}
                       className={`border-b hover:bg-[#0e6537]/5 cursor-pointer transition-all duration-200 ${
-                        conversation.busy ? 'thread-busy-row bg-[#0e6537]/5' : ''
+                        conversation.thread.busy ? 'thread-busy-row bg-[#0e6537]/5' : ''
                       }`}
-                      onClick={() => (window.location.href = `/dashboard/conversations/${conversation.id}`)}
+                      onClick={() => (window.location.href = `/dashboard/conversations/${conversation.thread.conversation_id}`)}
                     >
                       {/* Client information cell */}
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-[#0e6537]/10 rounded-full flex items-center justify-center">
                             <span className="text-sm font-semibold text-[#0e6537]">
-                              {conversation.name
+                              {conversation.thread.source_name
                                 .split(" ")
                                 .map((n: string) => n[0])
                                 .join("")}
@@ -492,15 +394,15 @@ export default function ConversationsPage() {
                           </div>
                           <div className="flex flex-col">
                             <div className="flex items-center gap-2">
-                              <span className="font-medium text-gray-900">{conversation.name}</span>
-                              {conversation.busy && (
+                              <span className="font-medium text-gray-900">{conversation.thread.source_name || conversation.thread.associated_account || "Unknown Client"}</span>
+                              {conversation.thread.busy && (
                                 <div className="flex items-center gap-1.5 px-2 py-0.5 bg-[#0e6537]/10 rounded-full">
                                   <div className="w-1.5 h-1.5 bg-[#0e6537] rounded-full animate-pulse" />
                                   <span className="text-xs text-[#0e6537] font-medium">Email in progress</span>
                                 </div>
                               )}
                             </div>
-                            {conversation.busy && (
+                            {conversation.thread.busy && (
                               <p className="text-xs text-[#0e6537] mt-1">Please wait while the email is being sent...</p>
                             )}
                           </div>
@@ -510,38 +412,38 @@ export default function ConversationsPage() {
                       <td className="p-4">
                         <span
                           className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            conversation.aiScore >= 80
+                            conversation.thread.aiScore >= 80
                               ? "bg-[#0e6537]/20 text-[#002417]"
-                              : conversation.aiScore >= 60
+                              : conversation.thread.aiScore >= 60
                                 ? "bg-yellow-100 text-yellow-800"
                                 : "bg-red-100 text-red-800"
                           }`}
                         >
-                          {typeof conversation.aiScore === 'number' && !isNaN(conversation.aiScore) ? conversation.aiScore : 'N/A'}
+                          {typeof conversation.thread.aiScore === 'number' && !isNaN(conversation.thread.aiScore) ? conversation.thread.aiScore : 'N/A'}
                         </span>
                       </td>
                       {/* Summary and last message cells */}
                       <td className="p-4">
-                        <p className="text-sm text-gray-600 max-w-xs truncate">{conversation.summary}</p>
+                        <p className="text-sm text-gray-600 max-w-xs truncate">{conversation.thread.ai_summary || "No summary available"}</p>
                       </td>
                       <td className="p-4">
-                        <p className="text-sm text-gray-600 max-w-xs truncate">{conversation.lastMessage}</p>
+                        <p className="text-sm text-gray-600 max-w-xs truncate">{conversation.messages[0]?.body || "No messages"}</p>
                       </td>
                       <td className="p-4">
-                        <p className="text-sm text-gray-600">{conversation.time}</p>
+                        <p className="text-sm text-gray-600">{conversation.messages[0]?.timestamp ? getTimeAgo(conversation.messages[0].timestamp) : "Unknown"}</p>
                       </td>
                       {/* Status cell with conditional styling */}
                       <td className="p-4">
                         <span
                           className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            conversation.status === "hot"
+                            conversation.thread.status === "hot"
                               ? "bg-red-100 text-red-800"
-                              : conversation.status === "warm"
+                              : conversation.thread.status === "warm"
                                 ? "bg-[#d8eee1] text-[#002417]"
                                 : "bg-[#e6f5ec] text-[#002417]"
                           }`}
                         >
-                          {conversation.status.toUpperCase()}
+                          {conversation.thread.status.toUpperCase()}
                         </span>
                       </td>
                     </tr>

@@ -21,6 +21,7 @@ export async function POST(request: Request) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password, provider, name }),
+            credentials: 'include',
         });
 
         const data = await response.json();

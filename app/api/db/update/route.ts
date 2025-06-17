@@ -48,7 +48,8 @@ export async function POST(request: Request) {
         key_name,
         key_value,
         update_data,
-        account_id: session.user.id
+        account_id: session.user.id,
+        session_id: sessionId
       }),
       credentials: 'include',
     });

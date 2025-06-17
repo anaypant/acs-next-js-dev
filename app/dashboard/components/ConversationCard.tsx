@@ -13,12 +13,13 @@ import OverrideStatus from './OverrideStatus';
 import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, PanelLeft, AlertTriangle, RefreshCw, ChevronDown, X, Shield, ShieldOff } from "lucide-react"
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from 'react';
+import { useConversationsData } from '../lib/use-conversations';
+import type { Message as CachedMessage } from '../lib/conversations-context';
 
 /**
  * Props interface for ConversationCard component
  * @interface ConversationCardProps
  * @property {Thread} conv - The conversation thread data
- * @property {any} rawThread - Raw thread data including messages
  * @property {string | null} updatingRead - ID of conversation being marked as read
  * @property {string | null} updatingLcp - ID of conversation being updated for LCP
  * @property {string | null} deletingThread - ID of conversation being deleted
@@ -28,7 +29,6 @@ import { useEffect, useState } from 'react';
  */
 type ConversationCardProps = {
     conv: Thread;
-    rawThread: any;
     updatingRead: string | null;
     updatingLcp: string | null;
     deletingThread: string | null;
@@ -99,7 +99,6 @@ function getEvScoreColor(score: number) {
  */
 const ConversationCard = ({
     conv,
-    rawThread,
     updatingRead,
     updatingLcp,
     deletingThread,
@@ -108,6 +107,10 @@ const ConversationCard = ({
     handleDeleteThread,
 }: ConversationCardProps) => {
     const router = useRouter();
+    const { getConversationById, updateThreadMetadata } = useConversationsData();
+    const cachedThread = getConversationById(conv.conversation_id);
+    const messages = (cachedThread?.messages || []) as (Message & CachedMessage)[];
+    
     // Add local state for LCP status
     const [localLcpEnabled, setLocalLcpEnabled] = useState(conv.lcp_enabled);
     const [isUpdatingLcp, setIsUpdatingLcp] = useState(false);
@@ -117,38 +120,34 @@ const ConversationCard = ({
         setLocalLcpEnabled(conv.lcp_enabled);
     }, [conv.lcp_enabled]);
 
-    // Handle LCP toggle with local state management
+    // Handle LCP toggle with local state management and cache update
     const handleLocalLcpToggle = async (e: React.MouseEvent) => {
         e.stopPropagation();
         if (isUpdatingLcp) return;
 
         setIsUpdatingLcp(true);
         try {
-            // Optimistically update UI
+            // Optimistically update UI and cache
             setLocalLcpEnabled(!localLcpEnabled);
+            updateThreadMetadata(conv.conversation_id, { lcp_enabled: !localLcpEnabled });
             // Call the parent handler
             await handleLcpToggle(conv.conversation_id, localLcpEnabled);
         } catch (error) {
             // Revert on error
             setLocalLcpEnabled(localLcpEnabled);
+            updateThreadMetadata(conv.conversation_id, { lcp_enabled: localLcpEnabled });
             console.error('Error toggling LCP:', error);
         } finally {
             setIsUpdatingLcp(false);
         }
     };
 
-    console.log(rawThread);
-    const messages: Message[] = rawThread?.messages || [];
     const sortedMessages = [...messages].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-    // Find the most recent message (inbound or outbound)
-    const mostRecentMessage = messages.length > 0
-        ? [...messages].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
-        : undefined;
+    const mostRecentMessage = messages.length > 0 ? sortedMessages[0] : undefined;
     const subject = mostRecentMessage?.subject || 'No subject';
 
     // Find the most recent evaluable message for EV score
-    const evMessage = sortedMessages.find((msg: Message) => {
+    const evMessage = sortedMessages.find((msg) => {
         const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
         return score !== undefined && score !== null && !isNaN(score);
     });
@@ -182,7 +181,7 @@ const ConversationCard = ({
             className={`flex flex-col sm:flex-row items-stretch gap-2 sm:gap-3 md:gap-4 p-2 sm:p-3 md:p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors relative ${
                 conv.flag_for_review
                     ? 'flagged-review'
-                    : score > conv.lcp_flag_threshold
+                    : conv.flag
                     ? 'flagged-completion'
                     : 'border-[#0e6537]/20'
             }`}
@@ -195,7 +194,7 @@ const ConversationCard = ({
                     <span className="xs:hidden">Review</span>
                 </div>
             )}
-            {!conv.flag_for_review && score > conv.lcp_flag_threshold && (
+            {!conv.flag_for_review && conv.flag && (
                 <div className="absolute -top-2 -right-2 bg-green-400 text-green-900 px-2 py-0.5 rounded-full text-xs font-semibold shadow-sm flex items-center gap-1">
                     <CheckCircle className="w-3 h-3" />
                     <span className="hidden xs:inline">Flagged for Completion</span>
@@ -256,7 +255,7 @@ const ConversationCard = ({
                     >
                         EV: {score >= 0 ? score.toString() : 'N/A'}
                     </span>
-                    {score > conv.lcp_flag_threshold && !conv.flag_for_review && (
+                    {conv.flag && !conv.flag_for_review && (
                         <span className="flex items-center gap-1 text-green-600 font-bold" title="This conversation has met the completion criteria and is ready for follow-up action.">
                             <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" /> 
                             <span className="hidden xs:inline">Flagged</span>

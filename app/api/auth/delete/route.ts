@@ -6,14 +6,14 @@ import { Session } from 'next-auth';
 
 export async function POST(request: Request) {
   try {
-    const { email } = await request.json();
-    if (!email) {
-      return NextResponse.json({ error: 'Email is required.' }, { status: 400 });
+    const { userId } = await request.json();
+    if (!userId) {
+      return NextResponse.json({ error: 'Id is required.' }, { status: 400 });
     }
 
     // Get current session to verify user
     const session = await getServerSession(authOptions) as Session & { user: { id: string; email: string; provider?: string; accessToken?: string } };
-    if (!session || session.user.email !== email) {
+    if (!session || session.user.id !== userId) {
       return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
     }
 
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     if (session.user.provider === 'google') {
       try {
         const googleRevokeUrl = 'https://oauth2.googleapis.com/revoke';
-        const token = session.user.accessToken; // You'll need to store this in your session
+        const token = session.user.accessToken; // Access token is now properly stored in session
         
         if (token) {
           await fetch(googleRevokeUrl, {
@@ -67,6 +67,7 @@ export async function POST(request: Request) {
       }),
       credentials: 'include',
     });
+    
 
     // Log response for debugging
     const contentType = res.headers.get('content-type');

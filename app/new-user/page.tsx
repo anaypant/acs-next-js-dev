@@ -322,6 +322,7 @@ export default function NewUserPage() {
         }
 
         const result = await response.json();
+        console.log('result', result);
         const items = result.items || [];
         if (Array.isArray(items) && items.length > 1) {
           goto404('500', 'Multiple entries found for this user', router);
