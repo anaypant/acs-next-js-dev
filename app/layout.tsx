@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { SessionProvider } from '@/app/providers/SessionProvider';
+import ErrorBoundary from '@/app/components/ErrorBoundary';
+import React from 'react';
 
 export const viewport: Viewport = {
     width: 'device-width',
@@ -30,9 +32,13 @@ export default function RootLayout({
         <html lang="en">
             <head />
             <body>
-                <SessionProvider>
-                    {children}
-                </SessionProvider>
+                <ErrorBoundary>
+                    <React.StrictMode>
+                        <SessionProvider>
+                            {children}
+                        </SessionProvider>
+                    </React.StrictMode>
+                </ErrorBoundary>
             </body>
         </html>
     );

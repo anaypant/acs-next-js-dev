@@ -16,7 +16,16 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import React from 'react';
 import dynamic from 'next/dynamic';
-const Spline = dynamic(() => import('@splinetool/react-spline'), { ssr: false });
+
+// Improved Spline import with better error handling
+const Spline = dynamic(() => import('@splinetool/react-spline'), { 
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-96 flex items-center justify-center bg-gray-100 rounded-lg">
+      <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+    </div>
+  )
+});
 
 /**
  * HomePage Component

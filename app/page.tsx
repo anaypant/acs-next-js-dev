@@ -7,7 +7,7 @@
  */
 
 'use client';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import HomePage from './landing/page';
 import Navbar from './Navbar';
 import Footer from './Footer';
@@ -35,6 +35,12 @@ export default function Home() {
     // Get session data and status from NextAuth
     const { data: session, status } = useSession();
     const router = useRouter();
+    const [isClient, setIsClient] = useState(false);
+
+    // Handle hydration
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
 
     // Handle redirection for authenticated users
     useEffect(() => {
@@ -42,6 +48,19 @@ export default function Home() {
             router.push('/dashboard');
         }
     }, [status, session, router]);
+
+    // Prevent hydration mismatch
+    if (!isClient) {
+        return (
+            <div className="min-h-screen">
+                <main>
+                    <div className="flex items-center justify-center min-h-screen">
+                        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+                    </div>
+                </main>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen">
@@ -62,6 +81,7 @@ export default function Home() {
  * - Added component composition
  * - Integrated debugging logs
  * - Set up client-side rendering
+ * - Added hydration handling to prevent ReactCurrentOwner errors
  */
 
 
