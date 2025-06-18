@@ -3,15 +3,15 @@
  * Purpose: Renders the main dashboard with lead conversion pipeline, performance metrics, and activity tracking.
  * Author: Alejo Cagliolo
  * Date: 06/11/25
- * Version: 1.1.1
+ * Version: 1.3.0
  */
 
 "use client"
-import { MessageSquare, RefreshCw, CheckCircle, Flag, Shield, ChevronDown } from "lucide-react"
+import { MessageSquare, RefreshCw, CheckCircle, Flag, Shield, ChevronDown, Menu, X } from "lucide-react"
 import React, { useEffect, useMemo, Suspense } from "react"
 import { SidebarProvider, AppSidebar, SidebarInset } from "./components/Sidebar"
 import { useSidebar } from "./components/Sidebar"
-import { useSession } from "next-auth/react"
+import { useSession, signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import type { Thread, Message, TimeRange } from "@/app/types/lcp"
 import LeadFunnel from './components/LeadFunnel'
@@ -23,6 +23,8 @@ import { useDashboard } from "./lib/dashboard-client"
 import LoadingSpinner from './components/LoadingSpinner'
 import { SidebarTrigger } from "./components/Sidebar"
 import { isThreadCompleted } from "./lib/dashboard-utils"
+import { Logo } from "@/app/utils/Logo"
+import { motion, AnimatePresence } from "framer-motion"
 
 // Time range options
 const timeRangeOptions = [
@@ -189,7 +191,9 @@ function DashboardContent() {
 
   const router = useRouter();
   const [isMobile, setIsMobile] = React.useState(false);
-  const { isOpen } = useSidebar ? useSidebar() : { isOpen: true };
+  const [showFilters, setShowFilters] = React.useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const { isOpen, toggle } = useSidebar ? useSidebar() : { isOpen: true, toggle: () => {} };
   const mtd = React.useRef(false);
 
   React.useEffect(() => {
@@ -253,6 +257,69 @@ function DashboardContent() {
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
+      /* Mobile-specific styles */
+      @media (max-width: 767px) {
+        /* Prevent horizontal scrolling */
+        body, html {
+          overflow-x: hidden;
+          width: 100%;
+        }
+        
+        /* Ensure proper touch targets */
+        button, a {
+          min-height: 44px;
+          min-width: 44px;
+        }
+        
+        /* Improve scrolling on mobile */
+        .mobile-scroll {
+          -webkit-overflow-scrolling: touch;
+          scroll-behavior: smooth;
+        }
+        
+        /* Better tap highlights */
+        * {
+          -webkit-tap-highlight-color: rgba(14, 101, 55, 0.1);
+        }
+        
+        /* Prevent zoom on input focus */
+        input, select, textarea {
+          font-size: 16px;
+        }
+        
+        /* Ensure buttons stack properly on mobile */
+        .flex-col > * {
+          width: 100%;
+        }
+        
+        /* Better spacing for mobile buttons */
+        .gap-2 > * {
+          margin-bottom: 0.5rem;
+        }
+        
+        .gap-2 > *:last-child {
+          margin-bottom: 0;
+        }
+        
+        /* Mobile menu dropdown max width */
+        .mobile-menu-dropdown {
+          max-width: 100vw;
+          width: 100%;
+        }
+        
+        /* Ensure mobile header is always visible */
+        .mobile-header {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          z-index: 50;
+          background: rgba(255, 255, 255, 0.95);
+          backdrop-filter: blur(8px);
+          border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+      }
+
       /* Icon Animation */
       @keyframes icon-slide-scale {
         0% { transform: scale(1) translateX(0); color: #166534; }
@@ -498,7 +565,11 @@ function DashboardContent() {
   return (
     <div className="min-h-screen bg-gray-50">
       <SidebarProvider>
-        <AppSidebar />
+        {/* Desktop Sidebar - only show on desktop */}
+        <div className="hidden md:block">
+          <AppSidebar />
+        </div>
+        
         <SidebarInset>
           {/* Add DeleteConfirmationModal */}
           <DeleteConfirmationModal
@@ -512,15 +583,128 @@ function DashboardContent() {
             isDeleting={deletingThread !== null}
           />
 
-          {/* Mobile sidebar trigger */}
-          {isMobile && (
-            <div className="fixed top-4 left-4 z-50 lg:hidden">
-              <SidebarTrigger />
+          {/* Mobile Header with ACS Logo and Hamburger Menu */}
+          <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-[#0a5a2f] via-[#0e6537] to-[#157a42] border-b border-white/10">
+            <div className="flex items-center justify-between px-4 py-3">
+              {/* ACS Logo */}
+              <div className="flex-shrink-0">
+                <Logo href="/dashboard" size="md" whiteText />
+              </div>
+
+              {/* Mobile menu button */}
+              <button
+                className="p-2 rounded-md hover:bg-white/10 focus:outline-none transition-colors"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                aria-label="Toggle menu"
+              >
+                {isMobileMenuOpen ? (
+                  <X className="h-6 w-6 text-white" />
+                ) : (
+                  <Menu className="h-6 w-6 text-white" />
+                )}
+              </button>
             </div>
-          )}
+
+            {/* Mobile Menu Dropdown */}
+            <AnimatePresence>
+              {isMobileMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="md:hidden bg-gradient-to-b from-[#0a5a2f] via-[#0e6537] to-[#157a42] border-t border-white/10 mobile-menu-dropdown"
+                >
+                  <div className="px-4 py-3 space-y-1">
+                    {/* Navigation Items */}
+                    <div className="space-y-1">
+                      <a
+                        href="/dashboard"
+                        className="block px-3 py-3 rounded-md text-base font-medium text-white hover:bg-white/10 transition-colors duration-200"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        Dashboard
+                      </a>
+                      <a
+                        href="/dashboard/conversations"
+                        className="block px-3 py-3 rounded-md text-base font-medium text-white hover:bg-white/10 transition-colors duration-200"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        Conversations
+                      </a>
+                      <a
+                        href="/dashboard/history"
+                        className="block px-3 py-3 rounded-md text-base font-medium text-white hover:bg-white/10 transition-colors duration-200"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        History
+                      </a>
+                      <a
+                        href="/dashboard/resources"
+                        className="block px-3 py-3 rounded-md text-base font-medium text-white hover:bg-white/10 transition-colors duration-200"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        Resources
+                      </a>
+                      <a
+                        href="/dashboard/junk"
+                        className="block px-3 py-3 rounded-md text-base font-medium text-white hover:bg-white/10 transition-colors duration-200"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        Junk
+                      </a>
+                    </div>
+
+                    {/* User Section */}
+                    {session?.user && (
+                      <div className="pt-4 border-t border-white/20">
+                        <div className="px-3 py-3 bg-white/10 rounded-lg border border-white/20">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gradient-to-br from-white/20 to-white/10 rounded-lg flex items-center justify-center">
+                              <span className="text-white font-semibold text-sm">
+                                {session.user.name?.charAt(0) || 'U'}
+                              </span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-white font-medium text-sm">{session.user.name || 'User'}</span>
+                              <span className="text-white/60 text-xs">{session.user.email}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Settings and Logout */}
+                    <div className="pt-4 border-t border-white/20 space-y-1">
+                      <a
+                        href="/settings"
+                        className="block px-3 py-3 rounded-md text-base font-medium text-white hover:bg-white/10 transition-colors duration-200"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        Settings
+                      </a>
+                      <button
+                        onClick={async () => {
+                          setIsMobileMenuOpen(false);
+                          // Clear session_id cookie before signing out
+                          if (typeof window !== 'undefined') {
+                            document.cookie = 'session_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                          }
+                          await signOut({ callbackUrl: '/' });
+                        }}
+                        className="w-full text-left block px-3 py-3 rounded-md text-base font-medium text-white hover:bg-white/10 transition-colors duration-200"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* Main dashboard content with gradient background */}
-          <div className="flex flex-col gap-3 sm:gap-4 md:gap-6 p-3 sm:p-4 md:p-6 bg-gradient-to-b from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1]">
+          <div className={`flex flex-col gap-3 sm:gap-4 md:gap-6 p-3 sm:p-4 md:p-6 bg-gradient-to-b from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1] mobile-scroll pt-16 md:pt-0`}>
             {/* Welcome section with personalized greeting */}
             <div className="bg-gradient-to-b from-[#0a5a2f] via-[#0e6537] to-[#157a42] p-4 sm:p-6 md:p-8 rounded-lg">
               <h1 className="text-white text-xl sm:text-2xl md:text-3xl font-bold mb-2">Welcome, {session?.user?.name || 'User'}</h1>
@@ -528,7 +712,7 @@ function DashboardContent() {
             </div>
 
             {/* Lead statistics widgets with mini charts */}
-            <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {/* New leads widget */}
               <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg border border-[#0e6537]/20 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between mb-3">
@@ -594,65 +778,124 @@ function DashboardContent() {
             </div>
 
             {/* Main dashboard grid layout */}
-            <div className={`grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6${!isMobile && !isOpen ? ' items-start' : ''}`}>
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
               {/* Recent conversations section */}
               <div className="lg:col-span-3 bg-white p-3 sm:p-4 md:p-6 rounded-lg border border-[#0e6537]/20 shadow-sm">
                 <div className="flex flex-col gap-3 sm:gap-4">
                   {/* Header with title and actions */}
-                  <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-base sm:text-lg font-semibold whitespace-nowrap">Recent Conversations</h3>
-                    <div className="flex items-center gap-2">
-                      {/* Filter bar */}
-                      <div className="flex items-center gap-1 px-2 py-1 bg-gray-50 rounded-lg border border-gray-200">
-                        <span className="text-sm font-medium text-gray-700 whitespace-nowrap">Filters:</span>
-                        <div className="flex gap-1">
+                  <div className="flex flex-col gap-3">
+                    <h3 className="text-base sm:text-lg font-semibold">Recent Conversations</h3>
+                    
+                    {/* Action buttons and filters */}
+                    <div className="flex flex-col gap-3">
+                      {/* Mobile filter toggle - always show on mobile, hide on desktop */}
+                      <div className="block md:hidden">
+                        <button
+                          onClick={() => setShowFilters(!showFilters)}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+                        >
+                          <span>Filters</span>
+                          <ChevronDown className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+                        </button>
+                      </div>
+                      
+                      {/* Desktop filter bar - hide on mobile, show on desktop */}
+                      <div className="hidden md:block">
+                        <div className="flex items-center gap-1 px-2 py-1 bg-gray-50 rounded-lg border border-gray-200">
+                          <span className="text-sm font-medium text-gray-700">Filters:</span>
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => toggleFilter('unread')}
+                              className={`px-2 py-1 text-xs rounded-lg transition-colors ${
+                                filters.unread
+                                  ? 'bg-[#0e6537] text-white'
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              }`}
+                            >
+                              Unread ({filterCounts.unread})
+                            </button>
+                            <button
+                              onClick={() => toggleFilter('review')}
+                              className={`px-2 py-1 text-xs rounded-lg transition-colors ${
+                                filters.review
+                                  ? 'bg-[#0e6537] text-white'
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              }`}
+                            >
+                              Review ({filterCounts.review})
+                            </button>
+                            <button
+                              onClick={() => toggleFilter('completion')}
+                              className={`px-2 py-1 text-xs rounded-lg transition-colors ${
+                                filters.completion
+                                  ? 'bg-[#0e6537] text-white'
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              }`}
+                            >
+                              Completion ({filterCounts.completion})
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Action buttons - responsive layout */}
+                      <div className="flex flex-col md:flex-row gap-2">
+                        <button
+                          className="w-full md:w-auto px-4 py-3 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm flex items-center justify-center gap-2 text-sm"
+                          onClick={() => loadThreads()}
+                          disabled={loadingConversations}
+                        >
+                          <RefreshCw className={`w-4 h-4 ${loadingConversations ? 'animate-spin' : ''}`} />
+                          Refresh
+                        </button>
+                        <button
+                          className="w-full md:w-auto px-4 py-3 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm text-sm"
+                          onClick={() => (window.location.href = "/dashboard/conversations")}
+                        >
+                          Load All
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mobile filter dropdown - always show on mobile when open */}
+                  <div className="block md:hidden">
+                    {showFilters && (
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <div className="flex flex-col gap-2">
                           <button
                             onClick={() => toggleFilter('unread')}
-                            className={`px-2 py-1 text-xs rounded-lg transition-colors whitespace-nowrap ${
+                            className={`w-full px-4 py-3 text-sm rounded-lg transition-colors text-left ${
                               filters.unread
                                 ? 'bg-[#0e6537] text-white'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                             }`}
                           >
                             Unread ({filterCounts.unread})
                           </button>
                           <button
                             onClick={() => toggleFilter('review')}
-                            className={`px-2 py-1 text-xs rounded-lg transition-colors whitespace-nowrap ${
+                            className={`w-full px-4 py-3 text-sm rounded-lg transition-colors text-left ${
                               filters.review
                                 ? 'bg-[#0e6537] text-white'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                             }`}
                           >
                             Review ({filterCounts.review})
                           </button>
                           <button
                             onClick={() => toggleFilter('completion')}
-                            className={`px-2 py-1 text-xs rounded-lg transition-colors whitespace-nowrap ${
+                            className={`w-full px-4 py-3 text-sm rounded-lg transition-colors text-left ${
                               filters.completion
                                 ? 'bg-[#0e6537] text-white'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                             }`}
                           >
                             Completion ({filterCounts.completion})
                           </button>
                         </div>
                       </div>
-                      <button
-                        className="px-2 py-1.5 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm flex items-center gap-1 text-xs whitespace-nowrap"
-                        onClick={() => loadThreads()}
-                        disabled={loadingConversations}
-                      >
-                        <RefreshCw className={`w-3 h-3 ${loadingConversations ? 'animate-spin' : ''}`} />
-                        Refresh
-                      </button>
-                      <button
-                        className="px-2 py-1.5 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm text-xs whitespace-nowrap"
-                        onClick={() => (window.location.href = "/dashboard/conversations")}
-                      >
-                        Load All
-                      </button>
-                    </div>
+                    )}
                   </div>
 
                   {/* Conversations list */}
@@ -672,7 +915,7 @@ function DashboardContent() {
                       <>
                         <div className="flex justify-center pt-4">
                           <button
-                            className="px-4 py-2 bg-white border border-[#0e6537]/20 text-[#0e6537] rounded-lg hover:bg-[#0e6537]/5 transition-all duration-200 shadow-sm text-sm flex items-center gap-2"
+                            className="w-full md:w-auto px-4 py-3 bg-white border border-[#0e6537]/20 text-[#0e6537] rounded-lg hover:bg-[#0e6537]/5 transition-all duration-200 shadow-sm text-sm flex items-center justify-center gap-2"
                             onClick={() => (window.location.href = "/dashboard/conversations")}
                           >
                             <MessageSquare className="w-4 h-4" />
@@ -698,14 +941,14 @@ function DashboardContent() {
               </div>
 
               {/* Lead performance metrics section */}
-              <div className={`lg:col-span-2${!isMobile && !isOpen ? ' self-start' : ''}`}>
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+              <div className="lg:col-span-2">
+                <div className="flex flex-col gap-3 mb-3">
                   <h3 className="text-base sm:text-lg md:text-xl font-semibold">Lead Performance</h3>
-                  <div className="flex items-center gap-2">
-                    <div className="relative">
+                  <div className="flex flex-col md:flex-row items-start md:items-center gap-2">
+                    <div className="relative w-full md:w-auto">
                       <button
                         onClick={() => setShowTimeRangeDropdown(!showTimeRangeDropdown)}
-                        className="flex items-center gap-1 text-xs sm:text-sm text-gray-600 hover:text-gray-900"
+                        className="w-full md:w-auto flex items-center justify-center gap-1 text-xs sm:text-sm text-gray-600 hover:text-gray-900 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
                       >
                         {getTimeRangeText(timeRange)}
                         <ChevronDown className="w-4 h-4" />
@@ -730,11 +973,11 @@ function DashboardContent() {
                       )}
                     </div>
                     <button
-                      className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm flex items-center gap-1"
+                      className="w-full md:w-auto px-3 py-2 text-sm bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm flex items-center justify-center gap-2"
                       onClick={refreshLeadPerformance}
                       disabled={refreshingLeadPerformance}
                     >
-                      <RefreshCw className={`w-2.5 h-2.5 sm:w-3 sm:h-3 ${refreshingLeadPerformance ? 'animate-spin' : ''}`} />
+                      <RefreshCw className={`w-4 h-4 ${refreshingLeadPerformance ? 'animate-spin' : ''}`} />
                       Refresh
                     </button>
                   </div>
@@ -772,12 +1015,12 @@ function DashboardContent() {
             {/* Bottom section with lead sources and activity */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
               {/* Legend section */}
-              <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg border border-[#0e6537]/20 shadow-sm flex flex-col h-full justify-between">
+              <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg border border-[#0e6537]/20 shadow-sm">
                 <div>
                   {/* Header with title and Learn More button */}
-                  <div className="flex items-center justify-between mb-3 sm:mb-4 md:mb-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 sm:mb-4 md:mb-6">
                     <h3 className="text-base sm:text-lg font-semibold">Understanding Your Dashboard</h3>
-                    <a href="/dashboard/resources" className="px-3 py-1.5 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm text-xs font-medium">Learn More</a>
+                    <a href="/dashboard/resources" className="px-3 py-1.5 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm text-xs font-medium self-start sm:self-center">Learn More</a>
                   </div>
 
                   {/* Legend items */}
@@ -937,7 +1180,7 @@ async function safeApiCall<T>(apiCall: () => Promise<T>): Promise<{ data?: T; er
 
 /**
  * Change Log:
- * 06/11/25 - Version 1.1.1
+ * 06/11/25 - Version 1.3.0
  * - Enhanced mobile responsiveness
  * - Improved filter functionality
  * - Updated documentation format
