@@ -126,7 +126,7 @@ export async function POST(request: Request) {
     }
 
     // Get all messages for these conversations
-    const messagesResponse = await fetch(`${config.API_URL}/db/select`, {
+    const messagesResponse = await fetch(`${config.API_URL}/db/batch-select`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -136,7 +136,7 @@ export async function POST(request: Request) {
         table_name: 'Conversations',
         index_name: 'conversation_id-index',
         key_name: 'conversation_id',
-        key_value: conversationIds,
+        key_values: conversationIds,
         account_id: actualUserId,
         session_id: sessionId
       })
@@ -174,7 +174,14 @@ export async function POST(request: Request) {
     }
 
     const messages = await messagesResponse.json();
-    if (!Array.isArray(messages)) {
+    
+    // Handle the case where messages response has { items: [...], count: ... } structure
+    let messagesArray: any[];
+    if (messages && typeof messages === 'object' && 'items' in messages) {
+      messagesArray = messages.items;
+    } else if (Array.isArray(messages)) {
+      messagesArray = messages;
+    } else {
       console.error('[get_all_threads] Invalid response format from messages fetch:', messages);
       return NextResponse.json(
         { error: 'Invalid response format from messages fetch' },
@@ -183,7 +190,7 @@ export async function POST(request: Request) {
     }
 
     // Group messages by conversation_id
-    const messagesByConversation = messages.reduce((acc, message) => {
+    const messagesByConversation = messagesArray.reduce((acc, message) => {
       const conversationId = message.conversation_id;
       if (!acc[conversationId]) {
         acc[conversationId] = [];
