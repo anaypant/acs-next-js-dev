@@ -10,6 +10,8 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
+import dynamic from 'next/dynamic';
+const Spline = dynamic(() => import('@splinetool/react-spline'), { ssr: false });
 import {
   Search,
   Check,
@@ -214,8 +216,11 @@ export default function HomePage() {
               </p>
 
               <div className="relative z-10">
+                {/* TEMPORARY: Demo access required - routing to demo page instead of signup */}
+                {/* TODO: Restore original signup link when demo phase ends */}
+                {/* Original: <Link href="/signup" className="inline-flex items-center px-4 sm:px-6 py-2.5 sm:py-3 text-white bg-[#0e6537] hover:bg-gradient-to-r hover:from-[#0e6537] hover:to-[#157a42] rounded-md font-medium transition-all duration-300 shadow-lg shadow-green-700/20 text-sm sm:text-base">Get Started</Link> */}
                 <Link
-                  href="/signup"
+                  href="/demo"
                   className="inline-flex items-center px-4 sm:px-6 py-2.5 sm:py-3 text-white bg-[#0e6537] hover:bg-gradient-to-r hover:from-[#0e6537] hover:to-[#157a42] rounded-md font-medium transition-all duration-300 shadow-lg shadow-green-700/20 text-sm sm:text-base"
                 >
                   Get Started
@@ -242,16 +247,12 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Right Column: AI Image Placeholder */}
+            {/* Right Column: Spline 3D Scene */}
             <div className="relative mt-8 md:mt-0">
-              <div className="w-full aspect-[4/3] rounded-lg shadow-xl bg-gradient-to-br from-[#0e6537]/20 to-[#0e6537]/5 flex items-center justify-center">
-                <div className="text-center p-4 sm:p-8">
-                  <div className="w-16 h-16 sm:w-24 sm:h-24 mx-auto mb-4 rounded-full bg-[#0e6537]/20 flex items-center justify-center">
-                    <Search className="h-8 w-8 sm:h-12 sm:w-12 text-[#0e6537]" />
-                  </div>
-                  <h3 className="text-lg sm:text-xl font-semibold text-[#0e6537]">AI-Powered Real Estate</h3>
-                  <p className="text-sm sm:text-base text-gray-600 mt-2">Advanced technology for modern real estate professionals</p>
-                </div>
+              <div className="w-full h-64 sm:h-80 md:h-96 lg:h-[400px] xl:h-[450px] rounded-lg shadow-xl bg-gradient-to-br from-[#0e6537]/20 to-[#0e6537]/5 overflow-hidden">
+                <Spline
+                  scene="https://prod.spline.design/LDBaM7ucTMsfrTji/scene.splinecode"
+                />
               </div>
             </div>
           </div>
@@ -442,8 +443,11 @@ export default function HomePage() {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                {/* TEMPORARY: Demo access required - routing to demo page instead of signup */}
+                {/* TODO: Restore original signup link when demo phase ends */}
+                {/* Original: <Link href="/signup" className="px-6 sm:px-8 py-2.5 sm:py-3 bg-white !text-[#0e6537] hover:bg-gradient-to-r hover:from-white hover:to-green-100 rounded-md font-medium transition-all duration-300 text-center text-sm sm:text-base">Get Started</Link> */}
                 <Link
-                  href="/signup"
+                  href="/demo"
                   className="px-6 sm:px-8 py-2.5 sm:py-3 bg-white !text-[#0e6537] hover:bg-gradient-to-r hover:from-white hover:to-green-100 rounded-md font-medium transition-all duration-300 text-center text-sm sm:text-base"
                 >
                   Get Started

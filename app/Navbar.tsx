@@ -112,8 +112,11 @@ const Navbar = () => {
           {/* Desktop authentication links - only show if not on dashboard */}
           {!isDashboard && (
             <div className="hidden md:flex items-center space-x-6 w-[250px] justify-end">
+              {/* TEMPORARY: Demo access required - routing to demo page instead of login */}
+              {/* TODO: Restore original login link when demo phase ends */}
+              {/* Original: <Link href="/login" className="relative overflow-hidden group py-2 px-3" onMouseEnter={() => setHovered("signin")} onMouseLeave={() => setHovered(null)} style={{ color: '#0e6537', textDecoration: 'none' }}> */}
               <Link
-                href="/login"
+                href="/demo"
                 className="relative overflow-hidden group py-2 px-3"
                 onMouseEnter={() => setHovered("signin")}
                 onMouseLeave={() => setHovered(null)}
@@ -134,8 +137,11 @@ const Navbar = () => {
                 )}
               </Link>
 
+              {/* TEMPORARY: Demo access required - routing to demo page instead of signup */}
+              {/* TODO: Restore original signup link when demo phase ends */}
+              {/* Original: <Link href="/signup" className="relative group" onMouseEnter={() => setHovered("getstarted")} onMouseLeave={() => setHovered(null)} style={{ textDecoration: 'none' }}> */}
               <Link
-                href="/signup"
+                href="/demo"
                 className="relative group"
                 onMouseEnter={() => setHovered("getstarted")}
                 onMouseLeave={() => setHovered(null)}
@@ -192,16 +198,22 @@ const Navbar = () => {
                     )
                   })}
                   <div className="pt-4 border-t border-gray-200">
+                    {/* TEMPORARY: Demo access required - routing to demo page instead of login */}
+                    {/* TODO: Restore original login link when demo phase ends */}
+                    {/* Original: <Link href="/login" className="block px-3 py-2 rounded-md text-base font-medium text-[#0e6537] hover:bg-[#E8F5EE] transition-colors duration-200" onClick={() => setIsMobileMenuOpen(false)} style={{ color: '#0e6537' }}>Sign in</Link> */}
                     <Link
-                      href="/login"
+                      href="/demo"
                       className="block px-3 py-2 rounded-md text-base font-medium text-[#0e6537] hover:bg-[#E8F5EE] transition-colors duration-200"
                       onClick={() => setIsMobileMenuOpen(false)}
                       style={{ color: '#0e6537' }}
                     >
                       Sign in
                     </Link>
+                    {/* TEMPORARY: Demo access required - routing to demo page instead of signup */}
+                    {/* TODO: Restore original signup link when demo phase ends */}
+                    {/* Original: <Link href="/signup" className="block px-3 py-2 mt-2 rounded-md text-base font-medium text-white bg-gradient-to-r from-[#0e6537] to-[#157a42] hover:from-[#0a5a2f] hover:to-[#0e6537] transition-all duration-200" onClick={() => setIsMobileMenuOpen(false)} style={{ color: '#ffffff' }}>Get Started</Link> */}
                     <Link
-                      href="/signup"
+                      href="/demo"
                       className="block px-3 py-2 mt-2 rounded-md text-base font-medium text-white bg-gradient-to-r from-[#0e6537] to-[#157a42] hover:from-[#0a5a2f] hover:to-[#0e6537] transition-all duration-200"
                       onClick={() => setIsMobileMenuOpen(false)}
                       style={{ color: '#ffffff' }}

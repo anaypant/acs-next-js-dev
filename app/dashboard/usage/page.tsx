@@ -15,6 +15,8 @@ import { useSession, Session } from "next-auth/react"
 import { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
 import { format, subHours, subDays, subMonths, parse } from 'date-fns';
+import { ArrowLeft, BarChart3, TrendingUp, Users, Calendar, Target, Activity, PieChart } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 interface UsageStats {
   totalInvocations: number
@@ -142,14 +144,75 @@ function getXAxisInterval(dateRange: string) {
   return 0;
 }
 
+/**
+ * Logo Component
+ * Displays the ACS logo with customizable size and gradient text
+ * 
+ * @param {Object} props - Component props
+ * @param {"sm" | "lg"} props.size - Size variant of the logo
+ * @returns {JSX.Element} ACS logo with gradient background and text
+ */
+function Logo({ size = "sm" }: { size?: "sm" | "lg" }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="w-8 h-8 bg-gradient-to-br from-[#0a5a2f] via-[#0e6537] to-[#157a42] rounded-lg flex items-center justify-center shadow-sm">
+        <span className="text-white font-bold text-sm">ACS</span>
+      </div>
+      <span className="font-bold text-lg bg-gradient-to-r from-[#0a5a2f] to-[#157a42] bg-clip-text text-transparent">
+        ACS
+      </span>
+    </div>
+  )
+}
+
+/**
+ * UsagePage Component
+ * Main usage dashboard component for tracking system usage and analytics
+ * 
+ * Features:
+ * - Usage statistics and metrics
+ * - Performance analytics
+ * - User activity tracking
+ * - System utilization monitoring
+ * 
+ * @returns {JSX.Element} Complete usage dashboard view
+ */
 export default function UsagePage() {
-  const { data: session } = useSession() as { data: Session | null }
+  const router = useRouter()
+  const { data: session, status } = useSession() as { data: (Session & { user?: { id: string } }) | null, status: string }
   const [stats, setStats] = useState<UsageStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState("")
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" }>({ key: "invocations", direction: "desc" })
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" }>({
+    key: "invocations",
+    direction: "desc",
+  })
   const [dateRange, setDateRange] = useState("7d")
   const [selectedThreads, setSelectedThreads] = useState<Set<string>>(new Set())
+
+  // Session check - redirect if not authenticated
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/')
+    }
+  }, [status, router])
+
+  // Show loading while checking session
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#0e6537] mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Don't render anything if not authenticated
+  if (status === 'unauthenticated') {
+    return null
+  }
 
   useEffect(() => {
     const fetchUsageStats = async () => {

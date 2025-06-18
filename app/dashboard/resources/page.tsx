@@ -1,16 +1,43 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { resourcesData, ResourceSection, ResourceItem } from "./resources-data";
 import { Search, BookOpen, Shield, Zap, BarChart3, Users, Mail, Calendar, Settings, HelpCircle, Star, TrendingUp, Lock, Eye, Clock, Target, MessageSquare, Phone, MapPin, FileText, CheckCircle, AlertCircle, Info, ArrowLeft, Home, Sparkles, Lightbulb, Award, Bookmark, ExternalLink, ChevronRight, Play, Pause, RotateCcw, Maximize2, Minimize2, ChevronDown, ChevronUp, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import Link from "next/link";
 
 // SIMPLIFIED RESOURCES PAGE
 export default function ResourcesPage() {
+  const router = useRouter();
+  const { data: session, status } = useSession();
   const [activeTab, setActiveTab] = useState('getting-started');
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
-  const router = useRouter();
+
+  // Session check - redirect if not authenticated
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/');
+    }
+  }, [status, router]);
+
+  // Show loading while checking session
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-white dark:from-[#0a2f1f] dark:via-[#1a3f2f] dark:to-[#0a2f1f] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#0e6537] mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render anything if not authenticated
+  if (status === 'unauthenticated') {
+    return null;
+  }
 
   const tabs = [
     { id: 'getting-started', label: 'Getting Started', icon: Home },
