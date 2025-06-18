@@ -42,8 +42,10 @@
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { SearchParamsSuspense } from '../components/SearchParamsSuspense';
 
-export default function ErrorPage() {
+// Component that uses useSearchParams - wrapped in Suspense
+function ErrorPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const error = searchParams.get('error');
@@ -70,7 +72,15 @@ export default function ErrorPage() {
       </div>
     </div>
   );
-} 
+}
+
+export default function ErrorPage() {
+  return (
+    <SearchParamsSuspense>
+      <ErrorPageContent />
+    </SearchParamsSuspense>
+  );
+}
 /**
  * Change Log:
  * 06/15/25 - Version 1.0.0
