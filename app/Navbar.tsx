@@ -3,7 +3,7 @@
  * Purpose: Renders the main navigation bar with responsive design, animated hover effects, and authentication links.
  * Author: Alejo Cagliolo
  * Date: 6/11/25
- * Version: 1.2.0
+ * Version: 1.3.0
  */
 
 "use client"
@@ -44,7 +44,7 @@ const Navbar = () => {
     setIsDashboard(window.location.pathname.startsWith('/dashboard'))
   }, [])
 
-  const navigationItems = ["Home", "Solutions", "About", "Contact"]
+  const navigationItems = ["Home", "About", "Contact"]
 
   return (
     <nav className="bg-white/90 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50">
@@ -235,20 +235,9 @@ export default Navbar
 
 /**
  * Change Log:
- * 5/25/25 - Initial version
- * - Created responsive navigation bar
- * - Implemented hover animations with Framer Motion
- * - Added authentication links
- * - Integrated gradient effects
- * - Enhanced mobile responsiveness
- * - Added sticky positioning
- * - Implemented backdrop blur effect
- * 
- * 06/11/25 - Version 1.1.0
- * - Enhanced documentation with detailed component information
- * - Added comprehensive state management documentation
- * - Improved code readability with additional comments
- * - Added dependency documentation
+ * 06/11/25 - Version 1.3.0
+ * - Added Solutions page to navigation items
+ * - Updated navigation order for better user flow
  * 
  * 06/11/25 - Version 1.2.0
  * - Added mobile menu with hamburger button
@@ -257,4 +246,19 @@ export default Navbar
  * - Enhanced accessibility with proper ARIA labels
  * - Improved touch targets for mobile devices
  * - Added proper spacing and padding for mobile view
+ * 
+ * 06/11/25 - Version 1.1.0
+ * - Enhanced documentation with detailed component information
+ * - Added comprehensive state management documentation
+ * - Improved code readability with additional comments
+ * - Added dependency documentation
+ * 
+ * 5/25/25 - Initial version
+ * - Created responsive navigation bar
+ * - Implemented hover animations with Framer Motion
+ * - Added authentication links
+ * - Integrated gradient effects
+ * - Enhanced mobile responsiveness
+ * - Added sticky positioning
+ * - Implemented backdrop blur effect
  */

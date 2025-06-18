@@ -8,7 +8,7 @@
 
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import Navbar from "../Navbar"
 import Footer from "../Footer"
@@ -503,73 +503,102 @@ function TestimonialsSection() {
  * @returns {JSX.Element} Complete contact page with form, team, and testimonials
  */
 export default function ContactPage() {
-  const [isSubmitted, setIsSubmitted] = useState(false)
+  const [isVisible, setIsVisible] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     subject: "",
     message: "",
-  })
-  const [formErrors, setFormErrors] = useState({
-    name: "",
-    email: "",
-    subject: "",
-    message: "",
-  })
-  const [isSubmitting, setIsSubmitting] = useState(false)
+    isDemoRequest: false,
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [apiError, setApiError] = useState("");
+  const [apiSuccess, setApiSuccess] = useState(false);
+  const [emailDetails, setEmailDetails] = useState<{ messageId?: string; response?: string }>({});
+
+  useEffect(() => {
+    setIsVisible(true);
+  }, []);
 
   const validateForm = () => {
-    let valid = true
-    const errors = {
-      name: "",
-      email: "",
-      subject: "",
-      message: "",
+    if (!formData.name || !formData.email || !formData.subject || !formData.message) {
+      setApiError("Please fill in all required fields");
+      return false;
     }
-
-    if (formData.name.length < 2) {
-      errors.name = "Name must be at least 2 characters"
-      valid = false
+    if (!formData.email.includes('@')) {
+      setApiError("Please enter a valid email address");
+      return false;
     }
+    return true;
+  };
 
-    if (!formData.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-      errors.email = "Please enter a valid email address"
-      valid = false
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setApiError("");
+    setApiSuccess(false);
+    setEmailDetails({});
+    
+    if (validateForm()) {
+      setIsSubmitting(true);
+      try {
+        const response = await fetch('/api/contact', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            subject: formData.subject,
+            message: formData.message,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to send message');
+        }
+
+        setIsSubmitted(true);
+        setApiSuccess(true);
+        setEmailDetails({
+          messageId: data.messageId,
+          response: data.response
+        });
+        setFormData({
+          name: "",
+          email: "",
+          subject: "",
+          message: "",
+          isDemoRequest: false,
+        });
+      } catch (err) {
+        setApiError(err instanceof Error ? err.message : "Failed to send message. Please try again later.");
+      } finally {
+        setIsSubmitting(false);
+      }
     }
+  };
 
-    if (formData.subject.length < 5) {
-      errors.subject = "Subject must be at least 5 characters"
-      valid = false
-    }
-
-    if (formData.message.length < 10) {
-      errors.message = "Message must be at least 10 characters"
-      valid = false
-    }
-
-    setFormErrors(errors)
-    return valid
-  }
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLInputElement>) => {
+    const { name, value, type } = e.target;
+    const checked = "checked" in e.target ? e.target.checked : false;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
-    }))
-  }
+      [name]: type === "checkbox" ? checked : value,
+    }));
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (validateForm()) {
-      setIsSubmitting(true)
-      // Simulate form submission
-      setTimeout(() => {
-        setIsSubmitting(false)
-        setIsSubmitted(true)
-      }, 1000)
+    if (name === "isDemoRequest" && checked) {
+      setFormData((prev) => ({
+        ...prev,
+        subject: "Demo Request",
+        message:
+          "Hello, I am interested in a demo of your AI-powered real estate platform. I would like to learn more about how it can help my business. Please provide more information about scheduling a demo session.",
+      }));
     }
-  }
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -652,20 +681,10 @@ export default function ContactPage() {
                       <div>
                         <h3 className="text-sm sm:text-base font-medium text-gray-800">Our Location</h3>
                         <p className="mt-1 text-xs sm:text-sm text-gray-600">
-                          123 Business Avenue, Suite 500
+                          501 North Capitol Avenue
                           <br />
-                          San Francisco, CA 94107
+                          Indianapolis, IN 46204
                         </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3 sm:gap-4">
-                      <div className="rounded-full bg-[#f0f9f4] p-2 sm:p-3 text-[#0e6537]">
-                        <Icons.Phone className="h-4 w-4 sm:h-5 sm:w-5" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm sm:text-base font-medium text-gray-800">Phone Number</h3>
-                        <p className="mt-1 text-xs sm:text-sm text-gray-600">+1 (555) 123-4567</p>
                       </div>
                     </div>
 
@@ -674,8 +693,8 @@ export default function ContactPage() {
                         <Icons.Mail className="h-4 w-4 sm:h-5 sm:w-5" />
                       </div>
                       <div>
-                        <h3 className="text-sm sm:text-base font-medium text-gray-800">Email Address</h3>
-                        <p className="mt-1 text-xs sm:text-sm text-gray-600">contact@acscompany.com</p>
+                        <h3 className="text-sm sm:text-base font-medium text-gray-800">Email</h3>
+                        <p className="mt-1 text-xs sm:text-sm text-gray-600">support@automatedconsultancy.com</p>
                       </div>
                     </div>
 
@@ -694,24 +713,25 @@ export default function ContactPage() {
                     </div>
                   </div>
 
-                  <div className="mt-6 sm:mt-10 pt-6 sm:pt-8 border-t border-gray-100">
-                    <h3 className="mb-3 sm:mb-4 text-base sm:text-lg font-medium text-gray-800">Connect With Us</h3>
-                    <div className="flex space-x-3 sm:space-x-4">
-                      {["linkedin", "twitter", "facebook", "instagram"].map((social) => (
-                        <motion.a
-                          key={social}
-                          href="#"
-                          className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-[#f0f9f4] text-[#0e6537] transition-colors hover:bg-[#0e6537] hover:text-white"
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          <span className="sr-only">{social}</span>
-                          <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm-2 16h-2v-6h2v6zm-1-6.891c-.607 0-1.1-.496-1.1-1.109 0-.612.492-1.109 1.1-1.109s1.1.497 1.1 1.109c0 .613-.493 1.109-1.1 1.109zm8 6.891h-1.998v-2.861c0-1.881-2.002-1.722-2.002 0v2.861h-2v-6h2v1.093c.872-1.616 4-1.736 4 1.548v3.359z" />
-                          </svg>
-                        </motion.a>
-                      ))}
-                    </div>
+                  <div className="space-y-4">
+                    <a
+                      href="https://www.linkedin.com/company/automated-consultancy-services/posts/?feedView=all"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-3 bg-[#0e6537] text-white px-6 py-3 rounded-lg hover:bg-[#0a5a2f] transition-colors shadow-md"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="w-6 h-6"
+                      >
+                        <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+                      </svg>
+                      LinkedIn
+                    </a>
                   </div>
                 </div>
               </motion.div>
@@ -751,94 +771,98 @@ export default function ContactPage() {
                         </p>
                       </div>
 
-                      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-                        <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
+                      <form onSubmit={handleSubmit} className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div>
-                            <label htmlFor="name" className="mb-1.5 sm:mb-2 block text-xs sm:text-sm font-medium text-gray-700">
-                              Full Name
+                            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                              Name
                             </label>
-                            <Input
+                            <input
+                              type="text"
                               id="name"
                               name="name"
-                              placeholder="John Doe"
+                              required
+                              className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[#0e6537] focus:ring-2 focus:ring-[#0e6537]/20 outline-none transition-all duration-200 bg-white/50 backdrop-blur-sm"
                               value={formData.name}
                               onChange={handleChange}
-                              error={formErrors.name}
+                              placeholder="Enter your name"
                             />
                           </div>
                           <div>
-                            <label htmlFor="email" className="mb-1.5 sm:mb-2 block text-xs sm:text-sm font-medium text-gray-700">
-                              Email Address
+                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                              Email
                             </label>
-                            <Input
+                            <input
+                              type="email"
                               id="email"
                               name="email"
-                              type="email"
-                              placeholder="john@example.com"
+                              required
+                              className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[#0e6537] focus:ring-2 focus:ring-[#0e6537]/20 outline-none transition-all duration-200 bg-white/50 backdrop-blur-sm"
                               value={formData.email}
                               onChange={handleChange}
-                              error={formErrors.email}
+                              placeholder="Enter your email"
                             />
                           </div>
                         </div>
                         <div>
-                          <label htmlFor="subject" className="mb-1.5 sm:mb-2 block text-xs sm:text-sm font-medium text-gray-700">
+                          <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-2">
                             Subject
                           </label>
-                          <Input
+                          <input
+                            type="text"
                             id="subject"
                             name="subject"
-                            placeholder="How can we help you?"
+                            required
+                            className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[#0e6537] focus:ring-2 focus:ring-[#0e6537]/20 outline-none transition-all duration-200 bg-white/50 backdrop-blur-sm"
                             value={formData.subject}
                             onChange={handleChange}
-                            error={formErrors.subject}
+                            placeholder="Enter message subject"
                           />
                         </div>
                         <div>
-                          <label htmlFor="message" className="mb-1.5 sm:mb-2 block text-xs sm:text-sm font-medium text-gray-700">
+                          <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
                             Message
                           </label>
-                          <Textarea
+                          <textarea
                             id="message"
                             name="message"
-                            placeholder="Please provide details about your inquiry..."
-                            className="min-h-24 sm:min-h-32"
+                            rows={4}
+                            required
+                            className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[#0e6537] focus:ring-2 focus:ring-[#0e6537]/20 outline-none transition-all duration-200 bg-white/50 backdrop-blur-sm resize-none"
                             value={formData.message}
                             onChange={handleChange}
-                            error={formErrors.message}
+                            placeholder="Enter your message"
                           />
                         </div>
-                        <div className="pt-2">
-                          <Button
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            id="isDemoRequest"
+                            name="isDemoRequest"
+                            className="h-4 w-4 rounded border-gray-300 text-[#0e6537] focus:ring-[#0e6537]"
+                            checked={formData.isDemoRequest}
+                            onChange={handleChange}
+                          />
+                          <label htmlFor="isDemoRequest" className="ml-2 block text-sm text-gray-700">
+                            Request a demo
+                          </label>
+                        </div>
+                        {apiError && (
+                          <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">{apiError}</div>
+                        )}
+                        {apiSuccess && (
+                          <div className="text-green-500 text-sm bg-green-50 p-3 rounded-lg">
+                            Message sent successfully! We'll get back to you soon.
+                          </div>
+                        )}
+                        <div>
+                          <button
                             type="submit"
-                            className="w-full transition-all duration-300 ease-in-out"
                             disabled={isSubmitting}
+                            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-[#0e6537] hover:bg-[#0a5a2f] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0e6537] disabled:opacity-50 transition-all duration-200"
                           >
-                            {isSubmitting ? (
-                              <span className="flex items-center gap-2">
-                                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
-                                  <circle
-                                    className="opacity-25"
-                                    cx="12"
-                                    cy="12"
-                                    r="10"
-                                    stroke="currentColor"
-                                    strokeWidth="4"
-                                  ></circle>
-                                  <path
-                                    className="opacity-75"
-                                    fill="currentColor"
-                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                  ></path>
-                                </svg>
-                                Processing...
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-2">
-                                Send Message <Icons.Send className="h-4 w-4" />
-                              </span>
-                            )}
-                          </Button>
+                            {isSubmitting ? 'Sending...' : 'Send Message'}
+                          </button>
                         </div>
                       </form>
                     </>
@@ -903,8 +927,8 @@ export default function ContactPage() {
  * - Added: ++ b/app/contact/page.tsx
  * - Removed:     <div className="relative min-h-screen bg-gradient-to-b from-[#e6f5ec] via-[#f0f9f4] to-white">
  * - Removed:       <Navbar/>
- * - Removed:       {/* Background patterns */}
- * 5/25/25 - Initial version
+ * - Removed:       
+ * - 5/25/25 - Initial version
  * - Created contact page with form validation
  * - Added team section with member cards
  * - Implemented testimonials section
