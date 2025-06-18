@@ -171,13 +171,6 @@ export default function AboutPage() {
           <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
           <div className="absolute inset-0 bg-gradient-to-r from-black/10 to-transparent"></div>
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4 sm:space-y-6 md:space-y-8">
-            <div 
-              className={`inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm text-white backdrop-blur-sm shadow-lg transition-all duration-700 ${
-                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-              }`}
-            >
-              About Us – ACS
-            </div>
             <h1 
               className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-bold tracking-tighter !text-white leading-tight [text-shadow:_0_1px_2px_rgb(0_0_0_/_40%)] transition-all duration-1000 delay-200 px-2 sm:px-4 ${
                 isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'

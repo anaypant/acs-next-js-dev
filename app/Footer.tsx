@@ -5,7 +5,7 @@
  * Purpose: Renders the application footer with navigation links, company information, and legal resources.
  * Author: acagliol
  * Date: 06/15/25
- * Version: 1.0.4
+ * Version: 1.0.6
  */
 
 import Link from "next/link"
@@ -49,23 +49,23 @@ export default function Footer() {
             <h3 className="font-semibold text-gray-800 mb-3">Solutions</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/solutions" style={{ color: '#0e6537', textDecoration: 'none' }} className="font-semibold hover:text-[#157a42]">
-                  Pricing Prediction
+                <Link href="/about" style={{ color: '#0e6537', textDecoration: 'none' }} className="font-semibold hover:text-[#157a42]">
+                  Lead Conversion Pipeline (LCP)
                 </Link>
               </li>
               <li>
-                <Link href="/solutions" style={{ color: '#0e6537', textDecoration: 'none' }} className="font-semibold hover:text-[#157a42]">
-                  Email Communications
+                <Link href="/about" style={{ color: '#0e6537', textDecoration: 'none' }} className="font-semibold hover:text-[#157a42]">
+                  Lead Generation Workflow (LGW)
                 </Link>
               </li>
               <li>
-                <Link href="/solutions" style={{ color: '#0e6537', textDecoration: 'none' }} className="font-semibold hover:text-[#157a42]">
-                  Marketing Optimization
+                <Link href="/about" style={{ color: '#0e6537', textDecoration: 'none' }} className="font-semibold hover:text-[#157a42]">
+                  AI-Powered Automation
                 </Link>
               </li>
               <li>
-                <Link href="/solutions" style={{ color: '#0e6537', textDecoration: 'none' }} className="font-semibold hover:text-[#157a42]">
-                  Lead Scoring
+                <Link href="/about" style={{ color: '#0e6537', textDecoration: 'none' }} className="font-semibold hover:text-[#157a42]">
+                  Real Estate Specialization
                 </Link>
               </li>
             </ul>
@@ -122,12 +122,23 @@ export default function Footer() {
 
 /**
  * Change Log:
- * 06/15/25 - Version 1.0.3
+ * 06/15/25 - Version 1.0.6
+ * - Updated all Solutions section links to point to /about instead of /solutions
+ * 
+ * 06/15/25 - Version 1.0.5
+ * - Updated Solutions section with current offerings:
+ *   - Lead Conversion Pipeline (LCP)
+ *   - Lead Generation Workflow (LGW)
+ *   - AI-Powered Automation
+ *   - Real Estate Specialization
+ * 
+ * 06/15/25 - Version 1.0.4
  * - Removed: -- a/app/Footer.tsx
  * - Added: ++ b/app/Footer.tsx
  * - Removed:                 <Link href="/pricing" style={{ color: '#0e6537', textDecoration: 'none' }} className="font-semibold hover:text-[#157a42]">
  * - Added:                 <Link href="/solutions" style={{ color: '#0e6537', textDecoration: 'none' }} className="font-semibold hover:text-[#157a42]">
  * - Removed:                 <Link href="/email" style={{ color: '#0e6537', textDecoration: 'none' }} className="font-semibold hover:text-[#157a42]">
+ * 
  * 06/11/25 - Version 1.0.1
  * - Updated documentation format
  * - Enhanced component documentation

@@ -358,7 +358,7 @@ export const resourcesData: ResourceSection[] = [
         title: "Getting Help",
         description: "How to get support when you need it",
         details: [
-          "Support Contact: Email support@acs.com for assistance",
+          "Support Contact: Email support@automatedconsultancy.com for assistance",
           "Documentation: Check this resources page for answers",
           "Community: Connect with other ACS users (if available)",
           "Feature Requests: Submit new feature ideas through support"

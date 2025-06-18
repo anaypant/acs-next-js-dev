@@ -122,7 +122,7 @@ const LoginPage = () => {
       if (result?.error) {
         // Handle specific error cases
         if (result.error.includes('500') || result.error.includes('server error')) {
-          setError('We\'re experiencing technical difficulties. Please try again later or contact support at support@acs.com for assistance.');
+          setError('We\'re experiencing technical difficulties. Please try again later or contact support at support@automatedconsultancy.com for assistance.');
         } else {
           setError(result.error);
         }
@@ -134,7 +134,7 @@ const LoginPage = () => {
     } catch (err: any) {
       // Handle specific error cases
       if (err.message?.includes('500') || err.message?.includes('server error')) {
-        setError('We\'re experiencing technical difficulties. Please try again later or contact support at support@acs.com for assistance.');
+        setError('We\'re experiencing technical difficulties. Please try again later or contact support at support@automatedconsultancy.com for assistance.');
       } else {
         setError(handleAuthError(err));
       }
@@ -176,8 +176,8 @@ const LoginPage = () => {
                 {error.includes('technical difficulties') && (
                   <p className="mt-2 text-[#0e6537]">
                     Need help? Contact our support team at{' '}
-                    <a href="mailto:support@acs.com" className="underline hover:text-[#0e6537]/80">
-                      support@acs.com
+                    <a href="mailto:support@automatedconsultancy.com" className="underline hover:text-[#0e6537]/80">
+                      support@automatedconsultancy.com
                     </a>
                   </p>
                 )}

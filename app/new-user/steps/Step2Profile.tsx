@@ -85,7 +85,7 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
         `featuretype=city`,
         {
           headers: {
-            'User-Agent': 'ACS-NextJS-App/1.0 (contact@automatedconsultancy.com)'
+            'User-Agent': 'ACS-NextJS-App/1.0 (support@automatedconsultancy.com)'
           }
         }
       );

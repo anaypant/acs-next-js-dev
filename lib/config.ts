@@ -23,7 +23,7 @@ export const config = {
   APP: {
     NAME: "ACS",
     VERSION: "1.0.0",
-    SUPPORT_EMAIL: "support@acs.com"
+    SUPPORT_EMAIL: "support@automatedconsultancy.com"
   }
 };
 

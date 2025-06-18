@@ -1,11 +1,21 @@
 "use client"
 
-import { Cookie } from "lucide-react"
+import { Cookie, ArrowLeft } from "lucide-react"
+import Link from "next/link"
 
 export default function CookiesPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1]">
       <div className="max-w-4xl mx-auto p-6">
+        {/* Back Button */}
+        <Link 
+          href="/legal"
+          className="inline-flex items-center gap-2 bg-[#0e6537] text-white px-4 py-2 rounded-lg hover:bg-[#0a5a2f] mb-4 transition-colors shadow-md"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          <span>Back to Legal</span>
+        </Link>
+
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm border border-[#0e6537]/20 p-6 mb-6">
           <h1 className="text-2xl font-bold text-[#0e6537] mb-2">Cookie Policy</h1>
@@ -91,8 +101,8 @@ export default function CookiesPage() {
                 If you have any questions about our use of cookies or this policy, please contact us at:
               </p>
               <div className="text-gray-600 space-y-1">
-                <p>Email: <a href="mailto:privacy@acscompany.com" className="text-[#0e6537] hover:underline">privacy@acscompany.com</a></p>
-                <p>Address: 123 Business Avenue, Suite 500, San Francisco, CA 94107</p>
+                <p>Email: <a href="mailto:support@automatedconsultancy.com" className="text-[#0e6537] hover:underline">support@automatedconsultancy.com</a></p>
+                <p>Address: 501 North Capitol Avenue, Indianapolis, IN 46204</p>
               </div>
             </section>
           </div>

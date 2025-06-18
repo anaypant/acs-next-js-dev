@@ -113,7 +113,7 @@ export const gettingStartedData: Record<string, DetailedFeatureData> = {
         documentation: ["[PLACEHOLDER] Doc 1", "[PLACEHOLDER] Doc 2"],
         community: ["[PLACEHOLDER] Community 1", "[PLACEHOLDER] Community 2"],
         contactInfo: {
-          email: "[PLACEHOLDER] support@acs.com",
+          email: "[PLACEHOLDER] support@automatedconsultancy.com",
           phone: "[PLACEHOLDER] 1-800-ACS-HELP",
           chat: "[PLACEHOLDER] Live chat available",
           responseTime: "[PLACEHOLDER] Within 2 hours"
@@ -292,7 +292,7 @@ export const gettingStartedData: Record<string, DetailedFeatureData> = {
         documentation: ["[PLACEHOLDER] Navigation Doc 1", "[PLACEHOLDER] Navigation Doc 2"],
         community: ["[PLACEHOLDER] Navigation Community 1", "[PLACEHOLDER] Navigation Community 2"],
         contactInfo: {
-          email: "[PLACEHOLDER] support@acs.com",
+          email: "[PLACEHOLDER] support@automatedconsultancy..com",
           phone: "[PLACEHOLDER] 1-800-ACS-HELP",
           chat: "[PLACEHOLDER] Live chat available",
           responseTime: "[PLACEHOLDER] Within 2 hours"
