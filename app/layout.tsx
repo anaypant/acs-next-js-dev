@@ -15,10 +15,10 @@ export const metadata: Metadata = {
     icons: {
         icon: [
             { url: '/new-logo.ico', sizes: 'any', type: 'image/x-icon' },
-            { url: '/new-logo.png', sizes: '192x192', type: 'image/png' }
+            { url: '/new-logo-2.png', sizes: '192x192', type: 'image/png' }
         ],
         apple: [
-            { url: '/new-logo.png', sizes: '180x180', type: 'image/png' }
+            { url: '/new-logo-2.png', sizes: '180x180', type: 'image/png' }
         ],
     },
 };

@@ -31,27 +31,27 @@ export function Logo({
   // Size configurations
   const sizeConfig = {
     sm: {
-      image: { width: 24, height: 24 },
+      image: { width: 20, height: 20 },
       text: 'text-sm',
       container: ''
     },
     md: {
-      image: { width: 64, height: 64 },
+      image: { width: 32, height: 32 },
       text: 'text-lg',
       container: ''
     },
     lg: {
-      image: { width: 92, height: 92 },
+      image: { width: 48, height: 48 },
       text: 'text-xl',
       container: 'gap-1'
     },
     xl: {
-      image: { width: 120, height: 120 },
+      image: { width: 64, height: 64 },
       text: 'text-2xl',
       container: 'gap-2'
     },
     '2xl': {
-      image: { width: 150, height: 150 },
+      image: { width: 80, height: 80 },
       text: 'text-3xl',
       container: 'gap-3'
     }
@@ -65,7 +65,7 @@ export function Logo({
       {variant !== 'text-only' && (
         <div className="relative">
           <Image
-            src="/new-logo.png"
+            src="/new-logo-2.png"
             alt="ACS Logo"
             width={config.image.width}
             height={config.image.height}
