@@ -8,28 +8,10 @@
 
 "use client"
 import { ArrowLeft, Search, Calendar, Filter, Plus, Phone, Mail, MapPin, Building2, User2, Briefcase, Home } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { useEffect } from "react"
-
-/**
- * Logo Component
- * Displays the ACS logo with customizable size
- * 
- * @param {Object} props - Component props
- * @param {"sm" | "lg"} props.size - Size variant of the logo
- * @returns {JSX.Element} ACS logo with gradient background
- */
-function Logo({ size = "sm" }: { size?: "sm" | "lg" }) {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="w-8 h-8 bg-gradient-to-br from-[#0a5a2f] via-[#0e6537] to-[#157a42] rounded-lg flex items-center justify-center shadow-sm">
-        <span className="text-white font-bold text-sm">ACS</span>
-      </div>
-    </div>
-  )
-}
+import { Logo } from "@/app/utils/Logo"
 
 /**
  * ContactsPage Component
@@ -152,14 +134,14 @@ export default function ContactsPage() {
       <div className="max-w-7xl mx-auto p-6">
         {/* Header section with navigation */}
         <div className="flex items-center gap-4 mb-6">
-          <Logo />
+          <Logo size="md" />
           <button
             onClick={() => window.history.back()}
-            className="p-2 hover:bg-white/10 rounded-lg"
+            className="p-2 hover:bg-[#0e6537]/10 rounded-lg"
           >
-            <ArrowLeft className="h-5 w-5 text-white" />
+            <ArrowLeft className="h-5 w-5 text-[#0e6537]" />
           </button>
-          <h1 className="text-2xl font-bold" style={{ color: 'white' }}>Contacts</h1>
+          <h1 className="text-2xl font-bold text-[#0e6537]">Contacts Management</h1>
         </div>
 
         {/* Search and filter controls */}

@@ -24,6 +24,7 @@ import { ensureMessageFields } from "@/app/dashboard/lib/dashboard-utils";
 import ConversationProgression from "@/app/dashboard/components/ConversationProgression";
 import { useConversationsData } from '../../lib/use-conversations';
 import { formatLocalTime } from '@/app/utils/timezone';
+import { Logo } from "@/app/utils/Logo"
 
 // Add type declaration for jsPDF with autoTable
 declare module 'jspdf' {
@@ -836,7 +837,32 @@ export default function ConversationDetailPage() {
   const params = useParams();
   const router = useRouter();
   const conversationId = params.id as string;
-  const { data: session } = useSession() as { data: (Session & { user?: { id: string } }) | null };
+  const { data: session, status } = useSession()
+
+  // Session check - redirect if not authenticated
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/')
+    }
+  }, [status, router])
+
+  // Show loading while checking session
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#0e6537] mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Don't render anything if not authenticated
+  if (status === 'unauthenticated') {
+    return null
+  }
+
   const [mounted, setMounted] = useState(false);
   const [userSignature, setUserSignature] = useState<string>('');
   const [updatingRead, setUpdatingRead] = useState<string | null>(null);
@@ -1646,14 +1672,14 @@ export default function ConversationDetailPage() {
           <div className="flex flex-col min-h-0 h-full">
             {/* Header */}
             <div className="flex items-center gap-4 mb-2">
-              <Logo />
+              <Logo size="md" />
               <button
                 onClick={() => router.back()}
-                className="p-2 hover:bg-gradient-to-r hover:from-[#0e6537]/10 hover:to-[#157a42]/10 transition-all duration-200 rounded-lg"
+                className="p-2 hover:bg-[#0e6537]/10 rounded-lg"
               >
-                <ArrowLeft className="h-5 w-5" />
+                <ArrowLeft className="h-5 w-5 text-[#0e6537]" />
               </button>
-              <h1 className="text-2xl font-bold">Conversation with {leadName}</h1>
+              <h1 className="text-2xl font-bold text-[#0e6537]">Conversation Detail</h1>
             </div>
             <div className="bg-white rounded-2xl border shadow-lg p-0 overflow-hidden flex flex-col flex-1 min-h-0">
               <div className="px-8 py-4 border-b bg-[#f7faf9] flex items-center justify-between flex-shrink-0">

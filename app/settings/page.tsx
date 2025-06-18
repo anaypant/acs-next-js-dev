@@ -13,7 +13,7 @@ import { useState, useEffect } from "react"
 import { ArrowLeft, User, Bell, Shield, Database, Mail, Loader2, Globe, Clock, Eye, Palette, Smartphone, Building, MapPin, FileText, Trash2, CheckCircle, XCircle, AlertCircle, Settings as SettingsIcon, LogOut } from "lucide-react"
 import type { Session } from "next-auth"
 import type { SignupProvider } from "@/app/types/auth"
-import { Logo } from "@/app/dashboard/components/Sidebar"
+import { Logo } from "@/app/utils/Logo"
 import { clearAuthData } from '../utils/auth'
 
 /**

@@ -7,32 +7,11 @@
  */
 
 "use client"
-import { ArrowLeft, Search, Calendar, Filter, BarChart3, TrendingUp, TrendingDown, Users, DollarSign, Target, Activity } from "lucide-react"
-import { useState } from "react"
+import { ArrowLeft, Search, Calendar, Filter, BarChart3, TrendingUp, TrendingDown, Users, DollarSign, Target, Activity, PieChart, Zap, Clock, Star, Award, Trophy } from "lucide-react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { useEffect } from "react"
-
-/**
- * Logo Component
- * Displays the ACS logo with customizable size and gradient text
- * 
- * @param {Object} props - Component props
- * @param {"sm" | "lg"} props.size - Size variant of the logo
- * @returns {JSX.Element} ACS logo with gradient background and text
- */
-function Logo({ size = "sm" }: { size?: "sm" | "lg" }) {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="w-8 h-8 bg-gradient-to-br from-[#0a5a2f] via-[#0e6537] to-[#157a42] rounded-lg flex items-center justify-center shadow-sm">
-        <span className="text-white font-bold text-sm">ACS</span>
-      </div>
-      <span className="font-bold text-lg bg-gradient-to-r from-[#0a5a2f] to-[#157a42] bg-clip-text text-transparent">
-        ACS
-      </span>
-    </div>
-  )
-}
+import { Logo } from "@/app/utils/Logo"
 
 /**
  * AnalyticsPage Component
@@ -83,7 +62,7 @@ export default function AnalyticsPage() {
       <div className="max-w-7xl mx-auto p-6">
         {/* Header section with logo and navigation */}
         <div className="flex items-center gap-4 mb-6">
-          <Logo />
+          <Logo size="md" />
           <button
             onClick={() => window.history.back()}
             className="p-2 hover:bg-[#0e6537]/10 rounded-lg"
@@ -96,8 +75,8 @@ export default function AnalyticsPage() {
         {/* Date range selector with custom styling */}
         <div className="bg-[#0e6537] p-4 rounded-lg border border-white/20 shadow-sm mb-6">
           <div className="flex items-center gap-4">
+            {/* Date range buttons with dynamic styling based on selection */}
             <div className="flex gap-2">
-              {/* Date range buttons with dynamic styling based on selection */}
               <button
                 onClick={() => setDateRange("7d")}
                 className={`px-4 py-2 rounded-lg ${

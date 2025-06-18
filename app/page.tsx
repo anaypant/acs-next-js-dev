@@ -45,7 +45,7 @@ export default function Home() {
 
     return (
         <div className="min-h-screen">
-            <main style={{ paddingTop: '0px' }}>
+            <main>
                 <Navbar/>
                 <HomePage/>
                 <Footer/>
