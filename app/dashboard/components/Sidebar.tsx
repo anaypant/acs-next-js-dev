@@ -13,6 +13,7 @@ import { useState, createContext, useContext, useEffect, useRef } from "react"
 import { useSession, signOut } from "next-auth/react"
 import type { Session } from "next-auth"
 import { clearAuthData } from '../../utils/auth'
+import { Logo } from "@/app/utils/Logo"
 
 /**
  * SidebarContext
@@ -30,44 +31,6 @@ const SidebarContext = createContext({
  */
 function useSidebar() {
   return useContext(SidebarContext)
-}
-
-/**
- * Logo Component
- * Displays the ACS logo with customizable size and gradient styling
- * 
- * @param {Object} props - Component props
- * @param {"sm" | "lg"} props.size - Size variant of the logo
- * @returns {JSX.Element} ACS logo with gradient background
- */
-function Logo({ size = "lg" }: { size?: "sm" | "lg" }) {
-  const { isOpen } = useSidebar()
-
-  if (size === "sm") {
-    return (
-      <div className="flex items-center justify-center">
-        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-[#0a5a2f] via-[#0e6537] to-[#157a42] rounded-xl flex items-center justify-center shadow-lg border border-white/10">
-          <span className="font-bold text-white text-xs sm:text-sm">ACS</span>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-4 sm:py-6">
-      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-[#0a5a2f] via-[#0e6537] to-[#157a42] rounded-xl flex items-center justify-center shadow-lg border border-white/10">
-        <span className="font-bold text-white text-base sm:text-lg">
-          ACS
-        </span>
-      </div>
-      {isOpen && (
-        <div className="flex flex-col">
-          <span className="text-white text-base sm:text-lg font-semibold">ACS Dashboard</span>
-          <span className="text-white/70 text-xs sm:text-sm">Lead Management</span>
-        </div>
-      )}
-    </div>
-  )
 }
 
 /**
@@ -142,10 +105,10 @@ function Sidebar({ children }: { children: React.ReactNode }) {
     <div
       className={`
         ${isOpen
-          ? 'w-64 sm:w-64 md:w-72'
+          ? 'w-16 sm:w-20 md:w-64'
           : isMobile
             ? 'w-0'
-            : 'w-16 sm:w-16 md:w-24'}
+            : 'w-12 sm:w-16 md:w-28'}
         transition-all duration-300 ease-in-out bg-gradient-to-b from-[#0a5a2f] via-[#0e6537] to-[#157a42] border-r border-white/10 fixed h-screen z-50 shadow-xl ${
         isMobile && !isOpen ? 'translate-x-[-100%]' : ''
       }`}
@@ -166,20 +129,41 @@ function Sidebar({ children }: { children: React.ReactNode }) {
 function SidebarContent({ children }: { children: React.ReactNode }) {
   const { isOpen, toggle } = useSidebar()
   const [isMobile, setIsMobile] = useState(false)
+  const [screenSize, setScreenSize] = useState<'mobile' | 'sm' | 'md'>('md')
 
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
+      const width = window.innerWidth
+      if (width < 640) {
+        setIsMobile(true)
+        setScreenSize('mobile')
+      } else if (width < 768) {
+        setIsMobile(false)
+        setScreenSize('sm')
+      } else {
+        setIsMobile(false)
+        setScreenSize('md')
+      }
     }
     checkMobile()
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
+  let logoSize: 'sm' | 'md' | 'lg' = 'lg'
+  if (screenSize === 'mobile') logoSize = 'sm'
+  else if (screenSize === 'sm') logoSize = 'md'
+  else logoSize = 'lg'
+
   return (
     <div className="flex flex-col h-full relative">
       <div className="flex items-center justify-between px-4 py-4 border-b border-white/10">
-        <Logo size={isOpen ? "lg" : "sm"} />
+        {/* Responsive Logo: show icon+text when open, icon-only when collapsed */}
+        {isOpen ? (
+          <Logo size={logoSize} variant="default" whiteText />
+        ) : (
+          <Logo size={logoSize === 'lg' ? 'md' : 'sm'} variant="icon-only" />
+        )}
         <div className="flex items-center gap-2">
           {isMobile && (
             <button
@@ -313,11 +297,17 @@ function SidebarInset({ children, className }: SidebarInsetProps) {
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
+  // Responsive margin logic to match sidebar width
+  let marginClass = '';
+  if (isMobile) {
+    marginClass = isOpen ? 'ml-16 sm:ml-20 md:ml-64' : 'ml-0';
+  } else {
+    marginClass = isOpen ? 'ml-16 sm:ml-20 md:ml-64' : 'ml-12 sm:ml-16 md:ml-28';
+  }
+
   return (
     <div
-      className={`${
-        isOpen ? "ml-72" : isMobile ? "ml-0" : "ml-20"
-      } transition-all duration-300 ease-in-out ${className || ''}`}
+      className={`${marginClass} transition-all duration-300 ease-in-out ${className || ''}`}
     >
       {children}
     </div>

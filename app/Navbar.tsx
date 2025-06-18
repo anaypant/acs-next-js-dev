@@ -3,7 +3,7 @@
  * Purpose: Renders the main navigation bar with responsive design, animated hover effects, and authentication links.
  * Author: Alejo Cagliolo
  * Date: 6/11/25
- * Version: 1.3.0
+ * Version: 1.4.0
  */
 
 "use client"
@@ -11,6 +11,7 @@ import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import { useState, useEffect } from "react"
 import { Menu, X } from "lucide-react"
+import { Logo } from "@/app/utils/Logo"
 
 /**
  * Navbar Component
@@ -48,28 +49,24 @@ const Navbar = () => {
 
   return (
     <nav className="bg-white/90 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4">
-        <div className="flex items-center">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between py-3 sm:py-4 lg:py-5">
           {/* Logo/Brand link with gradient hover effect */}
-          <div className="w-[100px]">
-            <Link href="/" className="text-2xl font-bold relative group">
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-[#0A2F1F] to-[#0A2F1F] group-hover:from-[#0A2F1F] group-hover:to-[#34A65F] transition-all duration-500">
-                ACS
-              </span>
-            </Link>
+          <div className="flex-shrink-0">
+            <Logo href="/" size="lg" />
           </div>
 
           {/* Mobile menu button - only show if not on dashboard */}
           {!isDashboard && (
             <button
-              className="md:hidden p-2 rounded-md hover:bg-gray-100 focus:outline-none ml-auto"
+              className="md:hidden p-2 rounded-md hover:bg-gray-100 focus:outline-none"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-label="Toggle menu"
             >
               {isMobileMenuOpen ? (
-                <X className="h-6 w-6 text-[#0e6537]" />
+                <X className="h-6 w-6 sm:h-7 sm:w-7 text-[#0e6537]" />
               ) : (
-                <Menu className="h-6 w-6 text-[#0e6537]" />
+                <Menu className="h-6 w-6 sm:h-7 sm:w-7 text-[#0e6537]" />
               )}
             </button>
           )}
@@ -77,7 +74,7 @@ const Navbar = () => {
           {/* Desktop navigation - Centered - only show if not on dashboard */}
           {!isDashboard && (
             <div className="hidden md:flex flex-1 justify-center">
-              <div className="flex items-center space-x-12">
+              <div className="flex items-center space-x-8 lg:space-x-12 xl:space-x-16">
                 {navigationItems.map((item, index) => {
                   const href = item === "Home" ? "/" : `/${item.toLowerCase().replace(" ", "-")}`
                   return (
@@ -89,7 +86,7 @@ const Navbar = () => {
                       onMouseLeave={() => setHovered(null)}
                       style={{ color: '#0e6537', textDecoration: 'none' }}
                     >
-                      <span className="relative z-10 transition-colors duration-300" style={{ color: '#0e6537' }}>
+                      <span className="relative z-10 transition-colors duration-300 text-base lg:text-lg xl:text-xl font-medium" style={{ color: '#0e6537' }}>
                         {item}
                       </span>
                       {hovered === item && (
@@ -111,18 +108,18 @@ const Navbar = () => {
 
           {/* Desktop authentication links - only show if not on dashboard */}
           {!isDashboard && (
-            <div className="hidden md:flex items-center space-x-6 w-[250px] justify-end">
+            <div className="hidden md:flex items-center space-x-4 lg:space-x-6 xl:space-x-8 w-auto lg:w-[300px] xl:w-[350px] justify-end">
               {/* TEMPORARY: Demo access required - routing to demo page instead of login */}
               {/* TODO: Restore original login link when demo phase ends */}
               {/* Original: <Link href="/login" className="relative overflow-hidden group py-2 px-3" onMouseEnter={() => setHovered("signin")} onMouseLeave={() => setHovered(null)} style={{ color: '#0e6537', textDecoration: 'none' }}> */}
               <Link
                 href="/demo"
-                className="relative overflow-hidden group py-2 px-3"
+                className="relative overflow-hidden group py-2 px-3 lg:px-4"
                 onMouseEnter={() => setHovered("signin")}
                 onMouseLeave={() => setHovered(null)}
                 style={{ color: '#0e6537', textDecoration: 'none' }}
               >
-                <span className="relative z-10 font-medium transition-colors duration-300" style={{ color: '#0e6537' }}>
+                <span className="relative z-10 font-medium transition-colors duration-300 text-base lg:text-lg" style={{ color: '#0e6537' }}>
                   Sign in
                 </span>
                 {hovered === "signin" && (
@@ -147,7 +144,7 @@ const Navbar = () => {
                 onMouseLeave={() => setHovered(null)}
                 style={{ textDecoration: 'none' }}
               >
-                <span className="relative z-10 inline-flex items-center gap-2 px-4 py-2 font-medium text-white rounded-full overflow-hidden whitespace-nowrap">
+                <span className="relative z-10 inline-flex items-center gap-2 px-4 lg:px-6 xl:px-8 py-2 lg:py-3 font-medium text-white rounded-full overflow-hidden whitespace-nowrap text-base lg:text-lg">
                   Get Started
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -159,7 +156,7 @@ const Navbar = () => {
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="transition-transform duration-300 group-hover:translate-x-1"
+                    className="transition-transform duration-300 group-hover:translate-x-1 lg:w-5 lg:h-5"
                   >
                     <path d="M5 12h14"></path>
                     <path d="m12 5 7 7-7 7"></path>
@@ -189,7 +186,7 @@ const Navbar = () => {
                       <Link
                         key={index}
                         href={href}
-                        className="block px-3 py-2 rounded-md text-base font-medium text-[#0e6537] hover:bg-[#E8F5EE] transition-colors duration-200"
+                        className="block px-3 py-3 rounded-md text-base font-medium text-[#0e6537] hover:bg-[#E8F5EE] transition-colors duration-200"
                         onClick={() => setIsMobileMenuOpen(false)}
                         style={{ color: '#0e6537' }}
                       >
@@ -203,7 +200,7 @@ const Navbar = () => {
                     {/* Original: <Link href="/login" className="block px-3 py-2 rounded-md text-base font-medium text-[#0e6537] hover:bg-[#E8F5EE] transition-colors duration-200" onClick={() => setIsMobileMenuOpen(false)} style={{ color: '#0e6537' }}>Sign in</Link> */}
                     <Link
                       href="/demo"
-                      className="block px-3 py-2 rounded-md text-base font-medium text-[#0e6537] hover:bg-[#E8F5EE] transition-colors duration-200"
+                      className="block px-3 py-3 rounded-md text-base font-medium text-[#0e6537] hover:bg-[#E8F5EE] transition-colors duration-200"
                       onClick={() => setIsMobileMenuOpen(false)}
                       style={{ color: '#0e6537' }}
                     >
@@ -214,7 +211,7 @@ const Navbar = () => {
                     {/* Original: <Link href="/signup" className="block px-3 py-2 mt-2 rounded-md text-base font-medium text-white bg-gradient-to-r from-[#0e6537] to-[#157a42] hover:from-[#0a5a2f] hover:to-[#0e6537] transition-all duration-200" onClick={() => setIsMobileMenuOpen(false)} style={{ color: '#ffffff' }}>Get Started</Link> */}
                     <Link
                       href="/demo"
-                      className="block px-3 py-2 mt-2 rounded-md text-base font-medium text-white bg-gradient-to-r from-[#0e6537] to-[#157a42] hover:from-[#0a5a2f] hover:to-[#0e6537] transition-all duration-200"
+                      className="block px-3 py-3 mt-2 rounded-md text-base font-medium text-white bg-gradient-to-r from-[#0e6537] to-[#157a42] hover:from-[#0a5a2f] hover:to-[#0e6537] transition-all duration-200"
                       onClick={() => setIsMobileMenuOpen(false)}
                       style={{ color: '#ffffff' }}
                     >
@@ -235,6 +232,15 @@ export default Navbar
 
 /**
  * Change Log:
+ * 06/15/25 - Version 1.4.0
+ * - Removed top padding to eliminate white space between navbar and hero
+ * - Increased logo size by removing width constraint
+ * - Made navbar elements larger and more responsive
+ * - Added responsive text sizes for navigation items
+ * - Improved spacing and padding for different screen sizes
+ * - Enhanced mobile menu button sizing
+ * - Added z-index for proper layering
+ * 
  * 06/11/25 - Version 1.3.0
  * - Added Solutions page to navigation items
  * - Updated navigation order for better user flow

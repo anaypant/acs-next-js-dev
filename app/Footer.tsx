@@ -9,6 +9,7 @@
  */
 
 import Link from "next/link"
+import { Logo } from "@/app/utils/Logo"
 
 /**
  * Footer Component
@@ -38,9 +39,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand section with logo and description */}
           <div>
-            <Link href="/" className="text-2xl font-bold" style={{ color: '#0e6537', textDecoration: 'none' }}>
-              ACS
-            </Link>
+            <Logo href="/" size="md" />
             <p className="mt-2 text-gray-600 font-semibold">AI-powered solutions for real estate professionals</p>
           </div>
 

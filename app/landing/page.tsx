@@ -12,7 +12,7 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { Search, Check, Star, User, BarChart3, Mail, Target, Users, BarChart4, PieChart, LineChart, TrendingUp, Laptop, Zap, Lock, ArrowRight } from 'lucide-react'
 import Image from "next/image"
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import React from 'react';
 import dynamic from 'next/dynamic';
@@ -202,6 +202,60 @@ export default function HomePage() {
     },
   ]
 
+  // ACS-related rotating statements
+  const acsStatements = [
+    "Automate your emails with industry-grade AI",
+    "Convert more leads with smart follow-ups",
+    "Instantly qualify prospects using AI scoring",
+    "Personalize every message with customization",
+    "Track your deals with intelligent analytics",
+    "AI-powered property recommendations for your clients",
+    "Streamline your workflow with automation",
+    "Get actionable insights from your data",
+    "Reduce manual work with smart task automation",
+    "Boost your response rate with AI-crafted replies",
+    "Centralize all your communications in one place",
+    "Secure your data with enterprise-grade protection",
+    "Seamlessly integrate with your favorite tools",
+    "Visualize your sales pipeline in real time",
+    "Automate lead nurturing and follow-ups",
+    "Accelerate deal closures with predictive analytics",
+    "AI-driven recommendations for next best actions",
+    "Effortlessly manage contacts and conversations",
+    "Identify high-value leads instantly",
+    "Optimize your marketing with data-driven insights",
+  ];
+
+  // Shuffle statements on mount
+  function shuffleArray(array: string[]) {
+    const arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  const [shuffledStatements, setShuffledStatements] = useState<string[]>([]);
+  const [currentStatement, setCurrentStatement] = useState(0);
+  const [fade, setFade] = useState(true);
+
+  useEffect(() => {
+    setShuffledStatements(shuffleArray(acsStatements));
+  }, []);
+
+  useEffect(() => {
+    if (shuffledStatements.length === 0) return;
+    const interval = setInterval(() => {
+      setFade(false);
+      setTimeout(() => {
+        setCurrentStatement((prev) => (prev + 1) % shuffledStatements.length);
+        setFade(true);
+      }, 400); // fade out before changing
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [shuffledStatements]);
+
   return (
     <motion.main
       initial={{ opacity: 0 }}
@@ -210,7 +264,7 @@ export default function HomePage() {
       className="min-h-screen bg-white relative"
     >
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-white">
+      <section className="relative flex items-center justify-center overflow-hidden bg-white mb-8 sm:mb-12 md:mb-16 lg:mb-20">
         <div className="container mx-auto px-4 sm:px-6 relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             {/* Left Column: Heading, CTA, and Search */}
@@ -220,14 +274,43 @@ export default function HomePage() {
                   <span className="block text-[#0e6537] mb-2">
                     Empowering
                   </span>
-                  <span className="bg-gradient-to-r from-[#0a5a2f] via-[#0e6537] via-[#0e6537] via-[#0e6537] to-[#157a42] text-transparent bg-clip-text drop-shadow-sm">
+                  <motion.span 
+                    className="block bg-gradient-to-r from-[#0a5a2f] via-emerald-500 to-gray-600 bg-clip-text text-transparent"
+                    animate={{
+                      backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"]
+                    }}
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                    style={{
+                      backgroundSize: "200% 200%"
+                    }}
+                  >
                     Realtors with AI
-                  </span>
+                  </motion.span>
                 </h1>
 
                 <p className="text-sm sm:text-base md:text-lg lg:text-xl text-[#0e6537]/90 max-w-3xl leading-relaxed">
                   Leverage AI to generate real-time business solutions and make informed decisions faster than ever
                 </p>
+              </div>
+
+              {/* Rotating ACS Statements */}
+              <div className="min-h-[32px] md:min-h-[36px] lg:min-h-[40px] flex items-center">
+                {shuffledStatements.length > 0 && (
+                  <motion.div
+                    key={shuffledStatements[currentStatement]}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: fade ? 1 : 0, y: fade ? 0 : -10 }}
+                    transition={{ duration: 0.4 }}
+                    className="text-[#0e6537] text-base md:text-lg lg:text-xl font-medium"
+                    aria-live="polite"
+                  >
+                    {shuffledStatements[currentStatement]}
+                  </motion.div>
+                )}
               </div>
 
               <div className="flex flex-col sm:flex-row gap-4">
@@ -269,9 +352,9 @@ export default function HomePage() {
             {/* Right Column: Spline 3D Scene */}
             <div className="relative mt-8 md:mt-0">
               <div className="w-full h-72 sm:h-96 md:h-[500px] lg:h-[600px] rounded-2xl shadow-2xl bg-white/10 border border-white/20 overflow-hidden">
-              {/* <Spline
+                <Spline
                   scene="https://prod.spline.design/LDBaM7ucTMsfrTji/scene.splinecode"
-                /> */}
+                />
               </div>
             </div>
           </div>
@@ -279,7 +362,7 @@ export default function HomePage() {
       </section>
 
       {/* Features Section */}
-      <section className="py-16 sm:py-20 md:py-28 bg-gradient-to-br from-[#0a5a2f] via-[#0e6537] to-[#157a42]">
+      <section className="py-16 sm:py-20 md:py-28 bg-gradient-to-br from-[#0a5a2f] via-[#0e6537] to-[#157a42] mb-8 sm:mb-12 md:mb-16 lg:mb-20">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="text-center mb-12 sm:mb-16">
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4">Our Solutions</h2>
@@ -328,7 +411,7 @@ export default function HomePage() {
       </section>
 
       {/* Benefits Section */}
-      <section className="py-12 sm:py-16 md:py-20 bg-gray-50">
+      <section className="py-12 sm:py-16 md:py-20 bg-gray-50 mb-8 sm:mb-12 md:mb-16 lg:mb-20">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="text-center max-w-3xl mx-auto mb-16 sm:mb-20">
             <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold tracking-tighter text-gray-900 mb-6">
@@ -367,12 +450,12 @@ export default function HomePage() {
       {/* CTA Section */}
       <section className="py-12 sm:py-16 md:py-20 bg-[#0e6537] relative overflow-hidden">
         <div className="absolute inset-0">
-          <Image
+          {/* <Image
             src="/abstract-tech-pattern.jpg"
             alt="Abstract tech pattern"
             fill
             className="object-cover opacity-10"
-          />
+          /> */}
         </div>
         <div className="container mx-auto px-4 sm:px-6 relative z-10">
           <div className="max-w-3xl mx-auto text-center">

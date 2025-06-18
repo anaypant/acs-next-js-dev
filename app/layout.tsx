@@ -12,12 +12,11 @@ export const metadata: Metadata = {
     description: 'Transform your real estate business with AI-powered insights and automation.',
     icons: {
         icon: [
-            { url: '/icons/icon-16x16.png', sizes: '16x16', type: 'image/png' },
-            { url: '/icons/icon-32x32.png', sizes: '32x32', type: 'image/png' },
-            { url: '/icons/icon-48x48.png', sizes: '48x48', type: 'image/png' },
+            { url: '/new-logo.ico', sizes: 'any', type: 'image/x-icon' },
+            { url: '/new-logo.png', sizes: '192x192', type: 'image/png' }
         ],
         apple: [
-            { url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+            { url: '/new-logo.png', sizes: '180x180', type: 'image/png' }
         ],
     },
 };

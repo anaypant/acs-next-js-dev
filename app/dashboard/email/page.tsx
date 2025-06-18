@@ -7,43 +7,61 @@
  */
 
 "use client"
-import { ArrowLeft, Search, Plus, Send, Archive, Trash2, Star, AlertCircle } from "lucide-react"
 import { useState, useEffect } from "react"
-
-/**
- * Logo Component
- * Displays the ACS logo with customizable size and gradient text
- * 
- * @param {Object} props - Component props
- * @param {"sm" | "lg"} props.size - Size variant of the logo
- * @returns {JSX.Element} ACS logo with gradient background and text
- */
-function Logo({ size = "sm" }: { size?: "sm" | "lg" }) {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="w-8 h-8 bg-gradient-to-br from-[#0a5a2f] via-[#0e6537] to-[#157a42] rounded-lg flex items-center justify-center shadow-sm">
-        <span className="text-white font-bold text-sm">ACS</span>
-      </div>
-      <span className="font-bold text-lg bg-gradient-to-r from-[#0a5a2f] to-[#157a42] bg-clip-text text-transparent">
-        ACS
-      </span>
-    </div>
-  )
-}
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { 
+  ArrowLeft, Search, Filter, Plus, Mail, Send, Archive, 
+  Trash2, Star, Reply, Forward, Calendar, Users,
+  MoreHorizontal, Edit, Eye, MessageSquare, Inbox, AlertCircle
+} from "lucide-react"
+import { Logo } from "@/app/utils/Logo"
 
 /**
  * EmailPage Component
- * Main email dashboard component for managing client communications
+ * Main email management dashboard component
  * 
  * Features:
- * - Email inbox with search and filtering
- * - Email templates and quick actions
- * - Performance metrics and statistics
- * - Email categorization (lead, client, hot-lead)
+ * - Email inbox management
+ * - Email composition and sending
+ * - Email templates
+ * - Email tracking and analytics
  * 
- * @returns {JSX.Element} Complete email dashboard view
+ * @returns {JSX.Element} Complete email management view
  */
 export default function EmailPage() {
+  const router = useRouter()
+  const { data: session, status } = useSession()
+
+  // Session check - redirect if not authenticated
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/')
+    }
+  }, [status, router])
+
+  // Show loading while checking session
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#0e6537] mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Don't render anything if not authenticated
+  if (status === 'unauthenticated') {
+    return null
+  }
+
+  // State for email management
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedFolder, setSelectedFolder] = useState("inbox")
+  const [selectedEmails, setSelectedEmails] = useState<string[]>([])
+
   // State management for selected email and active tab
   const [activeTab, setActiveTab] = useState<'inbox' | 'junk'>('inbox')
   const [junkCount, setJunkCount] = useState(0)
@@ -187,14 +205,14 @@ export default function EmailPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <Logo />
+            <Logo size="md" />
             <button
               onClick={() => window.history.back()}
-              className="p-2 hover:bg-gradient-to-r hover:from-[#0e6537]/10 hover:to-[#157a42]/10 transition-all duration-200 rounded-lg"
+              className="p-2 hover:bg-[#0e6537]/10 rounded-lg"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-5 w-5 text-[#0e6537]" />
             </button>
-            <h1 className="text-2xl font-bold">Email</h1>
+            <h1 className="text-2xl font-bold text-[#0e6537]">Email Management</h1>
           </div>
           <button className="px-4 py-2 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white rounded-lg hover:from-[#157a42] hover:to-[#1a8a4a] transition-all duration-200 shadow-sm flex items-center gap-2">
             <Plus className="h-4 w-4" />
