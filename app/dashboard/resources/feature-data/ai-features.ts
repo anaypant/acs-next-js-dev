@@ -113,7 +113,7 @@ export const aiFeaturesData: Record<string, DetailedFeatureData> = {
         documentation: ["[PLACEHOLDER] AI Lead Scoring Doc 1", "[PLACEHOLDER] AI Lead Scoring Doc 2"],
         community: ["[PLACEHOLDER] AI Lead Scoring Community 1", "[PLACEHOLDER] AI Lead Scoring Community 2"],
         contactInfo: {
-          email: "[PLACEHOLDER] support@acs.com",
+          email: "[PLACEHOLDER] support@automatedconsultancy.com,
           phone: "[PLACEHOLDER] 1-800-ACS-HELP",
           chat: "[PLACEHOLDER] Live chat available",
           responseTime: "[PLACEHOLDER] Within 2 hours"
@@ -292,7 +292,7 @@ export const aiFeaturesData: Record<string, DetailedFeatureData> = {
         documentation: ["[PLACEHOLDER] AI Insights Doc 1", "[PLACEHOLDER] AI Insights Doc 2"],
         community: ["[PLACEHOLDER] AI Insights Community 1", "[PLACEHOLDER] AI Insights Community 2"],
         contactInfo: {
-          email: "[PLACEHOLDER] support@acs.com",
+          email: "[PLACEHOLDER] support@automatedconsultancy.com",
           phone: "[PLACEHOLDER] 1-800-ACS-HELP",
           chat: "[PLACEHOLDER] Live chat available",
           responseTime: "[PLACEHOLDER] Within 2 hours"

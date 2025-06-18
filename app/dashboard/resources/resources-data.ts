@@ -950,7 +950,7 @@ export const resourcesData: ResourceSection[] = [
         title: "Getting Help",
         description: "How to get support when you need it",
         details: [
-          "Support Contact: Email support@acs.com for assistance",
+          "Support Contact: Email support@automatedconsultancy.com for assistance",
           "Documentation: Check this resources page for answers",
           "Community: Connect with other ACS users (if available)",
           "Feature Requests: Submit new feature ideas through support"
@@ -1084,7 +1084,7 @@ export const resourcesData: ResourceSection[] = [
             clientContext: "Need to export client data for backup or migration",
             recommendedAction: "Contact support with specific export requirements",
             stepByStepProcess: [
-              "Email support@acs.com with export request",
+              "Email support@automatedconsultancy.com with export request",
               "Specify data types needed",
               "Provide account verification",
               "Wait for export file delivery"

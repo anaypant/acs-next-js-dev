@@ -1,6 +1,6 @@
 "use client"
 
-import { Shield, Lock, Cookie } from "lucide-react"
+import { Shield, Lock, Cookie, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import LegalHeader from "@/app/components/LegalHeader"
 
@@ -10,6 +10,15 @@ export default function LegalPage() {
       <LegalHeader />
       <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1]">
         <div className="max-w-4xl mx-auto p-6">
+          {/* Back Button */}
+          <Link 
+            href="/"
+            className="inline-flex items-center gap-2 text-[#0e6537] hover:text-[#0a5a2f] mb-4 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span>Back to Home</span>
+          </Link>
+
           {/* Header */}
           <div className="bg-white rounded-lg shadow-sm border border-[#0e6537]/20 p-6 mb-6">
             <h1 className="text-2xl font-bold text-[#0e6537] mb-2">Legal Information</h1>
