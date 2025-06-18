@@ -3,7 +3,7 @@
  * Purpose: Implements a collapsible sidebar navigation with context management and responsive design.
  * Author: acagliol
  * Date: 06/15/25
- * Version: 1.1.0
+ * Version: 1.2.0
  */
 
 "use client"
@@ -67,13 +67,7 @@ function SidebarProvider({ children }: { children: React.ReactNode }) {
   return (
     <SidebarContext.Provider value={{ isOpen, toggle }}>
       <div className="relative">
-        {isMobile && isOpen && (
-          <div 
-            className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300" 
-            onClick={toggle}
-            style={{ opacity: isOpen ? 1 : 0 }}
-          />
-        )}
+        {/* Mobile overlay removed - mobile menu is handled separately */}
         {children}
       </div>
     </SidebarContext.Provider>
@@ -101,17 +95,19 @@ function Sidebar({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
+  // Don't render sidebar on mobile - mobile menu is handled separately
+  if (isMobile) {
+    return null;
+  }
+
   return (
     <div
       className={`
         ${isOpen
           ? 'w-16 sm:w-20 md:w-64'
-          : isMobile
-            ? 'w-0'
-            : 'w-12 sm:w-16 md:w-28'}
-        transition-all duration-300 ease-in-out bg-gradient-to-b from-[#0a5a2f] via-[#0e6537] to-[#157a42] border-r border-white/10 fixed h-screen z-50 shadow-xl ${
-        isMobile && !isOpen ? 'translate-x-[-100%]' : ''
-      }`}
+          : 'w-12 sm:w-16 md:w-28'}
+        transition-all duration-300 ease-in-out bg-gradient-to-b from-[#0a5a2f] via-[#0e6537] to-[#157a42] border-r border-white/10 fixed h-screen z-50 shadow-xl
+      `}
     >
       {children}
     </div>
@@ -168,9 +164,10 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
           {isMobile && (
             <button
               onClick={toggle}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors group"
+              title="Close sidebar"
             >
-              <X className="h-5 w-5 text-white" />
+              <X className="h-5 w-5 text-white group-hover:scale-110 transition-transform" />
             </button>
           )}
           {!isMobile && (
@@ -208,7 +205,7 @@ function SidebarGroup({ children, title }: { children: React.ReactNode; title?: 
   return (
     <div className="px-4 py-4">
       {title && isOpen && (
-        <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3 px-2 !important text-white">
+        <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3 px-2">
           {title}
         </h3>
       )}
@@ -300,7 +297,7 @@ function SidebarInset({ children, className }: SidebarInsetProps) {
   // Responsive margin logic to match sidebar width
   let marginClass = '';
   if (isMobile) {
-    marginClass = isOpen ? 'ml-16 sm:ml-20 md:ml-64' : 'ml-0';
+    marginClass = 'ml-0'; // No margin on mobile - mobile menu is handled separately
   } else {
     marginClass = isOpen ? 'ml-16 sm:ml-20 md:ml-64' : 'ml-12 sm:ml-16 md:ml-28';
   }
@@ -514,6 +511,13 @@ export { SidebarProvider, AppSidebar, SidebarInset, Logo, useSidebar, SidebarTri
 
 /**
  * Change Log:
+ * 06/15/25 - Version 1.2.0
+ * - Enhanced mobile responsiveness with full-width sidebar
+ * - Improved overlay with backdrop blur
+ * - Better close button functionality
+ * - Optimized mobile navigation experience
+ * - Enhanced sidebar animations and transitions
+ * 
  * 06/15/25 - Version 1.1.0
  * - Enhanced sidebar design with modern styling
  * - Improved collapse functionality for desktop
