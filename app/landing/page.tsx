@@ -17,15 +17,68 @@ import { useRouter } from 'next/navigation';
 import React from 'react';
 import dynamic from 'next/dynamic';
 
-// Improved Spline import with better error handling
-const Spline = dynamic(() => import('@splinetool/react-spline'), { 
+// Improved Spline import with better error handling and optimization
+const Spline = dynamic(() => {
+  return import('@splinetool/react-spline').catch(() => {
+    // Return a fallback component if Spline fails to load
+    return Promise.resolve(() => null);
+  });
+}, { 
   ssr: false,
   loading: () => (
-    <div className="w-full h-96 flex items-center justify-center bg-gray-100 rounded-lg">
-      <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+    <div className="w-full h-72 sm:h-96 md:h-[500px] lg:h-[600px] flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#0e6537] mx-auto mb-4"></div>
+        <p className="text-gray-600 text-sm">Loading 3D Scene...</p>
+      </div>
     </div>
   )
 });
+
+// Add error boundary for Spline component
+const SplineWithErrorBoundary = ({ scene }: { scene: string }) => {
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return (
+      <div className="w-full h-72 sm:h-96 md:h-[500px] lg:h-[600px] flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-[#0e6537] rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
+          <p className="text-gray-600 text-sm">3D Scene Unavailable</p>
+          <p className="text-gray-500 text-xs mt-2">Please refresh the page to try again</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Spline
+      scene={scene}
+      onError={() => setHasError(true)}
+    />
+  );
+};
+
+// Fallback component for when Spline is not available
+const SplineFallback = () => (
+  <div className="w-full h-72 sm:h-96 md:h-[500px] lg:h-[600px] flex items-center justify-center bg-gradient-to-br from-[#0e6537] to-[#157a42] rounded-2xl">
+    <div className="text-center text-white">
+      <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-6">
+        <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+        </svg>
+      </div>
+      <h3 className="text-lg font-semibold mb-2">AI-Powered Real Estate Platform</h3>
+      <p className="text-sm opacity-90 max-w-xs mx-auto">
+        Experience the future of real estate with our advanced AI solutions
+      </p>
+    </div>
+  </div>
+);
 
 /**
  * HomePage Component
@@ -109,6 +162,12 @@ export default function HomePage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [isVisible, setIsVisible] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  // Ensure component only renders on client side
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -361,9 +420,11 @@ export default function HomePage() {
             {/* Right Column: Spline 3D Scene */}
             <div className="relative mt-8 md:mt-0">
               <div className="w-full h-72 sm:h-96 md:h-[500px] lg:h-[600px] rounded-2xl shadow-2xl bg-white/10 border border-white/20 overflow-hidden">
-                <Spline
-                  scene="https://prod.spline.design/LDBaM7ucTMsfrTji/scene.splinecode"
-                />
+                {isClient ? (
+                  <SplineWithErrorBoundary scene="https://prod.spline.design/LDBaM7ucTMsfrTji/scene.splinecode" />
+                ) : (
+                  <SplineFallback />
+                )}
               </div>
             </div>
           </div>
