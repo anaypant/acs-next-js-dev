@@ -38,6 +38,7 @@ type ProcessedThread = {
     created_at: string;
     updated_at: string;
     flag: boolean;
+    completed?: boolean;
 };
 
 export const ensureMessageFields = (msg: any): Message => ({
@@ -72,10 +73,10 @@ export const calculateMetrics = (threads: Thread[], timeRange: TimeRange): Threa
     const now = new Date();
     const startDate = getStartDate(timeRange, now);
 
-    // Exclude spam threads from metrics
-    const nonSpamThreads = threads.filter(thread => !thread.spam);
+    // Exclude spam and completed threads from metrics
+    const nonSpamNonCompletedThreads = threads.filter(thread => !thread.spam && !thread.completed);
 
-    return nonSpamThreads.reduce((metrics, thread) => {
+    return nonSpamNonCompletedThreads.reduce((metrics, thread) => {
         const messages = thread.messages || [];
         const latestMessage = messages[0];
 
@@ -143,7 +144,8 @@ export const processThreadData = (rawData: any[], timeRange: TimeRange) => {
             last_updated: thread.last_updated || thread.updated_at || new Date().toISOString(),
             created_at: thread.created_at || new Date().toISOString(),
             updated_at: thread.updated_at || new Date().toISOString(),
-            flag: thread.flag === 'true' || thread.flag === true
+            flag: thread.flag === 'true' || thread.flag === true,
+            completed: thread.completed === 'true' || thread.completed === true
         };
 
         return processedThread as unknown as Thread;
@@ -170,4 +172,11 @@ export const processThreadData = (rawData: any[], timeRange: TimeRange) => {
         });
 
     return { conversations, metrics, leadPerformance };
+};
+
+// Helper function to check if a thread is completed
+export const isThreadCompleted = (completed: boolean | string | undefined): boolean => {
+    if (typeof completed === 'boolean') return completed;
+    if (typeof completed === 'string') return completed.toLowerCase() === 'true';
+    return false;
 }; 

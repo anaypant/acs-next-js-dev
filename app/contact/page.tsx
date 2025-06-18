@@ -927,8 +927,9 @@ export default function ContactPage() {
  * - Added: ++ b/app/contact/page.tsx
  * - Removed:     <div className="relative min-h-screen bg-gradient-to-b from-[#e6f5ec] via-[#f0f9f4] to-white">
  * - Removed:       <Navbar/>
- * - Removed:       
- * - 5/25/25 - Initial version
+ * - Removed:        Background patterns 
+ * 5/25/25 - Initial version
+
  * - Created contact page with form validation
  * - Added team section with member cards
  * - Implemented testimonials section

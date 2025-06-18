@@ -7,7 +7,7 @@
  */
 
 "use client"
-import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, PanelLeft, AlertTriangle, RefreshCw, ChevronDown, X, Shield, ShieldOff, FileText, Menu, Trash2, CreditCard, LogOut, ChevronLeft, ChevronRight } from "lucide-react"
+import { Home, Mail, Users, MessageSquare, BarChart3, Settings, Phone, Calendar, PanelLeft, AlertTriangle, RefreshCw, ChevronDown, X, Shield, ShieldOff, FileText, Menu, Trash2, CreditCard, LogOut, ChevronLeft, ChevronRight, Clock } from "lucide-react"
 import type React from "react"
 import { useState, createContext, useContext, useEffect, useRef } from "react"
 import { useSession, signOut } from "next-auth/react"
@@ -340,6 +340,12 @@ const mainNavigation = [
     icon: MessageSquare,
     url: "/dashboard/conversations",
     description: "Manage Leads"
+  },
+  {
+    title: "History",
+    icon: Clock,
+    url: "/dashboard/history",
+    description: "Completed Threads"
   },
   {
     title: "Resources",

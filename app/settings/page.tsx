@@ -24,7 +24,7 @@ import { clearAuthData } from '../utils/auth'
  * @param {string} message - Error message
  * @param {any} router - Next.js router instance
  */
-const goto404 = (code: string, message: string, router: any) => {
+const goto404 = (code: string, message: string, router: ReturnType<typeof useRouter>) => {
   console.error(`${code}: ${message}`)
   router.push("/404")
 }
@@ -61,33 +61,9 @@ export default function SettingsPage() {
       accessToken?: string
     }
   }) | null
-  const status = sessionResult.status
+  const status = sessionResult.status as "loading" | "authenticated" | "unauthenticated"
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
-
-  // Session check - redirect if not authenticated
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/');
-    }
-  }, [status, router]);
-
-  // Show loading while checking session
-  if (status === 'loading') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#0e6537] mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Don't render anything if not authenticated
-  if (status === 'unauthenticated') {
-    return null;
-  }
 
   // State for delete account dialog
   const [openDialog, setOpenDialog] = useState(false)
@@ -172,10 +148,16 @@ export default function SettingsPage() {
   // Add loading state for data fetching
   const [dataLoading, setDataLoading] = useState(true);
 
+  // Session check - redirect if not authenticated
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/');
+    }
+  }, [status, router]);
+
   // Initialize profile form with session data
   useEffect(() => {
     if (session?.user) {
-      const nameParts = session.user.name?.split(' ') || ['', '']
       setProfileForm({
         name: session.user.name || '',
         email: session.user.email || '',
@@ -217,7 +199,7 @@ export default function SettingsPage() {
         let data;
         try {
           data = JSON.parse(responseText);
-        } catch (parseError) {
+        } catch {
           throw new Error('Invalid response format from API');
         }
 
@@ -275,6 +257,57 @@ export default function SettingsPage() {
 
     fetchUserData();
   }, [session?.user?.id, status]);
+
+  // Handle mounting state to prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Check authentication status
+  useEffect(() => {
+    if (mounted && status === "unauthenticated") {
+      goto404("405", "User not found", router)
+    }
+  }, [status, router, mounted])
+
+  // Handle scroll-based section highlighting
+  useEffect(() => {
+    const handleScroll = () => {
+      const sections = ["session", "profile", "notifications", "security", "danger"]
+      const scrollPosition = window.scrollY + 200
+
+      for (const section of sections) {
+        const element = document.getElementById(section)
+        if (element) {
+          const { offsetTop, offsetHeight } = element
+          if (scrollPosition >= offsetTop && scrollPosition < offsetTop + offsetHeight) {
+            setActiveSection(section)
+            break
+          }
+        }
+      }
+    }
+
+    window.addEventListener("scroll", handleScroll)
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
+
+  // Show loading while checking session
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#0e6537] mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render anything if not authenticated
+  if (status === 'unauthenticated') {
+    return null;
+  }
 
   // Handle profile form changes
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -369,8 +402,8 @@ export default function SettingsPage() {
       })
 
       setProfileSuccess(true)
-    } catch (err: any) {
-      setProfileError(err.message || 'An error occurred while updating your profile')
+    } catch (err: unknown) {
+      setProfileError(err instanceof Error ? err.message : 'An error occurred while updating your profile')
     } finally {
       setProfileLoading(false)
     }
@@ -422,8 +455,8 @@ export default function SettingsPage() {
       }
 
       setSignatureSuccess(true)
-    } catch (err: any) {
-      setSignatureError(err.message || 'An error occurred while updating your signature')
+    } catch (err: unknown) {
+      setSignatureError(err instanceof Error ? err.message : 'An error occurred while updating your signature')
     } finally {
       setSignatureLoading(false)
     }
@@ -487,7 +520,7 @@ export default function SettingsPage() {
       }
 
       // Update each thread individually
-      const updatePromises = threadsData.items.map((thread: any) => 
+      const updatePromises = threadsData.items.map((thread: { conversation_id: string }) => 
         fetch('/api/db/update', {
           method: 'POST',
           headers: {
@@ -560,8 +593,8 @@ export default function SettingsPage() {
       }
 
       setLcpSuccess(true);
-    } catch (err: any) {
-      setLcpError(err.message || 'An error occurred while updating LCP settings');
+    } catch (err: unknown) {
+      setLcpError(err instanceof Error ? err.message : 'An error occurred while updating LCP settings');
     } finally {
       setLcpLoading(false);
     }
@@ -578,58 +611,10 @@ export default function SettingsPage() {
     setLcpSuccess(false);
   };
 
-  // Handle mounting state to prevent hydration mismatch
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  // Check authentication status
-  useEffect(() => {
-    if (mounted && status === "unauthenticated") {
-      goto404("405", "User not found", router)
-    }
-  }, [status, router, mounted])
-
-  // Handle scroll-based section highlighting
-  useEffect(() => {
-    const handleScroll = () => {
-      const sections = ["session", "profile", "notifications", "security", "danger"]
-      const scrollPosition = window.scrollY + 200
-
-      for (const section of sections) {
-        const element = document.getElementById(section)
-        if (element) {
-          const { offsetTop, offsetHeight } = element
-          if (scrollPosition >= offsetTop && scrollPosition < offsetTop + offsetHeight) {
-            setActiveSection(section)
-            break
-          }
-        }
-      }
-    }
-
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
-
   if (!mounted) {
     return null // Return null on server-side and first render
   }
 
-  if (status === "loading") {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-[#0e6537] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (status === "unauthenticated") {
-    return null
-  }
 
   // Show loading screen while fetching user data
   if (dataLoading) {
@@ -871,7 +856,7 @@ export default function SettingsPage() {
         throw new Error('Password must be at least 8 characters long')
       }
 
-      const updateData: any = {
+      const updateData: { updated_at: string; password?: string } = {
         updated_at: new Date().toISOString()
       }
 

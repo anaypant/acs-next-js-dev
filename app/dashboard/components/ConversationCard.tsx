@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from 'react';
 import { useConversationsData } from '../lib/use-conversations';
 import type { Message as CachedMessage } from '../lib/conversations-context';
+import { formatLocalTime } from '@/app/utils/timezone';
 
 /**
  * Props interface for ConversationCard component
@@ -304,7 +305,7 @@ const ConversationCard = ({
                         })()}
                     </span>
                 </p>
-                <p className="text-xs text-gray-400">{mostRecentMessage?.timestamp ? new Date(mostRecentMessage.timestamp).toLocaleString() : ''}</p>
+                <p className="text-xs text-gray-400">{mostRecentMessage?.timestamp ? formatLocalTime(mostRecentMessage.timestamp) : ''}</p>
             </div>
             <div className="flex-[1.2] flex items-center justify-center min-w-0 pl-6">
                 <GradientText

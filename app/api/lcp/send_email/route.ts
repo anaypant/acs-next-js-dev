@@ -77,7 +77,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const updateData = await updateResponse.json();
 
     // Make request to the config API endpoint
     const response = await fetch(`${config.API_URL}/lcp/send-email`, {
@@ -89,7 +88,9 @@ export async function POST(request: Request) {
       credentials: 'include',
       body: JSON.stringify({
         conversation_id,
-        response_body
+        response_body,
+        account_id: session.user.id,
+        session_id: sessionId
       }),
     });
 
