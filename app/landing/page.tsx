@@ -3,7 +3,7 @@
  * Purpose: Renders the landing page with hero section, features, benefits, testimonials, and CTA sections.
  * Author: acagliol
  * Date: 06/15/25
- * Version: 1.0.5
+ * Version: 1.0.6
  */
 
 "use client"
@@ -15,51 +15,63 @@ import Image from "next/image"
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import React from 'react';
-import dynamic from 'next/dynamic';
 
-// Improved Spline import with better error handling and optimization
-const Spline = dynamic(() => {
-  return import('@splinetool/react-spline').catch(() => {
-    // Return a fallback component if Spline fails to load
-    return Promise.resolve(() => null);
-  });
-}, { 
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-72 sm:h-96 md:h-[500px] lg:h-[600px] flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#0e6537] mx-auto mb-4"></div>
-        <p className="text-gray-600 text-sm">Loading 3D Scene...</p>
-      </div>
-    </div>
-  )
-});
+// Spline Viewer Web Component
+const SplineViewer = ({ url }: { url: string }) => {
+  const [scriptLoaded, setScriptLoaded] = useState(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
-// Add error boundary for Spline component
-const SplineWithErrorBoundary = ({ scene }: { scene: string }) => {
-  const [hasError, setHasError] = useState(false);
+  useEffect(() => {
+    // Check if script is already loaded
+    if (document.querySelector('script[src*="spline-viewer.js"]')) {
+      setScriptLoaded(true);
+      return;
+    }
 
-  if (hasError) {
+    // Load the Spline viewer script
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.src = 'https://unpkg.com/@splinetool/viewer@1.10.10/build/spline-viewer.js';
+    script.async = true;
+    script.onload = () => setScriptLoaded(true);
+    document.head.appendChild(script);
+
+    return () => {
+      // Cleanup script when component unmounts
+      if (document.head.contains(script)) {
+        document.head.removeChild(script);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (scriptLoaded && containerRef.current) {
+      // Clear the container
+      containerRef.current.innerHTML = '';
+      
+      // Create the spline-viewer element
+      const splineViewer = document.createElement('spline-viewer');
+      splineViewer.setAttribute('url', url);
+      splineViewer.className = 'w-full h-full';
+      
+      // Append to container
+      containerRef.current.appendChild(splineViewer);
+    }
+  }, [scriptLoaded, url]);
+
+  if (!scriptLoaded) {
     return (
-      <div className="w-full h-72 sm:h-96 md:h-[500px] lg:h-[600px] flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl">
+      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
         <div className="text-center">
-          <div className="w-16 h-16 bg-[#0e6537] rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
-          <p className="text-gray-600 text-sm">3D Scene Unavailable</p>
-          <p className="text-gray-500 text-xs mt-2">Please refresh the page to try again</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#0e6537] mx-auto mb-4"></div>
+          <p className="text-gray-600 text-sm">Loading 3D Scene...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <Spline
-      scene={scene}
-      onError={() => setHasError(true)}
-    />
+    <div ref={containerRef} className="w-full h-full" />
   );
 };
 
@@ -421,7 +433,7 @@ export default function HomePage() {
             <div className="relative mt-8 md:mt-0">
               <div className="w-full h-72 sm:h-96 md:h-[500px] lg:h-[600px] rounded-2xl shadow-2xl bg-white/10 border border-white/20 overflow-hidden">
                 {isClient ? (
-                  <SplineWithErrorBoundary scene="https://prod.spline.design/LDBaM7ucTMsfrTji/scene.splinecode" />
+                  <SplineViewer url="https://prod.spline.design/LDBaM7ucTMsfrTji/scene.splinecode" />
                 ) : (
                   <SplineFallback />
                 )}
@@ -553,6 +565,13 @@ export default function HomePage() {
 
 /**
  * Change Log:
+ * 06/17/25 - Version 1.0.6
+ * - Replaced broken @splinetool/react-spline library with spline-viewer web component
+ * - Implemented dynamic script loading for spline-viewer.js
+ * - Added proper loading state and error handling for 3D scene
+ * - Fixed TypeScript compatibility issues with custom web components
+ * - Improved performance by loading script only when needed
+ * 
  * 06/17/25 - Version 1.0.5
  * - Fixed syntax errors and formatting issues
  * - Corrected escaped characters in JSX
