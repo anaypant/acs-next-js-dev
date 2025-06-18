@@ -61,7 +61,7 @@ export default function SettingsPage() {
       accessToken?: string
     }
   }) | null
-  const status = sessionResult?.status || "loading"
+  const status = sessionResult.status
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
 
