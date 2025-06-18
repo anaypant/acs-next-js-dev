@@ -180,8 +180,9 @@ export default function ConversationsPage() {
       const bMessages = b.messages;
 
       if (sortField === 'date') {
-        const dateA = aMessages.length > 0 ? new Date(aMessages[0].timestamp).getTime() : 0;
-        const dateB = bMessages.length > 0 ? new Date(bMessages[0].timestamp).getTime() : 0;
+        // Use the latest message timestamp for sorting
+        const dateA = aMessages.length > 0 ? Math.max(...aMessages.map(m => new Date(m.timestamp).getTime())) : 0;
+        const dateB = bMessages.length > 0 ? Math.max(...bMessages.map(m => new Date(m.timestamp).getTime())) : 0;
         return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
       }
 
@@ -227,7 +228,7 @@ export default function ConversationsPage() {
       <div className="max-w-7xl mx-auto p-6">
         {/* Header section with logo and navigation */}
         <div className="flex items-center gap-4 mb-6">
-          <Logo size="md" />
+          <Logo size="md" whiteText={true} />
           <button
             onClick={() => window.history.back()}
             className="p-2 hover:bg-[#0e6537]/10 rounded-lg"
@@ -421,7 +422,7 @@ export default function ConversationsPage() {
                           <div className="flex flex-col">
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-gray-900">{conversation.thread.source_name || conversation.thread.associated_account || "Unknown Client"}</span>
-                              {conversation.thread.busy && (
+                              {conversation.thread.busy === 'true' && (
                                 <div className="flex items-center gap-1.5 px-2 py-0.5 bg-[#0e6537]/10 rounded-full">
                                   <div className="w-1.5 h-1.5 bg-[#0e6537] rounded-full animate-pulse" />
                                   <span className="text-xs text-[#0e6537] font-medium">Email in progress</span>

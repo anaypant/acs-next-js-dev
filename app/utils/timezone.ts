@@ -6,26 +6,44 @@
  * Formats a timestamp to display in the user's local timezone
  * @param timestamp - ISO timestamp string
  * @param options - Intl.DateTimeFormatOptions for formatting
- * @returns Formatted date string in local timezone
+ * @param type - Optional type of message ('inbound-email' or 'outbound-email')
+ * @returns Date object in local timezone
  */
 export function formatLocalTime(
-  timestamp: string, 
+  timestamp: string,
   options: Intl.DateTimeFormatOptions = {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit'
-  }
-): string {
-  if (!timestamp) return '';
-  
+  },
+  type?: 'inbound-email' | 'outbound-email'
+): Date {
+  if (!timestamp) return new Date();
+  let date: Date | null = null;
   try {
-    const date = new Date(timestamp);
-    return date.toLocaleString(undefined, options);
+    // Normalize timestamp: if it has microseconds but no timezone, append 'Z'
+    let normalized = timestamp;
+    // If it matches microseconds (6 digits after .) and does not end with 'Z' or timezone
+    if (/\.\d{6}$/.test(timestamp)) {
+      normalized = timestamp + 'Z';
+    } else if (/\.\d{6}[+-]\d{2}:?\d{2}$/.test(timestamp)) {
+      // Already has timezone, do nothing
+    } else if (/\.\d{3,6}$/.test(timestamp) && !/[Z+-]/.test(timestamp.slice(-1))) {
+      normalized = timestamp + 'Z';
+    }
+    // For outbound-email, use normalized
+    if (type === 'outbound-email') {
+      date = new Date(normalized);
+    } else {
+      // Default logic for inbound-email and others
+      date = new Date(normalized);
+    }
+    return date;
   } catch (error) {
     console.error('Error formatting timestamp:', error);
-    return '';
+    return new Date();
   }
 }
 

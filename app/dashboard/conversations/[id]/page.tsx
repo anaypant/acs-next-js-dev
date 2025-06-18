@@ -11,7 +11,6 @@ import { ArrowLeft, Phone, Mail, Calendar, MapPin, RefreshCw, Sparkles, X, Info,
 import { useParams, useRouter } from "next/navigation"
 import { useEffect, useState, type ReactNode, type FC } from "react"
 import type { Thread, Message } from "@/app/types/lcp"
-import type { Session } from "next-auth"
 import { useSession } from "next-auth/react"
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
@@ -20,11 +19,14 @@ import autoTable from 'jspdf-autotable';
 import 'jspdf-autotable';
 import type { User } from "next-auth"
 import { v4 as uuidv4 } from 'uuid';
-import { ensureMessageFields } from "@/app/dashboard/lib/dashboard-utils";
+import { ensureMessageFields, parseBoolean } from "@/app/dashboard/lib/dashboard-utils";
 import ConversationProgression from "@/app/dashboard/components/ConversationProgression";
 import { useConversationsData } from '../../lib/use-conversations';
 import { formatLocalTime } from '@/app/utils/timezone';
 import { Logo } from "@/app/utils/Logo"
+
+// Import Session type from the local definition
+import type { Session } from "next-auth"
 
 // Add type declaration for jsPDF with autoTable
 declare module 'jspdf' {
@@ -712,8 +714,9 @@ const EmailPreviewModal: React.FC<{
   recipientEmail: string;
   recipientName: string;
   isSending: boolean;
-  session: (Session & { user?: { id: string } }) | null;
-}> = ({ isOpen, onClose, onSend, subject, body, signature, recipientEmail, recipientName, isSending, session }) => {
+  session: any;
+  responseEmail: string;
+}> = ({ isOpen, onClose, onSend, subject, body, signature, recipientEmail, recipientName, isSending, session, responseEmail }) => {
   if (!isOpen) return null;
 
   const fullEmailBody = body + (signature ? `\n\n${signature}` : '');
@@ -738,7 +741,7 @@ const EmailPreviewModal: React.FC<{
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                 <div>
                   <span className="font-medium text-gray-600">From:</span>
-                  <div className="text-gray-900">{session?.user?.email}</div>
+                  <div className="text-gray-900">{responseEmail}</div>
                 </div>
                 <div>
                   <span className="font-medium text-gray-600">To:</span>
@@ -853,6 +856,7 @@ export default function ConversationDetailPage() {
 
   const [mounted, setMounted] = useState(false);
   const [userSignature, setUserSignature] = useState<string>('');
+  const [userResponseEmail, setUserResponseEmail] = useState<string>('');
   const [updatingRead, setUpdatingRead] = useState<string | null>(null);
   const [updatingLcp, setUpdatingLcp] = useState<string | null>(null);
   const [updatingFlag, setUpdatingFlag] = useState<string | null>(null);
@@ -912,8 +916,6 @@ export default function ConversationDetailPage() {
 
   // Define fetchUserSignature before the useEffect that calls it
   const fetchUserSignature = async () => {
-    if (!session?.user?.id) return;
-    
     try {
       const response = await fetch('/api/db/select', {
         method: 'POST',
@@ -924,78 +926,45 @@ export default function ConversationDetailPage() {
           table_name: 'Users',
           index_name: 'id-index',
           key_name: 'id',
-          key_value: session.user.id,
-          account_id: session.user.id,
+          key_value: (session as any)?.user?.id,
+          account_id: (session as any)?.user?.id,
         }),
         credentials: 'include',
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch signature');
+      if (response.ok) {
+        const data = await response.json();
+        const userData = data.items[0];
+        setUserSignature(userData?.email_signature || '');
+        setUserResponseEmail(userData?.responseEmail || (session as any)?.user?.email || '');
+        
       }
-
-      // Only call response.json() once
-      const data = await response.json();
-      setUserSignature(data.items[0].email_signature);
     } catch (error) {
       console.error('Error fetching signature:', error);
     }
   };
 
-  useEffect(() => {
-    if (mounted && session?.user?.id) {
-      fetchUserSignature();
-    }
-  }, [mounted, session?.user?.id]);
-
-  useEffect(() => {
-    if (mounted && conversationId) {
-      const conversation = getConversationById(conversationId);
-      if (conversation?.thread && !conversation.thread.read) {
-        markAsRead();
-      }
-    }
-  }, [mounted, conversationId, getConversationById]);
-
-  // Get conversation data after hooks
-  const conversation = getConversationById(conversationId);
-  const thread = conversation?.thread;
-  const messages = conversation?.messages || [];
-
-  // Early returns after all hooks
-  if (!mounted) return <LoadingSkeleton />;
-  if (isLoading) return <LoadingSkeleton />;
-  if (cacheError) return <div className="text-red-500">Error: {cacheError}</div>;
-  if (!thread) return <div>Conversation not found</div>;
-
-  // Parse thread and messages from conversation
-  const leadName = thread?.lead_name || thread?.source_name || 'Unknown Lead';
-  const clientEmail = thread?.client_email || thread?.source || '';
-  const sortedMessages = [...(messages.map((msg: any) => ({
-    ...msg,
-    sender_name: msg.sender_name || msg.sender || '',
-    sender_email: msg.sender_email || msg.sender || '',
-    body: msg.body || msg.content || '',
-    timestamp: msg.timestamp,
-    ev_score: typeof msg.ev_score === 'number' ? msg.ev_score : (msg.ev_score ? Number(msg.ev_score) : undefined),
-    type: msg.type || 'inbound-email',
-  })) as ExtendedMessage[])].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-  
-
   const markAsRead = async () => {
-    if (!conversationId || !session?.user?.id) return;
+    if (!conversationId || !(session as any)?.user?.id) return;
 
     setUpdatingRead(conversationId);
     try {
-      const response = await fetch('/api/lcp/mark_as_read', {
+      const response = await fetch('/api/db/update', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          conversationId,
-          userId: session.user.id,
+          table_name: 'Threads',
+          index_name: 'conversation_id-index',
+          key_name: 'conversation_id',
+          key_value: conversationId,
+          account_id: (session as any)?.user?.id,
+          update_data: {
+            read: true,
+          },
         }),
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -1011,8 +980,93 @@ export default function ConversationDetailPage() {
     }
   };
 
+  useEffect(() => {
+    if (mounted && (session as any)?.user?.id) {
+      fetchUserSignature();
+    }
+  }, [mounted, (session as any)?.user?.id]);
+
+  useEffect(() => {
+    if (mounted && conversationId) {
+      const conversation = getConversationById(conversationId);
+      if (conversation?.thread && !conversation.thread.read) {
+        markAsRead();
+      }
+    }
+  }, [mounted, conversationId, getConversationById]);
+
+  // Get conversation data after hooks
+  const conversation = getConversationById(conversationId);
+  const thread = conversation?.thread;
+  const messages = conversation?.messages || [];
+
+  // Process thread data using dashboard utilities
+  const processedThread = thread ? {
+    ...thread,
+    flag_for_review: parseBoolean(thread.flag_for_review),
+    flag_review_override: parseBoolean(thread.flag_review_override),
+    read: parseBoolean(thread.read),
+    busy: parseBoolean(thread.busy),
+    spam: parseBoolean(thread.spam),
+    lcp_enabled: parseBoolean(thread.lcp_enabled),
+    flag: parseBoolean(thread.flag),
+    completed: parseBoolean(thread.completed),
+    lcp_flag_threshold: typeof thread.lcp_flag_threshold === 'number' ? thread.lcp_flag_threshold : Number(thread.lcp_flag_threshold) || 70,
+  } as typeof thread & {
+    flag_for_review: boolean;
+    flag_review_override: boolean;
+    read: boolean;
+    busy: boolean;
+    spam: boolean;
+    lcp_enabled: boolean;
+    flag: boolean;
+    completed: boolean;
+    lcp_flag_threshold: number;
+  } : null;
+
+  // Debug: Log processed thread data
+  console.log('Processed Thread:', processedThread);
+
+  // Process messages using dashboard utilities
+  const processedMessages = messages.map(ensureMessageFields);
+
+  // Initialize notes from processed thread
+  useEffect(() => {
+    if (processedThread?.notes) {
+      setNotes(processedThread.notes);
+    }
+  }, [processedThread?.notes]);
+
+  // Early returns after all hooks
+  if (!mounted) return <LoadingSkeleton />;
+  if (isLoading) return <LoadingSkeleton />;
+  if (cacheError) return <div className="text-red-500">Error: {cacheError}</div>;
+  if (!processedThread) return <div>Conversation not found</div>;
+
+  // Parse thread and messages from conversation
+  const leadName = processedThread?.source_name || 'Unknown Lead';
+  const clientEmail = processedThread?.source || '';
+  // Utility to normalize timestamp to ISO-8601 (UTC) if missing 'Z' or timezone
+  function normalizeTimestamp(ts: string) {
+    if (!ts) return '';
+    // If already ends with Z or has a timezone offset, return as is
+    if (ts.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(ts)) return ts;
+    // If it has microseconds but no Z, add Z
+    return ts + 'Z';
+  }
+  const sortedMessages = [...(processedMessages.map((msg: any) => ({
+    ...msg,
+    sender_name: msg.sender_name || msg.sender || '',
+    sender_email: msg.sender_email || msg.sender || '',
+    body: msg.body || msg.content || '',
+    timestamp: normalizeTimestamp(msg.timestamp),
+    ev_score: typeof msg.ev_score === 'number' ? msg.ev_score : (msg.ev_score ? Number(msg.ev_score) : undefined),
+    type: msg.type || 'inbound-email',
+  })) as ExtendedMessage[])].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  
+
   const handleLcpToggle = async () => {
-    if (!conversationId || !session?.user?.id) return;
+    if (!conversationId || !(session as any)?.user?.id) return;
 
     setUpdatingLcp(conversationId);
     try {
@@ -1023,7 +1077,7 @@ export default function ConversationDetailPage() {
         },
         body: JSON.stringify({
           conversationId,
-          userId: session.user.id,
+          userId: (session as any).user.id,
         }),
       });
 
@@ -1042,7 +1096,7 @@ export default function ConversationDetailPage() {
   };
 
   const handleFlagToggle = async () => {
-    if (!conversationId || !session?.user?.id) return;
+    if (!conversationId || !(session as any)?.user?.id) return;
 
     setUpdatingFlag(conversationId);
     try {
@@ -1053,7 +1107,7 @@ export default function ConversationDetailPage() {
         },
         body: JSON.stringify({
           conversationId,
-          userId: session.user.id,
+          userId: (session as any).user.id,
         }),
       });
 
@@ -1072,7 +1126,7 @@ export default function ConversationDetailPage() {
   };
 
   const handleSpamToggle = async () => {
-    if (!conversationId || !session?.user?.id) return;
+    if (!conversationId || !(session as any)?.user?.id) return;
 
     setUpdatingSpam(true);
     try {
@@ -1083,7 +1137,7 @@ export default function ConversationDetailPage() {
         },
         body: JSON.stringify({
           conversationId,
-          userId: session.user.id,
+          userId: (session as any).user.id,
         }),
       });
 
@@ -1102,7 +1156,7 @@ export default function ConversationDetailPage() {
   };
 
   const handleReportSubmit = async () => {
-    if (!conversationId || !session?.user?.id || !reportReason) return;
+    if (!conversationId || !(session as any)?.user?.id || !reportReason) return;
 
     setReportingResponse(true);
     try {
@@ -1113,7 +1167,7 @@ export default function ConversationDetailPage() {
         },
         body: JSON.stringify({
           conversationId,
-          userId: session.user.id,
+          userId: (session as any).user.id,
           reason: reportReason,
           details: reportDetails,
         }),
@@ -1172,7 +1226,7 @@ export default function ConversationDetailPage() {
   };
 
   const generatePDF = async () => {
-    if (!thread || !sortedMessages.length) return;
+    if (!processedThread || !sortedMessages.length) return;
 
     setGeneratingPdf(true);
     try {
@@ -1184,15 +1238,15 @@ export default function ConversationDetailPage() {
       
       // Add thread details
       doc.setFontSize(12);
-      doc.text(`Lead: ${thread.lead_name}`, 20, 40);
-      doc.text(`Status: ${thread.status}`, 20, 50);
-      doc.text(`Created: ${formatLocalTime(thread.created_at)}`, 20, 60);
+      doc.text(`Lead: ${leadName}`, 20, 40);
+      doc.text(`Status: ${processedThread.completed ? 'Completed' : 'Active'}`, 20, 50);
+      doc.text(`Created: ${formatLocalTime(processedThread.created_at).toLocaleString()}`, 20, 60);
       
       // Add messages
       let y = 80;
       sortedMessages.forEach((msg: ExtendedMessage) => {
         const sender = `${msg.sender_name} (${msg.sender_email})`;
-        const timestamp = formatLocalTime(msg.timestamp);
+        const timestamp = formatLocalTime(msg.timestamp, undefined, msg.type).toLocaleString();
         const content = `${sender} - ${timestamp}\n\n${msg.body}\n\n`;
         
         const splitContent = doc.splitTextToSize(content, 170);
@@ -1205,7 +1259,7 @@ export default function ConversationDetailPage() {
         y += splitContent.length * 7 + 10;
       });
       
-      doc.save(`conversation-${thread.id}.pdf`);
+      doc.save(`conversation-${processedThread.conversation_id}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
     } finally {
@@ -1238,12 +1292,12 @@ export default function ConversationDetailPage() {
   };
 
   const handleOverride = async () => {
-    if (!conversationId || !session?.user?.id) return;
+    if (!conversationId || !(session as any)?.user?.id) return;
     
     setUpdatingOverride(true);
     try {
       // Toggle the current override status
-      const currentOverride = getBoolean(thread?.flag_review_override);
+      const currentOverride = processedThread?.flag_review_override || false;
       const newOverrideStatus = !currentOverride;
       
       const response = await fetch('/api/db/update', {
@@ -1259,7 +1313,7 @@ export default function ConversationDetailPage() {
           update_data: {
             flag_review_override: newOverrideStatus.toString()
           },
-          account_id: session.user.id,
+          account_id: (session as any).user.id,
         }),
         credentials: 'include',
       });
@@ -1279,7 +1333,7 @@ export default function ConversationDetailPage() {
   };
 
   const handleUnflag = async () => {
-    if (!conversationId || !session?.user?.id) return;
+    if (!conversationId || !(session as any)?.user?.id) return;
     
     setUnflagging(true);
     try {
@@ -1296,7 +1350,7 @@ export default function ConversationDetailPage() {
           update_data: {
             flag_for_review: 'false'
           },
-          account_id: session.user.id,
+          account_id: (session as any).user.id,
         }),
         credentials: 'include',
       });
@@ -1316,7 +1370,7 @@ export default function ConversationDetailPage() {
   };
 
   const handleCompleteConversation = async (reason: string, nextSteps: string) => {
-    if (!conversationId || !session?.user?.id) return;
+    if (!conversationId || !(session as any)?.user?.id) return;
     
     setCompletingConversation(true);
     try {
@@ -1337,7 +1391,7 @@ export default function ConversationDetailPage() {
             completion_notes: nextSteps,
             completed_at: new Date().toISOString()
           },
-          account_id: session.user.id,
+          account_id: (session as any).user.id,
         }),
         credentials: 'include',
       });
@@ -1374,7 +1428,7 @@ export default function ConversationDetailPage() {
   };
 
   const handleMarkAsNotSpam = async () => {
-    if (!conversationId || !session?.user?.id) return;
+    if (!conversationId || !(session as any)?.user?.id) return;
     
     setUpdatingSpam(true);
     try {
@@ -1391,7 +1445,7 @@ export default function ConversationDetailPage() {
           update_data: {
             spam: 'false'
           },
-          account_id: session.user.id,
+          account_id: (session as any).user.id,
         }),
         credentials: 'include',
       });
@@ -1411,7 +1465,7 @@ export default function ConversationDetailPage() {
   };
 
   const generateAIResponse = async () => {
-    if (!conversationId || !session?.user?.id) return;
+    if (!conversationId || !(session as any)?.user?.id) return;
     
     setGeneratingResponse(true);
     try {
@@ -1426,7 +1480,7 @@ export default function ConversationDetailPage() {
         },
         body: JSON.stringify({
           conversation_id: conversationId,
-          account_id: session.user.id,
+          account_id: (session as any).user.id,
           is_first_email: isFirstEmail
         }),
         credentials: 'include',
@@ -1485,7 +1539,7 @@ export default function ConversationDetailPage() {
   };
 
   const sendEmail = async () => {
-    if (!conversationId || !session?.user?.id || !messageInput.trim()) return;
+    if (!conversationId || !(session as any)?.user?.id || !messageInput.trim()) return;
     
     setSendingEmail(true);
     try {
@@ -1496,7 +1550,7 @@ export default function ConversationDetailPage() {
         },
         body: JSON.stringify({
           conversation_id: conversationId,
-          account_id: session.user.id,
+          account_id: (session as any).user.id,
           subject: emailSubject,
           response_body: messageInput,
           signature: userSignature,
@@ -1520,7 +1574,7 @@ export default function ConversationDetailPage() {
               update_data: {
                 busy: false
               },
-              account_id: session.user.id,
+              account_id: (session as any).user.id,
             }),
             credentials: 'include',
           });
@@ -1566,7 +1620,7 @@ export default function ConversationDetailPage() {
             update_data: {
               busy: false
             },
-            account_id: session.user.id,
+            account_id: (session as any).user.id,
           }),
           credentials: 'include',
         });
@@ -1587,7 +1641,7 @@ export default function ConversationDetailPage() {
   };
 
   const saveNotes = async (newNotes: string) => {
-    if (!conversationId || !session?.user?.id) return;
+    if (!conversationId || !(session as any)?.user?.id) return;
     
     try {
       const response = await fetch('/api/db/update', {
@@ -1603,7 +1657,7 @@ export default function ConversationDetailPage() {
           update_data: {
             notes: newNotes
           },
-          account_id: session.user.id,
+          account_id: (session as any).user.id,
         }),
         credentials: 'include',
       });
@@ -1633,6 +1687,7 @@ export default function ConversationDetailPage() {
     setIsResponseFlagged(false);
   };
 
+
   return (
     <>
       {showEmailPreview && previewMessageId && (
@@ -1653,6 +1708,7 @@ export default function ConversationDetailPage() {
           </div>
         </div>
       )}
+
 
       <div className="min-h-screen h-screen w-full bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1] pb-0">
         <div className="w-full h-full max-w-[1600px] mx-auto p-4 grid gap-6" style={{ gridTemplateColumns: '2fr 2.5fr 1.5fr', height: 'calc(100vh - 0px)', minHeight: 0 }}>
@@ -1732,7 +1788,7 @@ export default function ConversationDetailPage() {
                         <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
                           <span>{msg.type === "inbound-email" ? clientEmail : "You"}</span>
                           <span>·</span>
-                          <span>{msg.timestamp ? formatLocalTime(msg.timestamp) : ""}</span>
+                          <span>{msg.timestamp ? formatLocalTime(msg.timestamp, undefined, msg.type).toLocaleString() : ""}</span>
                           {msg.type === "inbound-email" && typeof msg.ev_score === 'number' && msg.ev_score >= 0 && msg.ev_score <= 100 && (
                             <span className="ml-2 flex items-center gap-1">
                               <span className="font-semibold text-green-700">EV {msg.ev_score}</span>
@@ -1858,7 +1914,7 @@ export default function ConversationDetailPage() {
                   <h3 className="font-medium text-gray-900">AI Response</h3>
                   <div className="flex items-center gap-3">
                     <OverrideStatus 
-                      isEnabled={getBoolean(thread?.flag_review_override)} 
+                      isEnabled={processedThread?.flag_review_override || false} 
                       onToggle={handleOverride}
                       updating={updatingOverride}
                     />
@@ -1868,16 +1924,16 @@ export default function ConversationDetailPage() {
                   <textarea
                     value={messageInput}
                     onChange={(e) => setMessageInput(e.target.value)}
-                    placeholder={thread?.busy ? "Email sending in progress..." : "Type or generate your reply..."}
+                    placeholder={processedThread?.busy ? "Email sending in progress..." : "Type or generate your reply..."}
                     className="w-full h-56 p-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0e6537] resize-none text-base text-gray-900"
                     style={{ minHeight: '220px', fontSize: '1.1rem' }}
-                    disabled={thread?.busy}
+                    disabled={processedThread?.busy || false}
                   />
                   <div className="flex gap-2 justify-between items-center">
                     <div className="flex gap-2">
                       <button
                         onClick={generateAIResponse}
-                        disabled={!thread?.lcp_enabled || thread?.busy || generatingResponse}
+                        disabled={!processedThread?.lcp_enabled || processedThread?.busy || generatingResponse}
                         className="flex items-center gap-1 px-2 py-1 bg-[#0e6537] text-white rounded hover:bg-[#0a5a2f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                         style={{ minWidth: '110px' }}
                       >
@@ -1895,7 +1951,7 @@ export default function ConversationDetailPage() {
                       </button>
                       <button
                         onClick={handleOpenEmailPreview}
-                        disabled={!messageInput.trim() || thread?.busy}
+                        disabled={!messageInput.trim() || processedThread?.busy}
                         className="flex items-center gap-1 px-2 py-1 bg-white border border-gray-200 text-gray-700 rounded hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                         style={{ minWidth: '110px' }}
                       >
@@ -1917,23 +1973,23 @@ export default function ConversationDetailPage() {
                 </div>
                 <div className="mb-1 font-bold text-lg">{leadName}</div>
                 <div className="text-gray-500 text-sm mb-2">{clientEmail}</div>
-                {thread?.phone && <div className="text-gray-500 text-sm mb-1 flex items-center justify-center gap-1"><Phone className="h-4 w-4" />{thread.phone}</div>}
-                {thread?.location && <div className="text-gray-500 text-sm mb-1 flex items-center justify-center gap-1"><MapPin className="h-4 w-4" />{thread.location}</div>}
+                {processedThread?.phone && <div className="text-gray-500 text-sm mb-1 flex items-center justify-center gap-1"><Phone className="h-4 w-4" />{processedThread.phone}</div>}
+                {processedThread?.location && <div className="text-gray-500 text-sm mb-1 flex items-center justify-center gap-1"><MapPin className="h-4 w-4" />{processedThread.location}</div>}
               </div>
 
               {/* Flagged Status Widget */}
               <FlaggedStatusWidget
-                isFlagged={getBoolean(thread?.flag_for_review)}
+                isFlagged={processedThread?.flag_for_review || false}
                 onUnflag={handleUnflag}
                 updating={unflagging}
-                isFlaggedForCompletion={getBoolean(thread?.flag)}
+                isFlaggedForCompletion={processedThread?.flag || false}
                 onComplete={handleOpenCompletionModal}
               />
 
             </div>
 
             {/* Spam Status Widget - separate row when needed */}
-            {thread?.spam && (
+            {processedThread?.spam && (
               <div className="bg-white rounded-2xl border shadow-lg p-6 flex flex-col items-center text-center min-h-[170px] mt-6">
                 <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mb-2">
                   <AlertTriangle className="h-7 w-7 text-red-500" />
@@ -1963,11 +2019,11 @@ export default function ConversationDetailPage() {
           {/* Sidebar widgets: AI Insights and Notes */}
           <div className="flex flex-col gap-6">
             {/* AI Insights */}
-            {thread && (() => {
-              const aiSummary = thread.ai_summary?.trim();
-              const budgetRange = thread.budget_range?.trim();
-              const propertyTypes = thread.preferred_property_types?.trim();
-              const timeline = thread.timeline?.trim();
+            {processedThread && (() => {
+              const aiSummary = processedThread.ai_summary?.trim();
+              const budgetRange = processedThread.budget_range?.trim();
+              const propertyTypes = processedThread.preferred_property_types?.trim();
+              const timeline = processedThread.timeline?.trim();
               const isEmpty = [aiSummary, budgetRange, propertyTypes, timeline].every((val) => !val || val === 'UNKNOWN');
               if (isEmpty) return null;
               const insights = [
@@ -2021,6 +2077,7 @@ export default function ConversationDetailPage() {
         recipientName={leadName}
         isSending={sendingEmail}
         session={session}
+        responseEmail={userResponseEmail}
       />
       <CompletionModal
         isOpen={showCompletionModal}

@@ -168,26 +168,25 @@ const ConversationCard = ({
         .join('');
 
    
-
     return (
         <div
             className={`flex flex-col sm:flex-row items-stretch gap-2 sm:gap-3 md:gap-4 p-2 sm:p-3 md:p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors relative ${
-                conv.flag_for_review
-                    ? 'flagged-review'
-                    : conv.flag
+                conv.flag
                     ? 'flagged-completion'
+                    : conv.flag_for_review
+                    ? 'flagged-review'
                     : 'border-[#0e6537]/20'
             }`}
             onClick={() => handleMarkAsRead(conv.conversation_id)}
         >
-            {conv.flag_for_review && (
+            {!conv.flag && conv.flag_for_review && (
                 <div className="absolute -top-2 -right-2 bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full text-xs font-semibold shadow-sm flex items-center gap-1">
                     <Flag className="w-3 h-3" />
                     <span className="hidden xs:inline">Flagged for Review</span>
                     <span className="xs:hidden">Review</span>
                 </div>
             )}
-            {!conv.flag_for_review && conv.flag && (
+            {conv.flag && (
                 <div className="absolute -top-2 -right-2 bg-green-400 text-green-900 px-2 py-0.5 rounded-full text-xs font-semibold shadow-sm flex items-center gap-1">
                     <CheckCircle className="w-3 h-3" />
                     <span className="hidden xs:inline">Flagged for Completion</span>
@@ -305,7 +304,7 @@ const ConversationCard = ({
                         })()}
                     </span>
                 </p>
-                <p className="text-xs text-gray-400">{mostRecentMessage?.timestamp ? formatLocalTime(mostRecentMessage.timestamp) : ''}</p>
+                <p className="text-xs text-gray-400">{mostRecentMessage?.timestamp ? formatLocalTime(mostRecentMessage.timestamp).toLocaleString() : ''}</p>
             </div>
             <div className="flex-[1.2] flex items-center justify-center min-w-0 pl-6">
                 <GradientText
