@@ -41,9 +41,9 @@
 
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 
-export default function ErrorPage() {
+function ErrorContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const error = searchParams.get('error');
@@ -70,7 +70,28 @@ export default function ErrorPage() {
       </div>
     </div>
   );
-} 
+}
+
+function ErrorFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#0A2F1F]">
+      <div className="text-center p-8">
+        <h1 className="text-2xl font-bold text-white mb-4">Authentication Error</h1>
+        <p className="text-white mb-4">An error occurred during authentication.</p>
+        <p className="text-white/60">Redirecting to login page...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function ErrorPage() {
+  return (
+    <Suspense fallback={<ErrorFallback />}>
+      <ErrorContent />
+    </Suspense>
+  );
+}
+
 /**
  * Change Log:
  * 06/15/25 - Version 1.0.0
