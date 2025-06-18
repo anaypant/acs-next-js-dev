@@ -14,7 +14,6 @@ import type { Session } from "next-auth"
 import type { Thread } from "@/app/types/lcp"
 import Slider from '@mui/material/Slider';
 import { useRouter } from "next/navigation"
-import { goto404 } from "@/app/utils/error"
 import { useConversationsData } from '../lib/use-conversations';
 
 // Add type for message
@@ -109,7 +108,33 @@ function parseBoolean(value: any): boolean {
  * @returns {JSX.Element} Complete conversations dashboard view
  */
 export default function ConversationsPage() {
-  const { data: session, status } = useSession() as { data: (Session & { user?: { id: string } }) | null, status: string };
+  const router = useRouter()
+  const { data: session, status } = useSession()
+
+  // Session check - redirect if not authenticated
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/');
+    }
+  }, [status, router]);
+
+  // Show loading while checking session
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#0e6537] mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render anything if not authenticated
+  if (status === 'unauthenticated') {
+    return null;
+  }
+
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<SortField | null>(null);
@@ -119,7 +144,6 @@ export default function ConversationsPage() {
     status: ["hot", "warm", "cold"],
     aiScoreRange: [0, 100],
   });
-  const router = useRouter();
 
   const {
     conversations: cachedConversations,
@@ -133,12 +157,6 @@ export default function ConversationsPage() {
     setMounted(true);
     return () => setMounted(false);
   }, []);
-
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      goto404("401", "No active session found", router);
-    }
-  }, [status, router]);
 
   // Refresh conversations if stale
   useEffect(() => {

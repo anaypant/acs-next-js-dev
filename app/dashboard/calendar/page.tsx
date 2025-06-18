@@ -7,16 +7,19 @@
  */
 
 "use client"
-import { ArrowLeft, Search, Calendar, Filter, Plus } from "lucide-react"
+import { ArrowLeft, Search, Calendar, Filter, Plus, Clock, MapPin, Users, Bell } from "lucide-react"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
+import { useEffect } from "react"
 
 /**
  * Logo Component
- * Displays the ACS logo with customizable size
+ * Displays the ACS logo with customizable size and gradient text
  * 
  * @param {Object} props - Component props
  * @param {"sm" | "lg"} props.size - Size variant of the logo
- * @returns {JSX.Element} ACS logo with gradient background
+ * @returns {JSX.Element} ACS logo with gradient background and text
  */
 function Logo({ size = "sm" }: { size?: "sm" | "lg" }) {
   return (
@@ -24,6 +27,9 @@ function Logo({ size = "sm" }: { size?: "sm" | "lg" }) {
       <div className="w-8 h-8 bg-gradient-to-br from-[#0a5a2f] via-[#0e6537] to-[#157a42] rounded-lg flex items-center justify-center shadow-sm">
         <span className="text-white font-bold text-sm">ACS</span>
       </div>
+      <span className="font-bold text-lg bg-gradient-to-r from-[#0a5a2f] to-[#157a42] bg-clip-text text-transparent">
+        ACS
+      </span>
     </div>
   )
 }
@@ -41,6 +47,33 @@ function Logo({ size = "sm" }: { size?: "sm" | "lg" }) {
  * @returns {JSX.Element} Complete calendar dashboard
  */
 export default function CalendarPage() {
+  const router = useRouter()
+  const { data: session, status } = useSession()
+
+  // Session check - redirect if not authenticated
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/')
+    }
+  }, [status, router])
+
+  // Show loading while checking session
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#0e6537] mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Don't render anything if not authenticated
+  if (status === 'unauthenticated') {
+    return null
+  }
+
   // State management for search and date selection
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedDate, setSelectedDate] = useState("")
