@@ -227,10 +227,20 @@ export const useDashboard = () => {
         setFilters(prev => ({ ...prev, [filter]: !prev[filter] }));
     };
 
+    // Helper function to check if a thread is completed
+    const isThreadCompleted = (completed: boolean | string | undefined): boolean => {
+        if (typeof completed === 'boolean') return completed;
+        if (typeof completed === 'string') return completed.toLowerCase() === 'true';
+        return false;
+    };
+
     // Memoize filtered conversations to prevent recalculation on every render
     const filteredConversations = useMemo(() => {
-        return conversations.filter(conv => {
+        const filtered = conversations.filter(conv => {
             if (conv.spam) return false;
+            if (isThreadCompleted(conv.completed)) {
+                return false;
+            }
             if (filters.unread && !conv.read) return true;
             if (filters.review && conv.flag_for_review) return true;
             if (filters.completion) {
@@ -239,6 +249,9 @@ export const useDashboard = () => {
             }
             return !filters.unread && !filters.review && !filters.completion;
         });
+        
+        
+        return filtered;
     }, [conversations, filters]);
 
     // Memoize metrics to prevent recalculation on every render

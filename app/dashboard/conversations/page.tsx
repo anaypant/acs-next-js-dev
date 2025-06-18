@@ -15,6 +15,7 @@ import type { Thread } from "@/app/types/lcp"
 import Slider from '@mui/material/Slider';
 import { useRouter } from "next/navigation"
 import { useConversationsData } from '../lib/use-conversations';
+import { getTimeAgo } from '@/app/utils/timezone';
 
 // Add type for message
 type Message = {
@@ -57,22 +58,7 @@ function calculateStatus(score: number): "hot" | "warm" | "cold" {
   return "cold"
 }
 
-/**
- * Helper function to get time ago string from timestamp
- * @param timestamp - The message timestamp
- * @returns Formatted time ago string
- */
-function getTimeAgo(timestamp: string): string {
-  const now = new Date()
-  const messageDate = new Date(timestamp)
-  const diffInSeconds = Math.floor((now.getTime() - messageDate.getTime()) / 1000)
-
-  if (diffInSeconds < 60) return "just now"
-  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`
-  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`
-  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`
-  return messageDate.toLocaleDateString()
-}
+// getTimeAgo function is now imported from @/app/utils/timezone
 
 type SortField = "aiScore" | "date" | null;
 type SortDirection = "asc" | "desc" | null;
@@ -165,11 +151,21 @@ export default function ConversationsPage() {
     }
   }, [mounted, status, isStale, refreshConversations]);
 
+  // Helper function to check if a thread is completed
+  const isThreadCompleted = (completed: boolean | string | undefined): boolean => {
+    if (typeof completed === 'boolean') return completed;
+    if (typeof completed === 'string') return completed.toLowerCase() === 'true';
+    return false;
+  };
+
   // Filter and sort conversations
   const filteredAndSortedConversations = cachedConversations
     .filter(conv => {
       const thread = conv.thread;
       const messages = conv.messages;
+      
+      // Filter out completed threads
+      if (isThreadCompleted(thread.completed)) return false;
       
       // Search filter
       if (searchQuery) {
@@ -435,7 +431,7 @@ export default function ConversationsPage() {
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-[#0e6537]/10 rounded-full flex items-center justify-center">
                             <span className="text-sm font-semibold text-[#0e6537]">
-                              {conversation.thread.source_name
+                              {(conversation.thread.source_name || conversation.thread.associated_account || "Unknown")
                                 .split(" ")
                                 .map((n: string) => n[0])
                                 .join("")}
@@ -459,17 +455,27 @@ export default function ConversationsPage() {
                       </td>
                       {/* AI score cell with conditional styling */}
                       <td className="p-4">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            conversation.thread.aiScore >= 80
-                              ? "bg-[#0e6537]/20 text-[#002417]"
-                              : conversation.thread.aiScore >= 60
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {typeof conversation.thread.aiScore === 'number' && !isNaN(conversation.thread.aiScore) ? conversation.thread.aiScore : 'N/A'}
-                        </span>
+                        {(() => {
+                          const evMessage = conversation.messages.find(msg => {
+                            const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
+                            return score !== undefined && score !== null && !isNaN(score);
+                          });
+                          const aiScore = evMessage ? (typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score) : null;
+                          
+                          return (
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                aiScore !== null && aiScore >= 80
+                                  ? "bg-[#0e6537]/20 text-[#002417]"
+                                  : aiScore !== null && aiScore >= 60
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {aiScore !== null && !isNaN(aiScore) ? aiScore : 'N/A'}
+                            </span>
+                          );
+                        })()}
                       </td>
                       {/* Summary and last message cells */}
                       <td className="p-4">
@@ -483,17 +489,28 @@ export default function ConversationsPage() {
                       </td>
                       {/* Status cell with conditional styling */}
                       <td className="p-4">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            conversation.thread.status === "hot"
-                              ? "bg-red-100 text-red-800"
-                              : conversation.thread.status === "warm"
-                                ? "bg-[#d8eee1] text-[#002417]"
-                                : "bg-[#e6f5ec] text-[#002417]"
-                          }`}
-                        >
-                          {conversation.thread.status.toUpperCase()}
-                        </span>
+                        {(() => {
+                          const evMessage = conversation.messages.find(msg => {
+                            const score = typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score;
+                            return score !== undefined && score !== null && !isNaN(score);
+                          });
+                          const evScore = evMessage ? (typeof evMessage.ev_score === 'string' ? parseFloat(evMessage.ev_score) : evMessage.ev_score) : -1;
+                          const status = calculateStatus(evScore);
+                          
+                          return (
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                status === "hot"
+                                  ? "bg-red-100 text-red-800"
+                                  : status === "warm"
+                                    ? "bg-[#d8eee1] text-[#002417]"
+                                    : "bg-[#e6f5ec] text-[#002417]"
+                              }`}
+                            >
+                              {status.toUpperCase()}
+                            </span>
+                          );
+                        })()}
                       </td>
                     </tr>
                   ))}

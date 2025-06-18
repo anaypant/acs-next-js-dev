@@ -53,7 +53,8 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         "conversation_id": conversation_id,
         "account_id": account_id,
-        "is_first_email": Boolean(is_first_email)
+        "is_first_email": Boolean(is_first_email),
+        "session_id": sessionId
       }),
     });
 

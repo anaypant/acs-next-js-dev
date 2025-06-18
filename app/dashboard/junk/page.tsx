@@ -4,19 +4,9 @@ import { AlertCircle, ArrowLeft, Trash2, Check, AlertTriangle } from "lucide-rea
 import { useSession } from "next-auth/react"
 import type { Thread as LCPThread } from "@/app/types/lcp"
 import type { Session } from "next-auth"
+import { getTimeAgo } from '@/app/utils/timezone';
 
-// Add helper function for time formatting
-function getTimeAgo(timestamp: string): string {
-  const now = new Date()
-  const messageDate = new Date(timestamp)
-  const diffInSeconds = Math.floor((now.getTime() - messageDate.getTime()) / 1000)
-
-  if (diffInSeconds < 60) return "just now"
-  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`
-  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`
-  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`
-  return messageDate.toLocaleDateString()
-}
+// getTimeAgo function is now imported from @/app/utils/timezone
 
 interface ThreadDisplay {
   id: string
@@ -83,7 +73,6 @@ function DeleteConfirmationModal({
 export default function JunkPage() {
   const [emails, setEmails] = useState<ThreadDisplay[]>([])
   const [loading, setLoading] = useState(true)
-  const [loadingId, setLoadingId] = useState<string | null>(null)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [threadToDelete, setThreadToDelete] = useState<{ id: string; name: string } | null>(null)
   const [deletingThread, setDeletingThread] = useState<string | null>(null)
@@ -141,7 +130,6 @@ export default function JunkPage() {
   }, [session?.user?.id])
 
   const handleMarkAsNotSpam = async (email: ThreadDisplay) => {
-    setLoadingId(email.id)
     try {
       const response = await fetch('/api/lcp/mark_not_spam', {
         method: 'POST',
@@ -163,8 +151,6 @@ export default function JunkPage() {
     } catch (err) {
       console.error(err)
       // TODO: Show error notification
-    } finally {
-      setLoadingId(null)
     }
   }
 
@@ -303,14 +289,13 @@ export default function JunkPage() {
           {/* Main animated container */}
           <div className="relative mb-8">
             {/* Outer pulsing ring */}
-            <div className="absolute inset-0 w-20 h-20 rounded-full bg-gradient-to-r from-[#0e6537] via-[#157a42] to-[#0a5a2f] opacity-20 animate-ping" />
             
             {/* Middle rotating ring */}
             <div className="absolute inset-2 w-16 h-16 rounded-full border-4 border-transparent border-t-[#0e6537] border-r-[#157a42] animate-spin" />
             
             {/* Inner core with gradient */}
             <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-[#0e6537] via-[#157a42] to-[#0a5a2f] flex items-center justify-center shadow-lg">
-              <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              {/* Removed small spinner here */}
             </div>
             
             {/* Floating particles */}
@@ -439,11 +424,11 @@ export default function JunkPage() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleMarkAsNotSpam(email)}
-                      disabled={loadingId === email.id || bulkActionLoading}
+                      disabled={bulkActionLoading}
                       className="flex items-center gap-1 px-3 py-1 text-xs bg-red-50 text-red-700 rounded hover:bg-red-100 disabled:opacity-50"
                     >
                       <AlertCircle className="h-4 w-4" />
-                      {loadingId === email.id ? 'Marking...' : 'Mark as Not Spam'}
+                      Mark as Not Spam
                     </button>
                     <button
                       onClick={() => handleDeleteThread(email)}

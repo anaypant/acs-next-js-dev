@@ -48,6 +48,10 @@ export interface Thread {
     flag_for_review: boolean;
     flag_review_override: boolean;
     flag: boolean;
+    completed?: boolean;
+    completion_reason?: string;
+    completion_notes?: string;
+    completed_at?: string;
     messages: Message[];
     last_updated: string;
     created_at: string;

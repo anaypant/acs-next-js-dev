@@ -22,6 +22,7 @@ import ConversationCard from "./components/ConversationCard"
 import { useDashboard } from "./lib/dashboard-client"
 import LoadingSpinner from './components/LoadingSpinner'
 import { SidebarTrigger } from "./components/Sidebar"
+import { isThreadCompleted } from "./lib/dashboard-utils"
 
 // Time range options
 const timeRangeOptions = [
@@ -366,7 +367,7 @@ function DashboardContent() {
     return counts;
   }, [conversations]);
 
-  // Memoize filtered leads based on time range
+  // Memoize filtered leads based on time range and exclude completed threads
   const filteredLeads = useMemo(() => {
     const now = new Date();
     const timeRanges = {
@@ -377,6 +378,7 @@ function DashboardContent() {
     };
     const timeLimit = now.getTime() - (timeRanges[timeRange as TimeRange] || timeRanges.week);
     return conversations.filter(thread => {
+      if (isThreadCompleted(thread.completed)) return false;
       const messages = thread.messages || [];
       const latestMsg = messages[0];
       if (!latestMsg) return false;
