@@ -19,6 +19,7 @@ interface ThreadDisplay {
   conversation_id: string
   response_id: string
   account_id: string
+  ai_summary?: string
 }
 
 // Add DeleteConfirmationModal component
@@ -97,7 +98,7 @@ export default function JunkPage() {
         
         const { data } = await response.json()
         const spamThreads = data
-          .filter((item: any) => item.thread.spam === 'true')
+          .filter((item: any) => item.thread.spam === true)
           .map((item: any) => {
             const sortedMessages = [...(item.messages || [])].sort((a, b) => 
               new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
@@ -106,15 +107,16 @@ export default function JunkPage() {
 
             return {
               id: item.thread.conversation_id,
-              from: item.thread.source_name || 'Unknown Sender',
-              email: item.thread.source || 'unknown@email.com',
+              from: item.thread.source_name || latestMessage?.sender || 'Unknown Sender',
+              email: item.thread.source || latestMessage?.sender || 'unknown@email.com',
               subject: latestMessage?.subject || 'No Subject',
               preview: latestMessage?.body?.slice(0, 100) || 'No preview available',
               time: latestMessage?.timestamp ? getTimeAgo(latestMessage.timestamp) : 'Unknown',
-              read: item.thread.read === 'true',
+              read: item.thread.read === true,
               conversation_id: item.thread.conversation_id,
               response_id: latestMessage?.response_id || '',
-              account_id: item.thread.associated_account
+              account_id: item.thread.associated_account,
+              ai_summary: item.thread.ai_summary || '',
             }
           })
         
@@ -417,6 +419,9 @@ export default function JunkPage() {
                   </div>
                   <div className="mb-1">
                     <p className={`text-sm ${!email.read ? 'font-semibold' : ''}`}>{email.subject}</p>
+                    {email.ai_summary && (
+                      <p className="text-xs text-gray-500 italic mt-1">{email.ai_summary}</p>
+                    )}
                   </div>
                   <div className="mb-2">
                     <p className="text-xs text-gray-600">{email.preview}</p>

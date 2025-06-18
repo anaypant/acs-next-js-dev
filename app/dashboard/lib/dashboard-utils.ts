@@ -14,6 +14,7 @@ import type {
     MessageWithResponseId,
     LeadPerformanceData 
 } from '@/app/types/lcp';
+import { formatLocalDate, formatLocalTime } from '@/app/utils/timezone';
 
 // Define a type for the processed thread that matches our Thread type
 type ProcessedThread = {
@@ -41,6 +42,14 @@ type ProcessedThread = {
     completed?: boolean;
 };
 
+// Utility function to parse boolean values from both string and boolean types
+export const parseBoolean = (value: any): boolean => {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') return value.toLowerCase() === 'true';
+    if (typeof value === 'number') return value === 1;
+    return false;
+};
+
 export const ensureMessageFields = (msg: any): Message => ({
     id: msg.id || msg.conversation_id,
     conversation_id: msg.conversation_id,
@@ -50,13 +59,14 @@ export const ensureMessageFields = (msg: any): Message => ({
     body: msg.body || msg.content || '',
     subject: msg.subject || '',
     timestamp: msg.timestamp,
+    localDate: formatLocalTime(msg.timestamp, undefined, msg.type as 'inbound-email' | 'outbound-email'),
     sender: msg.sender,
     recipient: msg.recipient || msg.receiver,
     receiver: msg.receiver || msg.recipient,
     associated_account: msg.associated_account || msg.sender,
     ev_score: typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score,
     in_reply_to: msg.in_reply_to || null,
-    is_first_email: msg.is_first_email || false,
+    is_first_email: parseBoolean(msg.is_first_email),
     metadata: msg.metadata || {},
 });
 
@@ -64,7 +74,7 @@ export const getLatestEvaluableMessage = (messages: Message[]): MessageWithRespo
     if (!messages?.length) return undefined;
     return messages
         .filter((msg): msg is MessageWithResponseId => Boolean(msg.response_id))
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+        .sort((a, b) => b.localDate.getTime() - a.localDate.getTime())[0];
 };
 
 export const calculateMetrics = (threads: Thread[], timeRange: TimeRange): ThreadMetrics => {
@@ -82,7 +92,7 @@ export const calculateMetrics = (threads: Thread[], timeRange: TimeRange): Threa
 
         if (!thread.read) metrics.unopenedLeads++;
         if (latestMessage?.type === 'inbound-email') metrics.pendingReplies++;
-        if (latestMessage && new Date(latestMessage.timestamp) >= startDate) metrics.newLeads++;
+        if (latestMessage && latestMessage.localDate >= startDate) metrics.newLeads++;
 
         return metrics;
     }, { newLeads: 0, pendingReplies: 0, unopenedLeads: 0 });
@@ -106,9 +116,9 @@ export const processThreadData = (rawData: any[], timeRange: TimeRange) => {
     }
 
     const sortedData = [...rawData].sort((a, b) => {
-        const aLatest = a?.messages?.[0]?.timestamp || 0;
-        const bLatest = b?.messages?.[0]?.timestamp || 0;
-        return new Date(bLatest).getTime() - new Date(aLatest).getTime();
+        const aLatest = a?.messages?.[0]?.localDate || new Date(0);
+        const bLatest = b?.messages?.[0]?.localDate || new Date(0);
+        return bLatest.getTime() - aLatest.getTime();
     });
 
     const conversations = sortedData.map(item => {
@@ -123,16 +133,17 @@ export const processThreadData = (rawData: any[], timeRange: TimeRange) => {
             return null;
         }
 
+
         const processedThread: ProcessedThread = {
             conversation_id: thread.conversation_id || thread.id || '',
             associated_account: thread.associated_account || thread.sender || '',
             name: thread.name || 'Unnamed Conversation',
-            flag_for_review: thread.flag_for_review === 'true' || thread.flag_for_review === true,
-            flag_review_override: thread.flag_review_override === 'true' || thread.flag_review_override === true,
-            read: thread.read === 'true' || thread.read === true,
-            busy: thread.busy === 'true' || thread.busy === true,
-            spam: thread.spam === 'true' || thread.spam === true,
-            lcp_enabled: thread.lcp_enabled === true || thread.lcp_enabled === 'true' || thread.lcp_enabled === 1,
+            flag_for_review: parseBoolean(thread.flag_for_review),
+            flag_review_override: parseBoolean(thread.flag_review_override),
+            read: parseBoolean(thread.read),
+            busy: parseBoolean(thread.busy),
+            spam: parseBoolean(thread.spam),
+            lcp_enabled: parseBoolean(thread.lcp_enabled),
             lcp_flag_threshold: typeof thread.lcp_flag_threshold === 'number' ? thread.lcp_flag_threshold : Number(thread.lcp_flag_threshold) || 70,
             messages: Array.isArray(item.messages) ? item.messages.map(ensureMessageFields) : [],
             ai_summary: thread.ai_summary || '',
@@ -144,10 +155,11 @@ export const processThreadData = (rawData: any[], timeRange: TimeRange) => {
             last_updated: thread.last_updated || thread.updated_at || new Date().toISOString(),
             created_at: thread.created_at || new Date().toISOString(),
             updated_at: thread.updated_at || new Date().toISOString(),
-            flag: thread.flag === 'true' || thread.flag === true,
-            completed: thread.completed === 'true' || thread.completed === true
+            flag: parseBoolean(thread.flag),
+            completed: parseBoolean(thread.completed)
         };
 
+        // Print the processed thread data to console
         return processedThread as unknown as Thread;
     }).filter((thread): thread is Thread => thread !== null);
 
@@ -176,7 +188,5 @@ export const processThreadData = (rawData: any[], timeRange: TimeRange) => {
 
 // Helper function to check if a thread is completed
 export const isThreadCompleted = (completed: boolean | string | undefined): boolean => {
-    if (typeof completed === 'boolean') return completed;
-    if (typeof completed === 'string') return completed.toLowerCase() === 'true';
-    return false;
+    return parseBoolean(completed);
 }; 

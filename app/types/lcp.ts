@@ -19,6 +19,7 @@ export interface Message {
     body: string;
     subject: string;
     timestamp: string;
+    localDate: Date;
     sender: string;
     recipient: string;
     receiver: string;

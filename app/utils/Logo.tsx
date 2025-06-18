@@ -75,7 +75,7 @@ export function Logo({
         </div>
       )}
       {variant !== 'icon-only' && (
-        <span className={`font-bold ${whiteText ? 'text-white' : 'bg-gradient-to-r from-[#0a5a2f] to-[#157a42] bg-clip-text text-transparent'} ${config.text}`}>
+        <span className={`font-bold ${whiteText ? '!text-white' : 'bg-gradient-to-r from-[#0a5a2f] to-[#157a42] bg-clip-text text-transparent'} ${config.text}`}>
           ACS
         </span>
       )}
