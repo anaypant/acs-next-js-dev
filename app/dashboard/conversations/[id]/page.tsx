@@ -53,18 +53,6 @@ interface ExtendedMessage extends Omit<Message, 'ev_score'> {
  * @param {"sm" | "lg"} props.size - Size variant of the logo
  * @returns {JSX.Element} ACS logo with gradient background and text
  */
-function Logo({ size = "sm" }: { size?: "sm" | "lg" }) {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="w-8 h-8 bg-gradient-to-br from-[#0a5a2f] via-[#0e6537] to-[#157a42] rounded-lg flex items-center justify-center shadow-sm">
-        <span className="text-white font-bold text-sm">ACS</span>
-      </div>
-      <span className="font-bold text-lg bg-gradient-to-r from-[#0a5a2f] to-[#157a42] bg-clip-text text-transparent">
-        ACS
-      </span>
-    </div>
-  )
-}
 
 // Utility to get a color for the EV score (red-yellow-green gradient)
 function getEvColor(score: number) {
