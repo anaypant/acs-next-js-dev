@@ -1,9 +1,9 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 
-export default function ProcessForm() {
+function ProcessFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
@@ -13,24 +13,40 @@ export default function ProcessForm() {
 
     // Get session_id from session (not from URL)
     if (session && session.sessionId) {
-    const sessionId = session.sessionId;
-    const authType = searchParams.get("authType");
+      const sessionId = session.sessionId;
+      const authType = searchParams.get("authType");
 
-    if (sessionId) {
-      document.cookie = `session_id=${sessionId}; path=/; SameSite=Lax`;
-    }
+      if (sessionId) {
+        document.cookie = `session_id=${sessionId}; path=/; SameSite=Lax`;
+      }
 
-    if (authType === "new") {
-      router.replace("/new-user");
-    } else {
-      router.replace("/dashboard");
+      if (authType === "new") {
+        router.replace("/new-user");
+      } else {
+        router.replace("/dashboard");
+      }
     }
-  }
   }, [router, searchParams, session, status]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen">
       <h2 className="text-lg font-semibold mb-4">Processing your login...</h2>
     </div>
+  );
+}
+
+function ProcessFormFallback() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen">
+      <h2 className="text-lg font-semibold mb-4">Processing your login...</h2>
+    </div>
+  );
+}
+
+export default function ProcessForm() {
+  return (
+    <Suspense fallback={<ProcessFormFallback />}>
+      <ProcessFormContent />
+    </Suspense>
   );
 } 
