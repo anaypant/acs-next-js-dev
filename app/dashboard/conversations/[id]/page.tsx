@@ -1753,21 +1753,81 @@ export default function ConversationDetailPage() {
       )}
 
 
-      <div className="min-h-screen h-screen w-full bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1] pb-0">
-        <div className="w-full h-full max-w-[1600px] mx-auto p-4 grid gap-6" style={{ gridTemplateColumns: '2fr 2.5fr 1.5fr', height: 'calc(100vh - 0px)', minHeight: 0 }}>
-          {/* Left: Conversation History */}
-          <div className="flex flex-col min-h-0 h-full">
-            {/* Header */}
-            <div className="flex items-center gap-4 mb-2">
-              <Logo size="md" />
-              <button
-                onClick={() => router.back()}
-                className="p-2 hover:bg-[#0e6537]/10 rounded-lg"
-              >
-                <ArrowLeft className="h-5 w-5 text-[#0e6537]" />
-              </button>
-              <h1 className="text-2xl font-bold text-[#0e6537]">Conversation Detail</h1>
+      <div className="min-h-screen h-screen w-full bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1] pb-0 flex flex-col">
+        {/* Page Header */}
+        <div className="w-full max-w-[1600px] mx-auto p-4 flex-shrink-0">
+          <div className="flex items-center gap-4 mb-4">
+            <Logo size="md" variant="icon-only" />
+            <button
+              onClick={() => router.back()}
+              className="p-2 hover:bg-[#0e6537]/10 rounded-lg"
+            >
+              <ArrowLeft className="h-5 w-5 text-[#0e6537]" />
+            </button>
+            <h1 className="text-2xl font-bold text-[#0e6537]">Conversation Detail</h1>
+          </div>
+        </div>
+
+        <div className="w-full flex-1 max-w-[1600px] mx-auto p-4 grid gap-6" style={{ gridTemplateColumns: '1.5fr 2fr 1.5fr', minHeight: 0 }}>
+          {/* Left: Notes and Context */}
+          <div className="flex flex-col gap-6">
+            {/* Context Notes Widget */}
+            <NotesWidget
+              notes={notes}
+              onSave={saveNotes}
+            />
+            
+            {/* AI Insights */}
+            {processedThread && (() => {
+              const aiSummary = processedThread.ai_summary?.trim();
+              const budgetRange = processedThread.budget_range?.trim();
+              const propertyTypes = processedThread.preferred_property_types?.trim();
+              const timeline = processedThread.timeline?.trim();
+              const isEmpty = [aiSummary, budgetRange, propertyTypes, timeline].every((val) => !val || val === 'UNKNOWN');
+              if (isEmpty) return null;
+              const insights = [
+                { key: 'summary', label: 'Summary', value: aiSummary },
+                { key: 'budget', label: 'Budget', value: budgetRange },
+                { key: 'property-types', label: 'Property Types', value: propertyTypes },
+                { key: 'timeline', label: 'Timeline', value: timeline }
+              ].filter(insight => insight.value && insight.value !== 'UNKNOWN');
+              return (
+                <div className="bg-white rounded-2xl border shadow-lg p-6 text-left min-h-[170px] flex flex-col justify-center">
+                  <h3 className="text-lg font-semibold mb-2">AI Insights</h3>
+                  {insights.map(insight => (
+                    <div key={insight.key} className="mb-2 text-gray-700">
+                      <span className="font-medium">{insight.label}:</span> {insight.value}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {/* Client Information */}
+            <div className="bg-white rounded-2xl border shadow-lg p-6 flex flex-col items-center text-center min-h-[170px]">
+              <div className="w-14 h-14 bg-[#0e6537]/10 rounded-full flex items-center justify-center mb-2">
+                <span className="text-2xl font-semibold text-[#0e6537]">{leadName[0]?.toUpperCase()}</span>
+              </div>
+              <div className="mb-1 font-bold text-lg">{leadName}</div>
+              <div className="text-gray-500 text-sm mb-2">{clientEmail}</div>
+              {processedThread?.phone && <div className="text-gray-500 text-sm mb-1 flex items-center justify-center gap-1"><Phone className="h-4 w-4" />{processedThread.phone}</div>}
+              {processedThread?.location && <div className="text-gray-500 text-sm mb-1 flex items-center justify-center gap-1"><MapPin className="h-4 w-4" />{processedThread.location}</div>}
             </div>
+
+            {/* Flagged Status Widget */}
+            <FlaggedStatusWidget
+              isFlagged={processedThread?.flag_for_review || false}
+              onUnflag={handleUnflag}
+              updating={unflagging}
+              isFlaggedForCompletion={processedThread?.flag || false}
+              onComplete={handleOpenCompletionModal}
+              onClearFlag={handleClearFlag}
+              clearingFlag={clearingFlag}
+            />
+          </div>
+
+          {/* Center: Conversation History */}
+          <div className="flex flex-col min-h-0 h-full">
             <div className="bg-white rounded-2xl border shadow-lg p-0 overflow-hidden flex flex-col flex-1 min-h-0">
               <div className="px-8 py-4 border-b bg-[#f7faf9] flex items-center justify-between flex-shrink-0">
                 <h2 className="text-xl font-semibold">Conversation History</h2>
@@ -1917,9 +1977,9 @@ export default function ConversationDetailPage() {
             </div>
           </div>
 
-          {/* AI Response section */}
+          {/* Right: AI Response section */}
           <div className="flex flex-col">
-            <div className="bg-white rounded-2xl border shadow-lg p-0 overflow-hidden w-full mt-11">
+            <div className="bg-white rounded-2xl border shadow-lg p-0 overflow-hidden w-full">
               <div className="px-8 py-4 border-b bg-[#f7faf9] flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-[#0e6537]" />
                 <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -2010,90 +2070,33 @@ export default function ConversationDetailPage() {
 
             {/* Widgets grid below AI Response */}
             <div className="grid grid-cols-2 gap-6 w-full mt-6">
-              {/* Client Information */}
-              <div className="bg-white rounded-2xl border shadow-lg p-6 flex flex-col items-center text-center min-h-[170px]">
-                <div className="w-14 h-14 bg-[#0e6537]/10 rounded-full flex items-center justify-center mb-2">
-                  <span className="text-2xl font-semibold text-[#0e6537]">{leadName[0]?.toUpperCase()}</span>
+              {/* Spam Status Widget - separate row when needed */}
+              {processedThread?.spam && (
+                <div className="bg-white rounded-2xl border shadow-lg p-6 flex flex-col items-center text-center min-h-[170px] mt-6">
+                  <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mb-2">
+                    <AlertTriangle className="h-7 w-7 text-red-500" />
+                  </div>
+                  <div className="mb-1 font-bold text-lg text-red-700">Marked as Spam</div>
+                  <div className="text-gray-500 text-sm mb-4">
+                    This conversation has been marked as spam
+                  </div>
+                  <button
+                    onClick={handleMarkAsNotSpam}
+                    disabled={updatingSpam}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {updatingSpam ? (
+                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <Shield className="w-4 h-4 text-green-500" />
+                        <span>Mark as Not Spam</span>
+                      </>
+                    )}
+                  </button>
                 </div>
-                <div className="mb-1 font-bold text-lg">{leadName}</div>
-                <div className="text-gray-500 text-sm mb-2">{clientEmail}</div>
-                {processedThread?.phone && <div className="text-gray-500 text-sm mb-1 flex items-center justify-center gap-1"><Phone className="h-4 w-4" />{processedThread.phone}</div>}
-                {processedThread?.location && <div className="text-gray-500 text-sm mb-1 flex items-center justify-center gap-1"><MapPin className="h-4 w-4" />{processedThread.location}</div>}
-              </div>
-
-              {/* Flagged Status Widget */}
-              <FlaggedStatusWidget
-                isFlagged={processedThread?.flag_for_review || false}
-                onUnflag={handleUnflag}
-                updating={unflagging}
-                isFlaggedForCompletion={processedThread?.flag || false}
-                onComplete={handleOpenCompletionModal}
-                onClearFlag={handleClearFlag}
-                clearingFlag={clearingFlag}
-              />
-
+              )}
             </div>
-
-            {/* Spam Status Widget - separate row when needed */}
-            {processedThread?.spam && (
-              <div className="bg-white rounded-2xl border shadow-lg p-6 flex flex-col items-center text-center min-h-[170px] mt-6">
-                <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mb-2">
-                  <AlertTriangle className="h-7 w-7 text-red-500" />
-                </div>
-                <div className="mb-1 font-bold text-lg text-red-700">Marked as Spam</div>
-                <div className="text-gray-500 text-sm mb-4">
-                  This conversation has been marked as spam
-                </div>
-                <button
-                  onClick={handleMarkAsNotSpam}
-                  disabled={updatingSpam}
-                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {updatingSpam ? (
-                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <Shield className="w-4 h-4 text-green-500" />
-                      <span>Mark as Not Spam</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Sidebar widgets: AI Insights and Notes */}
-          <div className="flex flex-col gap-6">
-            {/* AI Insights */}
-            {processedThread && (() => {
-              const aiSummary = processedThread.ai_summary?.trim();
-              const budgetRange = processedThread.budget_range?.trim();
-              const propertyTypes = processedThread.preferred_property_types?.trim();
-              const timeline = processedThread.timeline?.trim();
-              const isEmpty = [aiSummary, budgetRange, propertyTypes, timeline].every((val) => !val || val === 'UNKNOWN');
-              if (isEmpty) return null;
-              const insights = [
-                { key: 'summary', label: 'Summary', value: aiSummary },
-                { key: 'budget', label: 'Budget', value: budgetRange },
-                { key: 'property-types', label: 'Property Types', value: propertyTypes },
-                { key: 'timeline', label: 'Timeline', value: timeline }
-              ].filter(insight => insight.value && insight.value !== 'UNKNOWN');
-              return (
-                <div className="bg-white rounded-2xl border shadow-lg p-6 text-left min-h-[170px] flex flex-col justify-center">
-                  <h3 className="text-lg font-semibold mb-2">AI Insights</h3>
-                  {insights.map(insight => (
-                    <div key={insight.key} className="mb-2 text-gray-700">
-                      <span className="font-medium">{insight.label}:</span> {insight.value}
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
-            {/* Context Notes Widget */}
-            <NotesWidget
-              notes={notes}
-              onSave={saveNotes}
-            />
           </div>
         </div>
       </div>

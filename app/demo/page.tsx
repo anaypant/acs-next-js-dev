@@ -12,6 +12,7 @@ import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import { Eye, EyeOff } from 'lucide-react'
 
 /**
  * DemoPage Component
@@ -24,12 +25,14 @@ import { motion } from 'framer-motion'
  * - Loading states
  * - Navigation to login/signup after verification
  * - Responsive design
+ * - Password visibility toggle
  * 
  * State Management:
  * - Demo code input
  * - Loading state
  * - Error state
  * - Success state
+ * - Password visibility state
  * 
  * @returns {JSX.Element} Complete demo access page
  */
@@ -39,6 +42,7 @@ const DemoPage = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   /**
    * Handles demo code input changes
@@ -47,6 +51,13 @@ const DemoPage = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDemoCode(e.target.value)
     setError(null) // Clear error when user starts typing
+  }
+
+  /**
+   * Toggles password visibility
+   */
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword)
   }
 
   /**
@@ -230,17 +241,31 @@ const DemoPage = () => {
                 <label htmlFor="demoCode" className="block text-sm font-medium text-[#002417] mb-2">
                   Demo Code
                 </label>
-                <input
-                  id="demoCode"
-                  name="demoCode"
-                  type="text"
-                  required
-                  value={demoCode}
-                  onChange={handleChange}
-                  placeholder="Enter your demo code"
-                  className="w-full px-4 py-3 border border-[#0e6537]/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0e6537]/20 focus:border-[#0e6537] transition-all duration-200 placeholder-[#0e6537]/50 text-[#002417] bg-white hover:border-[#0e6537]/30"
-                  disabled={loading || success}
-                />
+                <div className="relative">
+                  <input
+                    id="demoCode"
+                    name="demoCode"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={demoCode}
+                    onChange={handleChange}
+                    placeholder="Enter your demo code"
+                    className="w-full px-4 py-3 pr-12 border border-[#0e6537]/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0e6537]/20 focus:border-[#0e6537] transition-all duration-200 placeholder-[#0e6537]/50 text-[#002417] bg-white hover:border-[#0e6537]/30"
+                    disabled={loading || success}
+                  />
+                  <button
+                    type="button"
+                    onClick={togglePasswordVisibility}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    disabled={loading || success}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5 text-[#0e6537]/50 hover:text-[#0e6537] transition-colors" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-[#0e6537]/50 hover:text-[#0e6537] transition-colors" />
+                    )}
+                  </button>
+                </div>
               </div>
 
               <button

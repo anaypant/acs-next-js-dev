@@ -906,7 +906,7 @@ export default function SettingsPage() {
       <div className="max-w-4xl mx-auto p-6">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
-          <Logo />
+          <Logo variant="icon-only" />
           <button
             onClick={handleBackToDashboard}
             className="p-2 hover:bg-gradient-to-r hover:from-[#0e6537]/10 hover:to-[#157a42]/10 transition-all duration-200 rounded-lg"
@@ -1299,7 +1299,7 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Sample Email Prompt</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Sample Email</label>
                     <textarea
                       name="samplePrompt"
                       value={lcpSettings.samplePrompt}

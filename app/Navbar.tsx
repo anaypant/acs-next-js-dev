@@ -53,7 +53,7 @@ const Navbar = () => {
         <div className="flex items-center justify-between py-3 sm:py-4 lg:py-5">
           {/* Logo/Brand link with gradient hover effect */}
           <div className="flex-shrink-0">
-            <Logo href="/" size="lg" />
+            <Logo href="/" size="lg" variant="icon-only" />
           </div>
 
           {/* Mobile menu button - only show if not on dashboard */}

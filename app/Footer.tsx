@@ -39,7 +39,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand section with logo and description */}
           <div>
-            <Logo href="/" size="md" />
+            <Logo href="/" size="md" variant="icon-only" />
             <p className="mt-2 text-gray-600 font-semibold">AI-powered solutions for real estate professionals</p>
           </div>
 
