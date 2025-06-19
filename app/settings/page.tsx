@@ -991,7 +991,7 @@ export default function SettingsPage() {
               </div>
 
               {/* Preferences Section */}
-              <div className="mb-4">
+              {/* <div className="mb-4">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Preferences</h3>
                 <div className="space-y-1">
                   <button
@@ -1009,7 +1009,7 @@ export default function SettingsPage() {
                     App Settings
                   </button>
                 </div>
-              </div>
+              </div> */}
 
               {/* Security Section */}
               <div className="mb-4">
@@ -1471,7 +1471,7 @@ export default function SettingsPage() {
             </div>
 
             {/* App Preferences Settings */}
-            <div
+            {/* <div
               id="preferences"
               className="bg-white p-6 rounded-xl border border-green-100 shadow-lg hover:shadow-2xl transition-shadow duration-200 bg-gradient-to-br from-[#e6f5ec] to-[#f0f9f4] scroll-mt-6"
             >
@@ -1558,7 +1558,7 @@ export default function SettingsPage() {
                   {preferencesLoading ? 'Saving...' : 'Save App Settings'}
                 </button>
               </form>
-            </div>
+            </div> */}
 
             {/* Security Settings */}
             <div

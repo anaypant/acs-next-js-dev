@@ -115,21 +115,13 @@ export default function ConversationsPage() {
     conversations: cachedConversations,
     isLoading: loadingConversations,
     error: conversationsError,
-    refreshConversations,
-    isStale
+    refreshConversations
   } = useConversationsData();
 
   useEffect(() => {
     setMounted(true);
     return () => setMounted(false);
   }, []);
-
-  // Refresh conversations if stale
-  useEffect(() => {
-    if (mounted && status === 'authenticated' && isStale) {
-      refreshConversations();
-    }
-  }, [mounted, status, isStale, refreshConversations]);
 
   // Helper function to check if a thread is completed
   const isThreadCompleted = (completed: boolean | string | undefined): boolean => {

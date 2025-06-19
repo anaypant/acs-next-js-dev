@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import type { Session } from 'next-auth';
 import type { SignupProvider } from '@/app/types/auth';
@@ -32,26 +32,29 @@ interface ConversationsContextType {
   getConversation: (conversationId: string) => Conversation | undefined;
 }
 
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
-
 const ConversationsContext = createContext<ConversationsContextType | undefined>(undefined);
 
 export function ConversationsProvider({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession() as { data: (Session & {
-    user: {
-      id: string;
-      email: string;
-      name: string;
-      authType: 'new' | 'existing';
-      provider: SignupProvider;
-      accessToken?: string;
-    }
-  }) | null };
+  const { data: session, status } = useSession() as { 
+    data: (Session & {
+      user: {
+        id: string;
+        email: string;
+        name: string;
+        authType: 'new' | 'existing';
+        provider: SignupProvider;
+        accessToken?: string;
+      }
+    }) | null;
+    status: 'loading' | 'authenticated' | 'unauthenticated';
+  };
   
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchConversations = async () => {
     if (!session?.user?.id) return;
@@ -89,21 +92,93 @@ export function ConversationsProvider({ children }: { children: React.ReactNode 
     }
   };
 
-  // Initial fetch and periodic refresh
-  useEffect(() => {
-    if (session?.user?.id) {
-      fetchConversations();
+  const checkForNewEmails = async () => {
+    if (!session?.user?.id) return;
 
-      const interval = setInterval(() => {
-        const now = new Date();
-        if (!lastUpdated || now.getTime() - lastUpdated.getTime() >= CACHE_DURATION) {
-          fetchConversations();
+    try {
+      // Query the Users table for the current user's new_email field
+      const response = await fetch('/api/db/select', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          table_name: 'Users',
+          index_name: 'id-index',
+          key_name: 'id',
+          key_value: session.user.id,
+          account_id: session.user.id
+        }),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        console.error('Failed to check for new emails:', response.statusText);
+        return;
+      }
+
+      const data = await response.json();
+      console.log('data', data);
+      if (data.success && data.items && data.items.length > 0) {
+        const userRecord = data.items[0];
+        
+        // Check if new_email is true
+        if (userRecord.new_email === true) {
+          console.log('New email detected, refreshing conversations...');
+          
+          // Refresh conversations
+          await fetchConversations();
+          
+          // Update the new_email field to false
+          const updateResponse = await fetch('/api/db/update', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              table_name: 'Users',
+              index_name: 'id-index',
+              key_name: 'id',
+              key_value: session.user.id,
+              update_data: { new_email: false },
+              account_id: session.user.id
+            }),
+            credentials: 'include',
+          });
+
+          if (!updateResponse.ok) {
+            console.error('Failed to update new_email field:', updateResponse.statusText);
+          } else {
+            console.log('Successfully updated new_email field to false');
+          }
         }
-      }, 60000); // Check every minute if we need to refresh
-
-      return () => clearInterval(interval);
+      }
+    } catch (err) {
+      console.error('Error checking for new emails:', err);
     }
-  }, [session?.user?.id]);
+  };
+
+  // Initial fetch and setup
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user?.id && !isInitialized) {
+      // Load threads once after everything is mounted
+      fetchConversations();
+      setIsInitialized(true);
+      
+      // Set up 5-minute interval to check for new emails
+      intervalRef.current = setInterval(checkForNewEmails, 5 * 60 * 1000); // 5 minutes
+    }
+  }, [status, session?.user?.id, isInitialized]);
+
+  // Cleanup interval on unmount or session change
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, []);
 
   const refreshConversations = async () => {
     await fetchConversations();

@@ -77,8 +77,5 @@ export function useConversationsData() {
     updateMessage,
     addMessage,
     updateThreadMetadata,
-
-    // Utility functions
-    isStale: lastUpdated ? Date.now() - lastUpdated.getTime() > 5 * 60 * 1000 : true,
   };
 } 

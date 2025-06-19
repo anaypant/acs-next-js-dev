@@ -975,12 +975,12 @@ export default function ConversationDetailPage() {
   const [overrideButtonPulsing, setOverrideButtonPulsing] = useState(false);
 
   const {
+    conversations,
     getConversationById,
     updateThreadMetadata,
     updateMessage,
     addMessage,
     refreshConversations,
-    isStale,
     isLoading,
     error: cacheError
   } = useConversationsData();
@@ -989,12 +989,6 @@ export default function ConversationDetailPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  useEffect(() => {
-    if (isStale) {
-      refreshConversations();
-    }
-  }, [isStale, refreshConversations]);
 
   // Define fetchUserSignature before the useEffect that calls it
   const fetchUserSignature = async () => {
