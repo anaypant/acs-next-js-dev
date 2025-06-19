@@ -395,7 +395,7 @@ export default function HomePage() {
 
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link
-                  href="/demo"
+                  href="/contact"
                   className="group inline-flex items-center justify-center px-4 sm:px-6 md:px-8 py-3 bg-[#0e6537] text-white hover:bg-[#0a5a2f] rounded-xl font-medium transition-all duration-300 text-sm sm:text-base shadow-lg shadow-black/20 hover:shadow-xl transform hover:-translate-y-1 min-h-[44px] sm:min-h-[48px]"
                 >
                   Get Started
@@ -549,7 +549,7 @@ export default function HomePage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
-                href="/demo"
+                href="/contact"
                 className="group inline-flex items-center justify-center px-4 sm:px-6 md:px-8 py-3 bg-white !text-[#0e6537] hover:bg-gray-100 rounded-xl font-medium transition-all duration-300 text-sm sm:text-base shadow-lg shadow-black/20 hover:shadow-xl transform hover:-translate-y-1 min-h-[44px] sm:min-h-[48px]"
               >
                 Get Started
