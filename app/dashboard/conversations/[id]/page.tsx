@@ -152,13 +152,15 @@ function getBoolean(val: any) {
 }
 
 // Update OverrideStatus component to add data attribute
-function OverrideStatus({ isEnabled, onToggle, updating }: { isEnabled: boolean; onToggle: () => void; updating: boolean }) {
+function OverrideStatus({ isEnabled, onToggle, updating, pulsating }: { isEnabled: boolean; onToggle: () => void; updating: boolean; pulsating?: boolean }) {
   return (
     <button
       onClick={onToggle}
       disabled={updating}
       data-override-status
-      className="group relative inline-flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      className={`group relative inline-flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+        pulsating ? 'animate-pulse ring-2 ring-yellow-400 ring-opacity-75' : ''
+      }`}
     >
       {updating ? (
         <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -411,12 +413,14 @@ const CompletionModal: React.FC<{
 };
 
 // Update FlaggedStatusWidget component to handle completion status
-function FlaggedStatusWidget({ isFlagged, onUnflag, updating, isFlaggedForCompletion, onComplete }: { 
+function FlaggedStatusWidget({ isFlagged, onUnflag, updating, isFlaggedForCompletion, onComplete, onClearFlag, clearingFlag }: { 
   isFlagged: boolean; 
   onUnflag: () => void; 
   updating: boolean;
   isFlaggedForCompletion?: boolean;
   onComplete?: () => void;
+  onClearFlag?: () => void;
+  clearingFlag?: boolean;
 }) {
   // If flagged for completion, show completion status
   if (isFlaggedForCompletion) {
@@ -434,22 +438,40 @@ function FlaggedStatusWidget({ isFlagged, onUnflag, updating, isFlaggedForComple
           <div className="text-gray-600 text-sm mb-4">
             This conversation is ready to be marked as completed
           </div>
-          {onComplete && (
-            <button
-              onClick={onComplete}
-              disabled={updating}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-            >
-              {updating ? (
-                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <>
-                  <CheckCircle className="w-4 h-4" />
-                  <span>Complete Conversation</span>
-                </>
-              )}
-            </button>
-          )}
+          <div className="flex flex-col gap-2 w-full">
+            {onComplete && (
+              <button
+                onClick={onComplete}
+                disabled={updating}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+              >
+                {updating ? (
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    <span>Complete Conversation</span>
+                  </>
+                )}
+              </button>
+            )}
+            {onClearFlag && (
+              <button
+                onClick={onClearFlag}
+                disabled={clearingFlag}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {clearingFlag ? (
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Shield className="w-4 h-4 text-blue-500" />
+                    <span>Clear Flag</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -811,6 +833,61 @@ const EmailPreviewModal: React.FC<{
   );
 };
 
+// Add FlaggedNotificationModal component
+const FlaggedNotificationModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onFocusOverrideButton: () => void;
+}> = ({ isOpen, onClose, onFocusOverrideButton }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+        <div className="p-6 text-center">
+          <div className="w-16 h-16 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Flag className="h-8 w-8 text-yellow-500" />
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Conversation Flagged for Review</h3>
+          <p className="text-gray-600 mb-6">
+            Our AI system has flagged this conversation for human review. This typically happens when the AI detects potential issues or uncertainty that requires human attention.
+          </p>
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-yellow-800">
+                <p className="font-medium mb-1">What this means:</p>
+                <p className="mb-3">The AI could not generate a quality response. Look for:</p>
+                <ul className="list-disc list-inside space-y-1 text-left mb-3">
+                  <li>Any tangibles that the user has expressed</li>
+                  <li>Information that is unclear or ambiguous</li>
+                </ul>
+                <p className="mb-2">You can:</p>
+                <ul className="list-disc list-inside space-y-1 text-left mb-3">
+                  <li>Add any context you feel necessary in the notes section</li>
+                  <li>If this is a mistake, disable review checking</li>
+                </ul>
+                <button
+                  onClick={onFocusOverrideButton}
+                  className="w-full px-3 py-2 bg-yellow-100 border border-yellow-300 text-yellow-800 rounded-lg hover:bg-yellow-200 transition-colors text-sm font-medium"
+                >
+                  Disable Review Checking
+                </button>
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-full px-4 py-2 bg-[#0e6537] text-white rounded-lg hover:bg-[#0a5a2f] transition-colors"
+          >
+            Got it
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /**
  * ConversationDetailPage Component
  * Main conversation detail component displaying message history and client information
@@ -881,6 +958,7 @@ export default function ConversationDetailPage() {
   const [generatingResponse, setGeneratingResponse] = useState(false);
   const [updatingOverride, setUpdatingOverride] = useState(false);
   const [unflagging, setUnflagging] = useState(false);
+  const [clearingFlag, setClearingFlag] = useState(false);
   const [notes, setNotes] = useState('');
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [generatedResponse, setGeneratedResponse] = useState('');
@@ -891,6 +969,10 @@ export default function ConversationDetailPage() {
   // Completion modal state
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [completingConversation, setCompletingConversation] = useState(false);
+
+  // Flagged notification modal state
+  const [showFlaggedNotification, setShowFlaggedNotification] = useState(false);
+  const [overrideButtonPulsing, setOverrideButtonPulsing] = useState(false);
 
   const {
     getConversationById,
@@ -1065,119 +1147,41 @@ export default function ConversationDetailPage() {
   })) as ExtendedMessage[])].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   
 
-  const handleLcpToggle = async () => {
-    if (!conversationId || !(session as any)?.user?.id) return;
-
-    setUpdatingLcp(conversationId);
-    try {
-      const response = await fetch('/api/lcp/toggle_lcp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          conversationId,
-          userId: (session as any).user.id,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to toggle LCP status');
-      }
-
-      const data = await response.json();
-      // Update cache
-      updateThreadMetadata(conversationId, { lcp_enabled: data.lcp_enabled });
-    } catch (error) {
-      console.error('Error toggling LCP status:', error);
-    } finally {
-      setUpdatingLcp(null);
-    }
-  };
-
-  const handleFlagToggle = async () => {
-    if (!conversationId || !(session as any)?.user?.id) return;
-
-    setUpdatingFlag(conversationId);
-    try {
-      const response = await fetch('/api/lcp/toggle_flag', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          conversationId,
-          userId: (session as any).user.id,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to toggle flag status');
-      }
-
-      const data = await response.json();
-      // Update cache
-      updateThreadMetadata(conversationId, { flagged: data.flagged });
-    } catch (error) {
-      console.error('Error toggling flag status:', error);
-    } finally {
-      setUpdatingFlag(null);
-    }
-  };
-
-  const handleSpamToggle = async () => {
-    if (!conversationId || !(session as any)?.user?.id) return;
-
-    setUpdatingSpam(true);
-    try {
-      const response = await fetch('/api/lcp/toggle_spam', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          conversationId,
-          userId: (session as any).user.id,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to toggle spam status');
-      }
-
-      const data = await response.json();
-      // Update cache
-      updateThreadMetadata(conversationId, { spam: data.spam });
-    } catch (error) {
-      console.error('Error toggling spam status:', error);
-    } finally {
-      setUpdatingSpam(false);
-    }
-  };
 
   const handleReportSubmit = async () => {
     if (!conversationId || !(session as any)?.user?.id || !reportReason) return;
 
     setReportingResponse(true);
     try {
-      const response = await fetch('/api/lcp/report_thread', {
+      // Generate unique report ID
+      const reportId = uuidv4();
+      
+      const response = await fetch('/api/db/update', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          conversationId,
-          userId: (session as any).user.id,
-          reason: reportReason,
-          details: reportDetails,
+          table_name: 'LLMReportData',
+          index_name: 'report_id-index',
+          key_name: 'report_id',
+          key_value: reportId,
+          update_data: {
+            conversation_id: conversationId,
+            associated_account: (session as any).user.id,
+            reason: reportReason,
+            details: reportDetails,
+            timestamp: new Date().toISOString()
+          },
+          account_id: (session as any).user.id,
         }),
+        credentials: 'include',
       });
 
       if (!response.ok) {
-        throw new Error('Failed to submit report');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to submit report');
       }
-
-      const data = await response.json();
       // Update cache
       updateThreadMetadata(conversationId, { 
         reported: true,
@@ -1196,20 +1200,11 @@ export default function ConversationDetailPage() {
     }
   };
 
-  const handlePreviewEmail = (messageId: string) => {
-    setPreviewMessageId(messageId);
-    setShowEmailPreview(true);
-  };
-
   const handleClosePreview = () => {
     setShowEmailPreview(false);
     setPreviewMessageId(null);
   };
 
-  const handleReportMessage = (messageId: string) => {
-    setPreviewMessageId(messageId);
-    setShowReportModal(true);
-  };
 
   const handleCopyConversation = async () => {
     try {
@@ -1427,6 +1422,13 @@ export default function ConversationDetailPage() {
     setShowCompletionModal(true);
   };
 
+  const handleFocusOverrideButton = () => {
+    setShowFlaggedNotification(false);
+    setOverrideButtonPulsing(true);
+    // Stop the pulsating effect after 3 seconds
+    setTimeout(() => setOverrideButtonPulsing(false), 3000);
+  };
+
   const handleMarkAsNotSpam = async () => {
     if (!conversationId || !(session as any)?.user?.id) return;
     
@@ -1464,6 +1466,43 @@ export default function ConversationDetailPage() {
     }
   };
 
+  const handleClearFlag = async () => {
+    if (!conversationId || !(session as any)?.user?.id) return;
+    
+    setClearingFlag(true);
+    try {
+      const response = await fetch('/api/db/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          table_name: 'Threads',
+          index_name: 'conversation_id-index',
+          key_name: 'conversation_id',
+          key_value: conversationId,
+          update_data: {
+            flag: false
+          },
+          account_id: (session as any).user.id,
+        }),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to clear flag');
+      }
+
+      // Update the local cache to reflect the change
+      updateThreadMetadata(conversationId, { flag: false });
+    } catch (error) {
+      console.error('Error clearing flag:', error);
+    } finally {
+      setClearingFlag(false);
+    }
+  };
+
   const generateAIResponse = async () => {
     if (!conversationId || !(session as any)?.user?.id) return;
     
@@ -1494,6 +1533,16 @@ export default function ConversationDetailPage() {
       const data = await response.json();
       
       if (data.success && data.data) {
+        // Check if the response is flagged for review
+        if (data.data.status === 'flagged') {
+          // Update the local cache to reflect the flagged status
+          updateThreadMetadata(conversationId, { flag_for_review: true });
+          // Refresh conversations to update the UI
+          refreshConversations();
+          // Show the flagged notification modal
+          setShowFlaggedNotification(true);
+        }
+        
         // Store the generated response and show the modal
         if (data.data.response) {
           setGeneratedResponse(data.data.response);
@@ -1755,7 +1804,7 @@ export default function ConversationDetailPage() {
                     {generatingPdf ? (
                       <>
                         <RefreshCw className="h-4 w-4 animate-spin" />
-                        <span className="text-sm">Generating...</span>
+                        <span className="text-sm">Generating... </span>
                       </>
                     ) : (
                       <>
@@ -1778,7 +1827,7 @@ export default function ConversationDetailPage() {
                 ) : (
                   sortedMessages.map((msg: ExtendedMessage, index) => (
                     <div
-                      key={`message-${msg.id || index}`}
+                      key={`message-${msg.id || `index-${index}`}-${index}`}
                       className={`flex ${msg.type === "outbound-email" ? "justify-end" : "justify-start"}`}
                     >
                       <div className={`max-w-md w-full flex flex-col gap-1 ${msg.type === "outbound-email" ? "items-end" : "items-start"}`}>
@@ -1917,6 +1966,7 @@ export default function ConversationDetailPage() {
                       isEnabled={processedThread?.flag_review_override || false} 
                       onToggle={handleOverride}
                       updating={updatingOverride}
+                      pulsating={overrideButtonPulsing}
                     />
                   </div>
                 </div>
@@ -1933,14 +1983,14 @@ export default function ConversationDetailPage() {
                     <div className="flex gap-2">
                       <button
                         onClick={generateAIResponse}
-                        disabled={!processedThread?.lcp_enabled || processedThread?.busy || generatingResponse}
+                        disabled={processedThread?.busy || generatingResponse || processedThread?.flag_for_review || processedThread?.flag}
                         className="flex items-center gap-1 px-2 py-1 bg-[#0e6537] text-white rounded hover:bg-[#0a5a2f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                         style={{ minWidth: '110px' }}
                       >
                         {generatingResponse ? (
                           <>
                             <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                            <span>Generating...</span>
+                            <span>Generating... (This may take up to 15 seonds)</span>
                           </>
                         ) : (
                           <>
@@ -1984,6 +2034,8 @@ export default function ConversationDetailPage() {
                 updating={unflagging}
                 isFlaggedForCompletion={processedThread?.flag || false}
                 onComplete={handleOpenCompletionModal}
+                onClearFlag={handleClearFlag}
+                clearingFlag={clearingFlag}
               />
 
             </div>
@@ -2078,6 +2130,11 @@ export default function ConversationDetailPage() {
         isSending={sendingEmail}
         session={session}
         responseEmail={userResponseEmail}
+      />
+      <FlaggedNotificationModal
+        isOpen={showFlaggedNotification}
+        onClose={() => setShowFlaggedNotification(false)}
+        onFocusOverrideButton={handleFocusOverrideButton}
       />
       <CompletionModal
         isOpen={showCompletionModal}
