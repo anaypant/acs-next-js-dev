@@ -353,7 +353,7 @@ export default function ConversationsPage() {
         {/* Header section with logo and navigation */}
         <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div className="flex items-center gap-2">
-            <Logo size="md" whiteText={true} />
+            <Logo size="md" variant="icon-only" whiteText={true} />
             <button
               onClick={() => window.history.back()}
               className="p-2 hover:bg-[#0e6537]/10 rounded-lg"

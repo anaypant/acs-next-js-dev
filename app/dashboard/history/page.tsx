@@ -16,6 +16,7 @@ import type { Session } from "next-auth"
 import { useConversationsData } from '../lib/use-conversations'
 import type { Thread } from "@/app/types/lcp"
 import { formatLocalTime } from '@/app/utils/timezone'
+import Link from "next/link"
 
 interface CompletedThread extends Thread {
   completion_reason?: string
@@ -333,18 +334,18 @@ export default function HistoryPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0a5a2f] via-[#0e6537] to-[#157a42]">
+      <div className="min-h-screen bg-white">
         <div className="max-w-7xl mx-auto p-6">
           <div className="animate-pulse">
-            <div className="h-8 bg-white/10 rounded-lg w-48 mb-6"></div>
+            <div className="h-8 bg-gray-200 rounded-lg w-48 mb-6"></div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="h-12 bg-white/10 rounded-lg"></div>
-              <div className="h-12 bg-white/10 rounded-lg"></div>
-              <div className="h-12 bg-white/10 rounded-lg"></div>
+              <div className="h-12 bg-gray-200 rounded-lg"></div>
+              <div className="h-12 bg-gray-200 rounded-lg"></div>
+              <div className="h-12 bg-gray-200 rounded-lg"></div>
             </div>
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-24 bg-white/10 rounded-lg"></div>
+                <div key={i} className="h-24 bg-gray-200 rounded-lg"></div>
               ))}
             </div>
           </div>
@@ -354,56 +355,47 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a5a2f] via-[#0e6537] to-[#157a42]">
-      <div className="max-w-7xl mx-auto p-6">
-        {/* Header with Back Button */}
-        <div className="flex items-center gap-4 mb-6">
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="flex items-center gap-2 px-3 py-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            Back to Dashboard
-          </button>
-        </div>
-
+    <div className="min-h-screen bg-gradient-to-br from-[#0e6537] via-[#0a5a2f] to-[#0e6537] p-6">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Completed Conversations</h1>
-            <p className="text-white/80">View and manage your completed lead conversations</p>
+        <div className="mb-8">
+          <div className="flex items-center gap-4 mb-4">
+            <Link 
+              href="/dashboard" 
+              className="flex items-center gap-2 text-white hover:text-white/80 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Dashboard
+            </Link>
           </div>
-          <button
-            onClick={exportToCSV}
-            className="flex items-center gap-2 px-4 py-2 bg-white/10 text-white border border-white/20 rounded-lg hover:bg-white/20 transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            Export CSV
-          </button>
+          <h1 className="text-3xl font-bold text-white mb-2">Completed Conversations</h1>
+          <p className="text-white/80 text-lg">
+            View and manage your completed lead conversations
+          </p>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 shadow-sm">
+          <div className="bg-white border border-[#0e6537]/20 rounded-lg p-6 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-500/20 rounded-lg">
-                <CheckCircle className="w-6 h-6 text-green-400" />
+              <div className="p-2 bg-green-100 rounded-lg">
+                <CheckCircle className="w-6 h-6 text-green-600" />
               </div>
               <div>
-                <p className="text-sm text-white/70">Total Completed</p>
-                <p className="text-2xl font-bold text-white">{completedThreads.length}</p>
+                <p className="text-sm text-gray-600">Total Completed</p>
+                <p className="text-2xl font-bold text-[#0e6537]">{completedThreads.length}</p>
               </div>
             </div>
           </div>
           
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 shadow-sm">
+          <div className="bg-white border border-[#0e6537]/20 rounded-lg p-6 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-500/20 rounded-lg">
-                <MessageSquare className="w-6 h-6 text-blue-400" />
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <MessageSquare className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm text-white/70">This Month</p>
-                <p className="text-2xl font-bold text-white">
+                <p className="text-sm text-gray-600">This Month</p>
+                <p className="text-2xl font-bold text-[#0e6537]">
                   {completedThreads.filter(thread => {
                     const completedDate = new Date(thread.completed_at || '')
                     const now = new Date()
@@ -415,28 +407,28 @@ export default function HistoryPage() {
             </div>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 shadow-sm">
+          <div className="bg-white border border-[#0e6537]/20 rounded-lg p-6 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-500/20 rounded-lg">
-                <User className="w-6 h-6 text-green-400" />
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <User className="w-6 h-6 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm text-white/70">Sales Completed</p>
-                <p className="text-2xl font-bold text-white">
+                <p className="text-sm text-gray-600">Sales Completed</p>
+                <p className="text-2xl font-bold text-[#0e6537]">
                   {completedThreads.filter(thread => thread.completion_reason === 'sale_completed').length}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 shadow-sm">
+          <div className="bg-white border border-[#0e6537]/20 rounded-lg p-6 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-yellow-500/20 rounded-lg">
-                <Clock className="w-6 h-6 text-yellow-400" />
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <Clock className="w-6 h-6 text-orange-600" />
               </div>
               <div>
-                <p className="text-sm text-white/70">Avg. Completion Time</p>
-                <p className="text-2xl font-bold text-white">
+                <p className="text-sm text-gray-600">Avg. Completion Time</p>
+                <p className="text-2xl font-bold text-[#0e6537]">
                   {(() => {
                     // Only consider threads with at least 2 messages
                     const completedWithMessages = completedThreadsWithMessages.filter(thread =>
@@ -478,31 +470,31 @@ export default function HistoryPage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20 shadow-sm mb-6">
+        <div className="bg-white border border-[#0e6537]/20 rounded-lg p-6 shadow-sm mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/50 w-4 h-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
                 placeholder="Search by source, reason, or notes..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-white/50 focus:border-transparent text-white placeholder-white/50"
+                className="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0e6537]/50 focus:border-[#0e6537] text-gray-900 placeholder-gray-500"
               />
             </div>
 
             {/* Completion Reason Filter */}
             <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/50 w-4 h-4" />
+              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <select
                 value={selectedReason}
                 onChange={(e) => setSelectedReason(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-white/50 focus:border-transparent appearance-none text-white"
+                className="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0e6537]/50 focus:border-[#0e6537] appearance-none text-gray-900"
               >
-                <option value="all" className="bg-[#0a5a2f] text-white">All Reasons</option>
+                <option value="all" className="bg-white text-gray-900">All Reasons</option>
                 {completionReasons.map(reason => (
-                  <option key={reason} value={reason} className="bg-[#0a5a2f] text-white">{reason?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>
+                  <option key={reason} value={reason} className="bg-white text-gray-900">{reason?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>
                 ))}
               </select>
             </div>
@@ -512,15 +504,15 @@ export default function HistoryPage() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-white/50 focus:border-transparent text-white"
+                className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0e6537]/50 focus:border-[#0e6537] text-gray-900"
               >
-                <option value="completed_at" className="bg-[#0a5a2f] text-white">Completion Date</option>
-                <option value="source_name" className="bg-[#0a5a2f] text-white">Source</option>
-                <option value="completion_reason" className="bg-[#0a5a2f] text-white">Reason</option>
+                <option value="completed_at" className="bg-white text-gray-900">Completion Date</option>
+                <option value="source_name" className="bg-white text-gray-900">Source</option>
+                <option value="completion_reason" className="bg-white text-gray-900">Reason</option>
               </select>
               <button
                 onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-colors text-white"
+                className="px-3 py-2 bg-[#0e6537] text-white border border-[#0e6537] rounded-lg hover:bg-[#0a5a2f] transition-colors"
               >
                 {sortOrder === 'asc' ? '↑' : '↓'}
               </button>
@@ -531,10 +523,10 @@ export default function HistoryPage() {
         {/* Results */}
         <div className="space-y-4">
           {filteredThreads.length === 0 ? (
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-12 text-center border border-white/20 shadow-sm">
-              <MessageSquare className="w-12 h-12 text-white/40 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-white mb-2">No completed conversations found</h3>
-              <p className="text-white/70">
+            <div className="bg-white border border-[#0e6537]/20 rounded-lg p-12 text-center shadow-sm">
+              <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No completed conversations found</h3>
+              <p className="text-gray-600">
                 {searchTerm || selectedReason !== 'all' 
                   ? 'Try adjusting your search criteria or filters.'
                   : 'Completed conversations will appear here once you mark them as complete.'
@@ -549,7 +541,7 @@ export default function HistoryPage() {
               return (
                 <div
                   key={thread.conversation_id}
-                  className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 shadow-sm hover:shadow-md transition-shadow"
+                  className="bg-white border border-[#0e6537]/20 rounded-lg shadow-sm hover:shadow-md transition-shadow"
                 >
                   <div 
                     className="p-6 cursor-pointer"
@@ -558,7 +550,7 @@ export default function HistoryPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-3">
-                          <h3 className="text-lg font-semibold text-white">{thread.source_name}</h3>
+                          <h3 className="text-lg font-semibold text-gray-900">{thread.source_name}</h3>
                           {thread.completion_reason && (
                             <span className={`px-3 py-1 text-xs font-medium rounded-full border ${getReasonColor(thread.completion_reason)}`}>
                               {thread.completion_reason.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
@@ -567,49 +559,49 @@ export default function HistoryPage() {
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                          <div className="flex items-center gap-2 text-sm text-white/70">
-                            <Calendar className="w-4 h-4" />
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Calendar className="w-4 h-4 text-blue-500" />
                             <span>Completed: {thread.completed_at ? formatDate(thread.completed_at) : 'N/A'}</span>
                           </div>
                           
                           {thread.phone && (
-                            <div className="flex items-center gap-2 text-sm text-white/70">
-                              <Phone className="w-4 h-4" />
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <Phone className="w-4 h-4 text-green-500" />
                               <span>{thread.phone}</span>
                             </div>
                           )}
                           
                           {thread.location && (
-                            <div className="flex items-center gap-2 text-sm text-white/70">
-                              <MapPin className="w-4 h-4" />
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <MapPin className="w-4 h-4 text-red-500" />
                               <span>{thread.location}</span>
                             </div>
                           )}
                         </div>
                         
                         {thread.completion_notes && (
-                          <div className="bg-white/5 rounded-lg p-3 mb-4 border border-white/10">
-                            <p className="text-sm text-white/80">{thread.completion_notes}</p>
+                          <div className="bg-gray-50 rounded-lg p-3 mb-4 border border-gray-200">
+                            <p className="text-sm text-gray-700">{thread.completion_notes}</p>
                           </div>
                         )}
 
                         {/* Quick Stats Preview */}
                         {threadStats && (
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                            <div className="flex items-center gap-2 text-sm text-white/70">
-                              <MessageCircle className="w-4 h-4" />
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <MessageCircle className="w-4 h-4 text-blue-500" />
                               <span>{threadStats.totalMessages} messages</span>
                             </div>
-                            <div className="flex items-center gap-2 text-sm text-white/70">
-                              <Clock className="w-4 h-4" />
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <Clock className="w-4 h-4 text-orange-500" />
                               <span>{formatDuration(threadStats.duration)}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-sm text-white/70">
-                              <User className="w-4 h-4" />
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <User className="w-4 h-4 text-purple-500" />
                               <span>{threadStats.userMessages} user</span>
                             </div>
-                            <div className="flex items-center gap-2 text-sm text-white/70">
-                              <MessageSquare className="w-4 h-4" />
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <MessageSquare className="w-4 h-4 text-green-500" />
                               <span>{threadStats.assistantMessages} AI</span>
                             </div>
                           </div>
@@ -622,14 +614,14 @@ export default function HistoryPage() {
                             e.stopPropagation()
                             handleThreadClick(thread.conversation_id)
                           }}
-                          className="px-3 py-1 text-sm bg-white/10 text-white border border-white/20 rounded-lg hover:bg-white/20 transition-colors"
+                          className="px-3 py-1 text-sm bg-[#0e6537] text-white border border-[#0e6537] rounded-lg hover:bg-[#0a5a2f] transition-colors"
                         >
                           View Full
                         </button>
                         {isExpanded ? (
-                          <ChevronUp className="w-5 h-5 text-white/50" />
+                          <ChevronUp className="w-5 h-5 text-gray-500" />
                         ) : (
-                          <ChevronDown className="w-5 h-5 text-white/50" />
+                          <ChevronDown className="w-5 h-5 text-gray-500" />
                         )}
                       </div>
                     </div>
@@ -637,30 +629,30 @@ export default function HistoryPage() {
 
                   {/* Expanded Details */}
                   {isExpanded && threadStats && (
-                    <div className="border-t border-white/10 p-6 bg-white/5">
+                    <div className="border-t border-gray-200 p-6 bg-gray-50">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Conversation Timeline */}
                         <div>
-                          <h4 className="font-semibold text-white mb-3 flex items-center gap-2">
-                            <TrendingUp className="w-4 h-4" />
+                          <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                            <TrendingUp className="w-4 h-4 text-blue-500" />
                             Conversation Timeline
                           </h4>
                           <div className="space-y-3">
                             <div className="flex justify-between text-sm">
-                              <span className="text-white/70">Started:</span>
-                              <span className="font-medium text-white">{formatDate(threadStats.firstMessage, threadStats.firstMessageType)}</span>
+                              <span className="text-gray-600">Started:</span>
+                              <span className="font-medium text-gray-900">{formatDate(threadStats.firstMessage, threadStats.firstMessageType)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span className="text-white/70">Ended:</span>
-                              <span className="font-medium text-white">{formatDate(threadStats.lastMessage, threadStats.lastMessageType)}</span>
+                              <span className="text-gray-600">Ended:</span>
+                              <span className="font-medium text-gray-900">{formatDate(threadStats.lastMessage, threadStats.lastMessageType)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span className="text-white/70">Total Duration:</span>
-                              <span className="font-medium text-white">{formatDuration(threadStats.duration)}</span>
+                              <span className="text-gray-600">Total Duration:</span>
+                              <span className="font-medium text-gray-900">{formatDuration(threadStats.duration)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span className="text-white/70">Avg Response Time:</span>
-                              <span className="font-medium text-white">
+                              <span className="text-gray-600">Avg Response Time:</span>
+                              <span className="font-medium text-gray-900">
                                 {threadStats.avgResponseTime > 0 ? 
                                   formatDuration(threadStats.avgResponseTime) : 'N/A'
                                 }
@@ -671,26 +663,26 @@ export default function HistoryPage() {
 
                         {/* Message Breakdown */}
                         <div>
-                          <h4 className="font-semibold text-white mb-3 flex items-center gap-2">
-                            <MessageSquare className="w-4 h-4" />
+                          <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                            <MessageSquare className="w-4 h-4 text-green-500" />
                             Message Breakdown
                           </h4>
                           <div className="space-y-3">
                             <div className="flex justify-between items-center">
-                              <span className="text-sm text-white/70">Total Messages:</span>
-                              <span className="font-medium text-lg text-white">{threadStats.totalMessages}</span>
+                              <span className="text-sm text-gray-600">Total Messages:</span>
+                              <span className="font-medium text-lg text-[#0e6537]">{threadStats.totalMessages}</span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-sm text-white/70">User Messages:</span>
-                              <span className="font-medium text-blue-400">{threadStats.userMessages}</span>
+                              <span className="text-sm text-gray-600">User Messages:</span>
+                              <span className="font-medium text-blue-600">{threadStats.userMessages}</span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-sm text-white/70">AI Responses:</span>
-                              <span className="font-medium text-green-400">{threadStats.assistantMessages}</span>
+                              <span className="text-sm text-gray-600">AI Responses:</span>
+                              <span className="font-medium text-[#0e6537]">{threadStats.assistantMessages}</span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-sm text-white/70">Engagement Ratio:</span>
-                              <span className="font-medium text-white">
+                              <span className="text-sm text-gray-600">Engagement Ratio:</span>
+                              <span className="font-medium text-[#0e6537]">
                                 {threadStats.totalMessages > 0 ? 
                                   Math.round((threadStats.userMessages / threadStats.totalMessages) * 100) : 0
                                 }%
@@ -701,10 +693,10 @@ export default function HistoryPage() {
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="flex gap-3 mt-6 pt-4 border-t border-white/10">
+                      <div className="flex gap-3 mt-6 pt-4 border-t border-gray-200">
                         <button
                           onClick={() => handleThreadClick(thread.conversation_id)}
-                          className="flex items-center gap-2 px-4 py-2 bg-white/10 text-white border border-white/20 rounded-lg hover:bg-white/20 transition-colors"
+                          className="flex items-center gap-2 px-4 py-2 bg-[#0e6537] text-white border border-[#0e6537] rounded-lg hover:bg-[#0a5a2f] transition-colors"
                         >
                           <FileText className="w-4 h-4" />
                           View Full Conversation
@@ -714,7 +706,7 @@ export default function HistoryPage() {
                             // Copy conversation ID to clipboard
                             navigator.clipboard.writeText(thread.conversation_id)
                           }}
-                          className="px-4 py-2 bg-white/10 border border-white/20 text-white rounded-lg hover:bg-white/20 transition-colors"
+                          className="px-4 py-2 bg-white border border-[#0e6537] text-[#0e6537] rounded-lg hover:bg-[#0e6537]/10 transition-colors"
                         >
                           Copy ID
                         </button>

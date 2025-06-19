@@ -156,7 +156,7 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
       <div className="flex items-center justify-between px-4 py-4 border-b border-white/10">
         {/* Responsive Logo: show icon+text when open, icon-only when collapsed */}
         {isOpen ? (
-          <Logo size={logoSize} variant="default" whiteText />
+          <Logo size={logoSize} variant="icon-only" whiteText />
         ) : (
           <Logo size={logoSize === 'lg' ? 'md' : 'sm'} variant="icon-only" />
         )}

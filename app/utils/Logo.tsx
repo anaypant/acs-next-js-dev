@@ -65,7 +65,7 @@ export function Logo({
       {variant !== 'text-only' && (
         <div className="relative">
           <Image
-            src="/new-logo-2.png"
+            src="/acslogotrans.PNG"
             alt="ACS Logo"
             width={config.image.width}
             height={config.image.height}

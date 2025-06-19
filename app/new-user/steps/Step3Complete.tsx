@@ -69,7 +69,7 @@ const Step3Complete: React.FC<Step3CompleteProps> = ({
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Sample Email Prompt</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Sample Email</label>
             <textarea
               value={lcpSettings.samplePrompt}
               onChange={(e) => setLcpSettings({ ...lcpSettings, samplePrompt: e.target.value })}
