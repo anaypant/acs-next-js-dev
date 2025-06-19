@@ -3,7 +3,7 @@
  * Purpose: Renders the main navigation bar with responsive design, animated hover effects, and authentication links.
  * Author: Alejo Cagliolo
  * Date: 6/11/25
- * Version: 1.4.0
+ * Version: 1.5.0
  */
 
 "use client"
@@ -20,7 +20,6 @@ import { Logo } from "@/app/utils/Logo"
  * Features:
  * - Responsive navigation menu
  * - Animated hover effects using Framer Motion
- * - Authentication links (Sign in/Get Started)
  * - Mobile-friendly design with hamburger menu
  * - Sticky positioning
  * - Gradient text and button effects
@@ -106,64 +105,9 @@ const Navbar = () => {
             </div>
           )}
 
-          {/* Desktop authentication links - only show if not on dashboard */}
+          {/* Invisible spacer to balance the logo on the left */}
           {!isDashboard && (
-            <div className="hidden md:flex items-center space-x-4 lg:space-x-6 xl:space-x-8 w-auto lg:w-[300px] xl:w-[350px] justify-end">
-              {/* TEMPORARY: Demo access required - routing to demo page instead of login */}
-              {/* TODO: Restore original login link when demo phase ends */}
-              {/* Original: <Link href="/login" className="relative overflow-hidden group py-2 px-3" onMouseEnter={() => setHovered("signin")} onMouseLeave={() => setHovered(null)} style={{ color: '#0e6537', textDecoration: 'none' }}> */}
-              <Link
-                href="/demo"
-                className="relative overflow-hidden group py-2 px-3 lg:px-4"
-                onMouseEnter={() => setHovered("signin")}
-                onMouseLeave={() => setHovered(null)}
-                style={{ color: '#0e6537', textDecoration: 'none' }}
-              >
-                <span className="relative z-10 font-medium transition-colors duration-300 text-base lg:text-lg" style={{ color: '#0e6537' }}>
-                  Sign in
-                </span>
-                {hovered === "signin" && (
-                  <motion.span
-                    className="absolute inset-0 bg-[#E8F5EE] rounded-md z-0"
-                    layoutId="navBackground"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2, ease: "easeInOut" }}
-                  />
-                )}
-              </Link>
-
-              {/* TEMPORARY: Demo access required - routing to demo page instead of signup */}
-              {/* TODO: Restore original signup link when demo phase ends */}
-              {/* Original: <Link href="/signup" className="relative group" onMouseEnter={() => setHovered("getstarted")} onMouseLeave={() => setHovered(null)} style={{ textDecoration: 'none' }}> */}
-              <Link
-                href="/demo"
-                className="relative group"
-                onMouseEnter={() => setHovered("getstarted")}
-                onMouseLeave={() => setHovered(null)}
-                style={{ textDecoration: 'none' }}
-              >
-                <span className="relative z-10 inline-flex items-center gap-2 px-4 lg:px-6 xl:px-8 py-2 lg:py-3 font-medium text-white rounded-full overflow-hidden whitespace-nowrap text-base lg:text-lg">
-                  Get Started
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="transition-transform duration-300 group-hover:translate-x-1 lg:w-5 lg:h-5"
-                  >
-                    <path d="M5 12h14"></path>
-                    <path d="m12 5 7 7-7 7"></path>
-                  </svg>
-                </span>
-                <span className="absolute inset-0 rounded-full bg-gradient-to-r from-[#0e6537] to-[#157a42] transition-all duration-300 ease-out group-hover:scale-[1.03] group-hover:shadow-[0_0_20px_rgba(14,101,55,0.4)]"></span>
-              </Link>
+            <div className="hidden md:flex flex-shrink-0 w-[120px]">
             </div>
           )}
         </div>
@@ -194,30 +138,6 @@ const Navbar = () => {
                       </Link>
                     )
                   })}
-                  <div className="pt-4 border-t border-gray-200">
-                    {/* TEMPORARY: Demo access required - routing to demo page instead of login */}
-                    {/* TODO: Restore original login link when demo phase ends */}
-                    {/* Original: <Link href="/login" className="block px-3 py-2 rounded-md text-base font-medium text-[#0e6537] hover:bg-[#E8F5EE] transition-colors duration-200" onClick={() => setIsMobileMenuOpen(false)} style={{ color: '#0e6537' }}>Sign in</Link> */}
-                    <Link
-                      href="/demo"
-                      className="block px-3 py-3 rounded-md text-base font-medium text-[#0e6537] hover:bg-[#E8F5EE] transition-colors duration-200"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      style={{ color: '#0e6537' }}
-                    >
-                      Sign in
-                    </Link>
-                    {/* TEMPORARY: Demo access required - routing to demo page instead of signup */}
-                    {/* TODO: Restore original signup link when demo phase ends */}
-                    {/* Original: <Link href="/signup" className="block px-3 py-2 mt-2 rounded-md text-base font-medium text-white bg-gradient-to-r from-[#0e6537] to-[#157a42] hover:from-[#0a5a2f] hover:to-[#0e6537] transition-all duration-200" onClick={() => setIsMobileMenuOpen(false)} style={{ color: '#ffffff' }}>Get Started</Link> */}
-                    <Link
-                      href="/demo"
-                      className="block px-3 py-3 mt-2 rounded-md text-base font-medium text-white bg-gradient-to-r from-[#0e6537] to-[#157a42] hover:from-[#0a5a2f] hover:to-[#0e6537] transition-all duration-200"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      style={{ color: '#ffffff' }}
-                    >
-                      Get Started
-                    </Link>
-                  </div>
                 </div>
               </motion.div>
             )}
@@ -232,6 +152,12 @@ export default Navbar
 
 /**
  * Change Log:
+ * 06/15/25 - Version 1.5.0
+ * - Removed sign in and get started authentication links from both desktop and mobile navigation
+ * - Removed authentication section from mobile menu
+ * - Maintained layout balance with empty div for desktop view
+ * - Updated component documentation to reflect removal of authentication features
+ * 
  * 06/15/25 - Version 1.4.0
  * - Removed top padding to eliminate white space between navbar and hero
  * - Increased logo size by removing width constraint
