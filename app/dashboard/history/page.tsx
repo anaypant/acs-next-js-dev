@@ -15,6 +15,7 @@ import { Search, Filter, Calendar, MessageSquare, User, Mail, Phone, MapPin, Clo
 import type { Session } from "next-auth"
 import { useConversationsData } from '../lib/use-conversations'
 import type { Thread } from "@/app/types/lcp"
+import { formatLocalTime } from '@/app/utils/timezone'
 
 interface CompletedThread extends Thread {
   completion_reason?: string
@@ -24,6 +25,18 @@ interface CompletedThread extends Thread {
 
 interface ExpandedThread {
   [key: string]: boolean
+}
+
+interface ThreadStats {
+  totalMessages: number
+  userMessages: number
+  assistantMessages: number
+  duration: number
+  avgResponseTime: number
+  firstMessage: string
+  lastMessage: string
+  firstMessageType: 'inbound-email' | 'outbound-email'
+  lastMessageType: 'inbound-email' | 'outbound-email'
 }
 
 export default function HistoryPage() {
@@ -98,14 +111,21 @@ export default function HistoryPage() {
     new Set(completedThreads.map(thread => thread.completion_reason).filter(Boolean))
   )
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+  const formatDate = (dateString: string, messageType?: 'inbound-email' | 'outbound-email') => {
+    if (!dateString) return 'N/A'
+    try {
+      const date = formatLocalTime(dateString, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }, messageType)
+      return date.toLocaleString()
+    } catch (error) {
+      console.error('Error formatting date:', error)
+      return 'Invalid Date'
+    }
   }
 
   const getReasonColor = (reason: string) => {
@@ -131,7 +151,7 @@ export default function HistoryPage() {
     }))
   }
 
-  const getThreadStats = (thread: CompletedThread) => {
+  const getThreadStats = (thread: CompletedThread): ThreadStats | null => {
     const conv = conversations.find(c => c.thread.conversation_id === thread.conversation_id)
     const messages = conv?.messages || []
     
@@ -143,12 +163,16 @@ export default function HistoryPage() {
     
     const firstMessage = sortedMessages[0]
     const lastMessage = sortedMessages[sortedMessages.length - 1]
-    const duration = new Date(lastMessage.timestamp).getTime() - new Date(firstMessage.timestamp).getTime()
+    
+    // Use formatLocalTime for consistent timezone handling
+    const firstMessageDate = formatLocalTime(firstMessage.timestamp, undefined, firstMessage.type)
+    const lastMessageDate = formatLocalTime(lastMessage.timestamp, undefined, lastMessage.type)
+    const duration = lastMessageDate.getTime() - firstMessageDate.getTime()
     
     const userMessages = messages.filter(m => m.type === 'inbound-email').length
     const assistantMessages = messages.filter(m => m.type === 'outbound-email').length
     
-    // Calculate average response time between consecutive messages
+    // Calculate average response time between consecutive messages using formatLocalTime
     let avgResponseTime = 0
     if (sortedMessages.length >= 2) {
       let totalTimeDiff = 0
@@ -157,7 +181,12 @@ export default function HistoryPage() {
       for (let i = 1; i < sortedMessages.length; i++) {
         const currentMsg = sortedMessages[i]
         const previousMsg = sortedMessages[i - 1]
-        const timeDiff = new Date(currentMsg.timestamp).getTime() - new Date(previousMsg.timestamp).getTime()
+        
+        // Use formatLocalTime for consistent timezone handling
+        const currentDate = formatLocalTime(currentMsg.timestamp, undefined, currentMsg.type)
+        const previousDate = formatLocalTime(previousMsg.timestamp, undefined, previousMsg.type)
+        const timeDiff = currentDate.getTime() - previousDate.getTime()
+        
         totalTimeDiff += timeDiff
         validPairs++
       }
@@ -172,7 +201,9 @@ export default function HistoryPage() {
       duration,
       avgResponseTime,
       firstMessage: firstMessage.timestamp,
-      lastMessage: lastMessage.timestamp
+      lastMessage: lastMessage.timestamp,
+      firstMessageType: firstMessage.type,
+      lastMessageType: lastMessage.type
     }
   }
 
@@ -283,8 +314,8 @@ export default function HistoryPage() {
           avgResponseMinutes,
           
           // Performance Metrics
-          threadStats?.firstMessage || '',
-          threadStats?.lastMessage || '',
+          threadStats?.firstMessage ? formatDate(threadStats.firstMessage, threadStats.firstMessageType) : '',
+          threadStats?.lastMessage ? formatDate(threadStats.lastMessage, threadStats.lastMessageType) : '',
           responseRate,
           thread.completed ? 'Completed' : 'In Progress'
         ].join(',')
@@ -420,7 +451,12 @@ export default function HistoryPage() {
                         .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
                       const first = messages[0]
                       const last = messages[messages.length - 1]
-                      const diff = new Date(last.timestamp).getTime() - new Date(first.timestamp).getTime()
+                      
+                      // Use formatLocalTime for consistent timezone handling
+                      const firstDate = formatLocalTime(first.timestamp, undefined, first.type)
+                      const lastDate = formatLocalTime(last.timestamp, undefined, last.type)
+                      const diff = lastDate.getTime() - firstDate.getTime()
+                      
                       return acc + diff
                     }, 0) / completedWithMessages.length
 
@@ -612,11 +648,11 @@ export default function HistoryPage() {
                           <div className="space-y-3">
                             <div className="flex justify-between text-sm">
                               <span className="text-white/70">Started:</span>
-                              <span className="font-medium text-white">{formatDate(threadStats.firstMessage)}</span>
+                              <span className="font-medium text-white">{formatDate(threadStats.firstMessage, threadStats.firstMessageType)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
                               <span className="text-white/70">Ended:</span>
-                              <span className="font-medium text-white">{formatDate(threadStats.lastMessage)}</span>
+                              <span className="font-medium text-white">{formatDate(threadStats.lastMessage, threadStats.lastMessageType)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
                               <span className="text-white/70">Total Duration:</span>
