@@ -21,28 +21,37 @@ export function formatLocalTime(
   type?: 'inbound-email' | 'outbound-email'
 ): Date {
   if (!timestamp) return new Date();
-  let date: Date | null = null;
+  
   try {
-    // Normalize timestamp: if it has microseconds but no timezone, append 'Z'
     let normalized = timestamp;
-    // If it matches microseconds (6 digits after .) and does not end with 'Z' or timezone
-    if (/\.\d{6}$/.test(timestamp)) {
+    
+    // Handle different timestamp formats
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}$/.test(timestamp)) {
+      // Format: 2025-06-18T02:24:04.542130 (microseconds, no timezone)
+      // Assume UTC and append 'Z'
       normalized = timestamp + 'Z';
-    } else if (/\.\d{6}[+-]\d{2}:?\d{2}$/.test(timestamp)) {
-      // Already has timezone, do nothing
-    } else if (/\.\d{3,6}$/.test(timestamp) && !/[Z+-]/.test(timestamp.slice(-1))) {
+    } else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}$/.test(timestamp)) {
+      // Format: 2025-06-18T02:24:04.123 (milliseconds, no timezone)
+      // Assume UTC and append 'Z'
+      normalized = timestamp + 'Z';
+    } else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(timestamp)) {
+      // Format: 2025-06-18T02:24:04 (no timezone)
+      // Assume UTC and append 'Z'
       normalized = timestamp + 'Z';
     }
-    // For outbound-email, use normalized
-    if (type === 'outbound-email') {
-      date = new Date(normalized);
-    } else {
-      // Default logic for inbound-email and others
-      date = new Date(normalized);
+    // If it already has timezone info (ends with Z, +, or -), use as is
+    
+    const date = new Date(normalized);
+    
+    // Validate the date
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid timestamp format:', timestamp);
+      return new Date();
     }
+    
     return date;
   } catch (error) {
-    console.error('Error formatting timestamp:', error);
+    console.error('Error formatting timestamp:', error, 'Timestamp:', timestamp);
     return new Date();
   }
 }
@@ -57,7 +66,7 @@ export function getTimeAgo(timestamp: string): string {
   
   try {
     const now = new Date();
-    const messageDate = new Date(timestamp);
+    const messageDate = formatLocalTime(timestamp);
     const diffInSeconds = Math.floor((now.getTime() - messageDate.getTime()) / 1000);
 
     if (diffInSeconds < 60) return "just now";
@@ -82,7 +91,7 @@ export function formatLocalDate(timestamp: string): string {
   if (!timestamp) return '';
   
   try {
-    const date = new Date(timestamp);
+    const date = formatLocalTime(timestamp);
     return date.toLocaleDateString();
   } catch (error) {
     console.error('Error formatting date:', error);
@@ -99,7 +108,7 @@ export function formatLocalTimeOnly(timestamp: string): string {
   if (!timestamp) return '';
   
   try {
-    const date = new Date(timestamp);
+    const date = formatLocalTime(timestamp);
     return date.toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit'
@@ -127,7 +136,7 @@ export function isValidTimestamp(timestamp: string): boolean {
   if (!timestamp) return false;
   
   try {
-    const date = new Date(timestamp);
+    const date = formatLocalTime(timestamp);
     return !isNaN(date.getTime());
   } catch {
     return false;

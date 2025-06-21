@@ -1,28 +1,15 @@
 "use client"
 
-import { Cookie, ArrowLeft } from "lucide-react"
-import Link from "next/link"
+import { Cookie } from "lucide-react"
+import { PageLayout } from "@/components/common/Layout/PageLayout"
+import { LegalHeader } from "@/app/components/LegalHeader"
 
 export default function CookiesPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1]">
+    <PageLayout>
       <div className="max-w-4xl mx-auto p-6">
-        {/* Back Button */}
-        <Link 
-          href="/legal"
-          className="inline-flex items-center gap-2 bg-[#0e6537] text-white px-4 py-2 rounded-lg hover:bg-[#0a5a2f] mb-4 transition-colors shadow-md"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span>Back to Legal</span>
-        </Link>
+        <LegalHeader title="Cookie Policy" description="Please review our Cookie Policy" />
 
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm border border-[#0e6537]/20 p-6 mb-6">
-          <h1 className="text-2xl font-bold text-[#0e6537] mb-2">Cookie Policy</h1>
-          <p className="text-gray-600">Please review our Cookie Policy</p>
-        </div>
-
-        {/* Content */}
         <div className="bg-white rounded-lg shadow-sm border border-[#0e6537]/20 p-6">
           <div className="space-y-6">
             <div className="flex items-center gap-2 text-[#0e6537] mb-4">
@@ -108,11 +95,10 @@ export default function CookiesPage() {
           </div>
         </div>
 
-        {/* Last Updated */}
         <div className="mt-6 text-center text-sm text-gray-500">
           Last updated: {new Date().toLocaleDateString()}
         </div>
       </div>
-    </div>
+    </PageLayout>
   )
 } 

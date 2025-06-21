@@ -56,6 +56,19 @@ const config: Config = {
           },
         },
       },
+      height: {
+        'screen-dynamic': '100dvh',
+      },
+      minHeight: {
+        'screen-dynamic': '100dvh',
+      },
+      maxHeight: {
+        'screen-dynamic': '100dvh',
+      },
+      screens: {
+        'xs': '475px',
+        '3xl': '1600px',
+      },
     },
   },
   plugins: [],

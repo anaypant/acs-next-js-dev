@@ -3,10 +3,10 @@ import { ArrowRight, CheckCircle2, Globe } from 'lucide-react';
 import React from 'react';
 
 interface Step1WelcomeProps {
-  setStep: (step: number) => void;
+  onContinue: () => void;
 }
 
-const Step1Welcome: React.FC<Step1WelcomeProps> = ({ setStep }) => (
+const Step1Welcome: React.FC<Step1WelcomeProps> = ({ onContinue }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
@@ -55,7 +55,7 @@ const Step1Welcome: React.FC<Step1WelcomeProps> = ({ setStep }) => (
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        onClick={() => setStep(2)}
+        onClick={onContinue}
         className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg font-semibold flex items-center gap-2"
       >
         Continue Setup

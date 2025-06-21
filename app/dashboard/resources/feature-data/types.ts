@@ -94,6 +94,9 @@ export interface DetailedFeatureData {
       community: string[];
       contactInfo: {
         email: string;
+        phone?: string;
+        chat?: string;
+        responseTime?: string;
       };
     };
   };

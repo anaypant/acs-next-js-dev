@@ -3,24 +3,9 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import type { Session } from 'next-auth';
-import type { SignupProvider } from '@/app/types/auth';
-
-// Types
-export interface Thread {
-  conversation_id: string;
-  associated_account: string;
-  [key: string]: any;
-}
-
-export interface Message {
-  conversation_id: string;
-  [key: string]: any;
-}
-
-export interface Conversation {
-  thread: Thread;
-  messages: Message[];
-}
+import type { SignupProvider } from '@/types/auth';
+import type { Conversation, Thread, Message } from '@/types/conversation';
+import { processThreadsResponse } from '@/lib/utils/api';
 
 interface ConversationsContextType {
   conversations: Conversation[];
@@ -77,9 +62,13 @@ export function ConversationsProvider({ children }: { children: React.ReactNode 
 
       const data = await response.json();
       if (data.success) {
-        setConversations(data.data);
+        // Use centralized processing to ensure consistent Conversation objects
+        const processedConversations = processThreadsResponse(data.data || []);
+        setConversations(processedConversations);
+        
         // Log all conversation IDs after setting
-        const ids = data.data.map((conv: any) => conv.thread?.conversation_id);
+        const ids = processedConversations.map((conv: Conversation) => conv.thread.conversation_id);
+        console.log('Processed conversations:', ids);
         setLastUpdated(new Date());
       } else {
         throw new Error(data.error || 'Failed to fetch conversations');
@@ -197,7 +186,13 @@ export function ConversationsProvider({ children }: { children: React.ReactNode 
   const getConversation = (conversationId: string) => {
     // Log the conversationId being looked up and all available IDs
     const ids = conversations.map(conv => conv.thread.conversation_id);
-    return conversations.find(conv => conv.thread.conversation_id === conversationId);
+    console.log('Looking for conversation:', conversationId);
+    console.log('Available conversation IDs:', ids);
+    
+    const conversation = conversations.find(conv => conv.thread.conversation_id === conversationId);
+    console.log('Found conversation:', conversation ? 'Yes' : 'No');
+    
+    return conversation;
   };
 
   return (

@@ -37,19 +37,19 @@ interface LocationSuggestion {
 }
 
 interface Step2ProfileProps {
-  profileData: ProfileData;
-  setProfileData: (data: ProfileData) => void;
-  handleProfileSubmit: () => void;
+  data: ProfileData;
+  setData: (data: ProfileData) => void;
+  onContinue: () => void;
+  onBack: () => void;
   loading: boolean;
-  setStep: (step: number) => void;
 }
 
 const Step2Profile: React.FC<Step2ProfileProps> = ({
-  profileData,
-  setProfileData,
-  handleProfileSubmit,
+  data,
+  setData,
+  onContinue,
+  onBack,
   loading,
-  setStep,
 }) => {
   const [isAddressDropdownOpen, setIsAddressDropdownOpen] = useState(false);
   const [addressSuggestions, setAddressSuggestions] = useState<LocationSuggestion[]>([]);
@@ -57,8 +57,8 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
 
   const handleInputChange = (field: keyof ProfileData, value: string) => {
-    setProfileData({
-      ...profileData,
+    setData({
+      ...data,
       [field]: value,
     });
   };
@@ -214,8 +214,8 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
   };
 
   const selectAddressSuggestion = (suggestion: LocationSuggestion) => {
-    setProfileData({
-      ...profileData,
+    setData({
+      ...data,
       location: suggestion.city,
       state: suggestion.state,
       country: suggestion.country,
@@ -235,9 +235,9 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
     };
   }, [searchTimeout]);
 
-  const canProceed = profileData.bio.trim().length > 0 && 
-                    profileData.location.trim().length > 0 && 
-                    profileData.country.trim().length > 0;
+  const canProceed = data.bio.trim().length > 0 && 
+                    data.location.trim().length > 0 && 
+                    data.country.trim().length > 0;
 
   return (
     <motion.div
@@ -273,12 +273,12 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
             <textarea
               className="w-full p-3 rounded-lg bg-black/30 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-green-400 transition-all duration-200 resize-none"
               rows={4}
-              value={profileData.bio}
+              value={data.bio}
               onChange={(e) => handleInputChange('bio', e.target.value)}
               placeholder="e.g., 'I'm a real estate agent specializing in luxury homes in downtown Seattle. I help first-time buyers and investors find their perfect property. My focus is on providing personalized service and market expertise to clients looking for homes in the $500K-$2M range.'"
               maxLength={500}
             />
-            <p className="text-xs text-gray-400 mt-1">{profileData.bio.length}/500 characters</p>
+            <p className="text-xs text-gray-400 mt-1">{data.bio.length}/500 characters</p>
           </div>
 
           {/* Location with autocomplete */}
@@ -291,7 +291,7 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
               <input
                 type="text"
                 className="w-full p-3 pr-10 rounded-lg bg-black/30 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-green-400 transition-all duration-200"
-                value={profileData.location}
+                value={data.location}
                 onChange={(e) => handleLocationChange(e.target.value)}
                 placeholder="Start typing your city name..."
                 autoComplete="off"
@@ -319,7 +319,7 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
                       </button>
                     ))}
                   </div>
-                ) : !isLoadingLocations && profileData.location.length > 2 && (
+                ) : !isLoadingLocations && data.location.length > 2 && (
                   <div className="p-3 text-gray-400 text-sm">
                     No locations found. Try a different search term.
                   </div>
@@ -337,7 +337,7 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
               <div className="relative">
                 <select
                   className="w-full p-3 rounded-lg bg-black/30 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-green-400 transition-all duration-200 appearance-none"
-                  value={profileData.state}
+                  value={data.state}
                   onChange={(e) => handleInputChange('state', e.target.value)}
                 >
                   <option value="">Select State</option>
@@ -359,7 +359,7 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
               <div className="relative">
                 <select
                   className="w-full p-3 rounded-lg bg-black/30 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-green-400 transition-all duration-200 appearance-none"
-                  value={profileData.country}
+                  value={data.country}
                   onChange={(e) => handleInputChange('country', e.target.value)}
                 >
                   <option value="">Select Country</option>
@@ -382,7 +382,7 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
             <input
               type="text"
               className="w-full p-3 rounded-lg bg-black/30 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-green-400 transition-all duration-200"
-              value={profileData.zipcode}
+              value={data.zipcode}
               onChange={(e) => handleInputChange('zipcode', e.target.value)}
               placeholder="Enter your zip or postal code"
               maxLength={10}
@@ -405,7 +405,7 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
                 <input
                   type="text"
                   className="w-full p-3 rounded-lg bg-black/30 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-green-400 transition-all duration-200"
-                  value={profileData.company}
+                  value={data.company}
                   onChange={(e) => handleInputChange('company', e.target.value)}
                   placeholder="Your company name"
                 />
@@ -420,7 +420,7 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
                 <input
                   type="text"
                   className="w-full p-3 rounded-lg bg-black/30 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-green-400 transition-all duration-200"
-                  value={profileData.jobTitle}
+                  value={data.jobTitle}
                   onChange={(e) => handleInputChange('jobTitle', e.target.value)}
                   placeholder="Your job title or role"
                 />
@@ -433,7 +433,7 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => setStep(1)}
+            onClick={onBack}
             className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-lg font-semibold transition-colors"
           >
             Back
@@ -442,7 +442,7 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
           <motion.button
             whileHover={{ scale: canProceed ? 1.05 : 1 }}
             whileTap={{ scale: canProceed ? 0.95 : 1 }}
-            onClick={handleProfileSubmit}
+            onClick={onContinue}
             disabled={!canProceed || loading}
             className={`px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition-all duration-200 ${
               canProceed
