@@ -1,4 +1,5 @@
 import { handleApiError } from './errorHandling';
+import { conversationStorage } from '@/lib/storage/ConversationStorage';
 import type { 
   ApiResponse, 
   RequestOptions, 
@@ -19,12 +20,21 @@ export class ApiClient {
   private defaultHeaders: Record<string, string>;
   private cache: Map<string, { data: any; timestamp: number }> = new Map();
   private cacheTTL: number = 5 * 60 * 1000; // 5 minutes
+  private currentUserId: string | null = null;
 
   constructor() {
     this.baseURL = process.env.NEXT_PUBLIC_API_URL || '/api';
     this.defaultHeaders = {
       'Content-Type': 'application/json',
     };
+  }
+
+  /**
+   * Initialize the API client with user ID for storage operations
+   */
+  initialize(userId: string): void {
+    this.currentUserId = userId;
+    conversationStorage.initialize(userId);
   }
 
   async request<T>(
@@ -129,40 +139,159 @@ export class ApiClient {
     }
   }
 
-  // Database operations
+  // Database operations with optimistic updates
   async dbSelect(params: DbSelectParams): Promise<ApiResponse<DbSelectResponse>> {
-    return this.request('db/select', { method: 'POST', body: params });
+    return this.request<DbSelectResponse>('db/select', { method: 'POST', body: params });
   }
 
   async dbUpdate(params: DbUpdateParams): Promise<ApiResponse<DbUpdateResponse>> {
-    return this.request('db/update', { method: 'POST', body: params });
+    // Apply optimistic update for conversation-related updates
+    if (params.table_name === 'Threads' && params.key_name === 'conversation_id') {
+      const conversationId = params.key_value;
+      const updates = params.update_data;
+      
+      // Apply optimistic update to local storage
+      if (this.currentUserId) {
+        conversationStorage.updateConversation(conversationId, {
+          thread: {
+            conversation_id: conversationId,
+            ...updates
+          } as any
+        });
+      }
+    }
+
+    const response = await this.request<DbUpdateResponse>('db/update', { method: 'POST', body: params });
+    
+    // If update failed, we could implement rollback here
+    if (!response.success && this.currentUserId) {
+      console.warn('[ApiClient] Database update failed, optimistic update may be stale');
+    }
+    
+    return response;
   }
 
   async dbDelete(params: DbDeleteParams): Promise<ApiResponse<DbDeleteResponse>> {
-    return this.request('db/delete', { method: 'POST', body: params });
+    // Apply optimistic update for conversation deletion
+    if (params.table_name === 'Threads' && params.attribute_name === 'conversation_id') {
+      const conversationId = params.attribute_value;
+      
+      // Apply optimistic update to local storage
+      if (this.currentUserId) {
+        conversationStorage.removeConversation(conversationId);
+      }
+    }
+
+    const response = await this.request<DbDeleteResponse>('db/delete', { method: 'POST', body: params });
+    
+    // If deletion failed, we could implement rollback here
+    if (!response.success && this.currentUserId) {
+      console.warn('[ApiClient] Database deletion failed, optimistic update may be stale');
+    }
+    
+    return response;
   }
 
-  // LCP operations
+  // LCP operations with storage integration
   async getThreads(filters?: ThreadFilters): Promise<ApiResponse<{ data: any[] }>> {
+    // Check if we have cached data and it's not stale
+    if (this.currentUserId && conversationStorage.hasData() && !conversationStorage.isStale(10)) {
+      const cachedConversations = conversationStorage.getConversations();
+      if (cachedConversations) {
+        console.log('[ApiClient] Using cached conversations data');
+        return {
+          success: true,
+          data: { data: cachedConversations },
+          status: 200
+        };
+      }
+    }
+
     // Ensure we always send a proper request body, even if filters is undefined
     const requestBody = filters || {};
-    return this.request('lcp/get_all_threads', { method: 'POST', body: requestBody });
+    const response = await this.request<{ data: any[] }>('lcp/get_all_threads', { method: 'POST', body: requestBody });
+    
+    // Store successful responses in local storage
+    if (response.success && response.data?.data && this.currentUserId) {
+      conversationStorage.storeConversations(response.data.data);
+    }
+    
+    return response;
   }
 
   async getThreadById(conversationId: string): Promise<ApiResponse<Thread>> {
-    return this.request(`lcp/getThreadById`, { method: 'POST', body: { conversationId } });
+    // Check local storage first
+    if (this.currentUserId) {
+      const cachedConversation = conversationStorage.getConversation(conversationId);
+      if (cachedConversation) {
+        console.log('[ApiClient] Using cached conversation data');
+        return {
+          success: true,
+          data: cachedConversation.thread,
+          status: 200
+        };
+      }
+    }
+
+    return this.request<Thread>(`lcp/getThreadById`, { method: 'POST', body: { conversationId } });
   }
 
   async updateThread(conversationId: string, updates: ThreadUpdate): Promise<ApiResponse<Thread>> {
-    return this.request('lcp/update_thread', { method: 'POST', body: { conversationId, updates } });
+    // Apply optimistic update
+    if (this.currentUserId) {
+      conversationStorage.updateConversation(conversationId, {
+        thread: {
+          conversation_id: conversationId,
+          ...updates
+        } as any
+      });
+    }
+
+    const response = await this.request<Thread>('lcp/update_thread', { method: 'POST', body: { conversationId, updates } });
+    
+    // If update failed, we could implement rollback here
+    if (!response.success && this.currentUserId) {
+      console.warn('[ApiClient] Thread update failed, optimistic update may be stale');
+    }
+    
+    return response;
   }
 
   async deleteThread(conversationId: string): Promise<ApiResponse<void>> {
-    return this.request('lcp/delete_thread', { method: 'POST', body: { conversationId } });
+    // Apply optimistic update
+    if (this.currentUserId) {
+      conversationStorage.removeConversation(conversationId);
+    }
+
+    const response = await this.request<void>('lcp/delete_thread', { method: 'POST', body: { conversationId } });
+    
+    // If deletion failed, we could implement rollback here
+    if (!response.success && this.currentUserId) {
+      console.warn('[ApiClient] Thread deletion failed, optimistic update may be stale');
+    }
+    
+    return response;
   }
 
   async markNotSpam(conversationId: string): Promise<ApiResponse<void>> {
-    return this.request('lcp/mark_not_spam', { method: 'POST', body: { conversationId } });
+    // Apply optimistic update
+    if (this.currentUserId) {
+      conversationStorage.updateConversation(conversationId, {
+        thread: {
+          conversation_id: conversationId,
+          spam: false
+        } as any
+      });
+    }
+
+    const response = await this.request<void>('lcp/mark_not_spam', { method: 'POST', body: { conversationId } });
+    
+    // If update failed, we could implement rollback here
+    if (!response.success && this.currentUserId) {
+      console.warn('[ApiClient] Mark not spam failed, optimistic update may be stale');
+    }
+    
+    return response;
   }
 
   async sendEmail(emailRequest: LCPEmailRequest): Promise<ApiResponse<void>> {
@@ -183,6 +312,11 @@ export class ApiClient {
   }
 
   async logout(): Promise<ApiResponse<void>> {
+    // Clear local storage on logout
+    if (this.currentUserId) {
+      conversationStorage.clear();
+      this.currentUserId = null;
+    }
     return this.request('auth/logout', { method: 'POST' });
   }
 
@@ -233,6 +367,21 @@ export class ApiClient {
   // Remove authentication token
   removeAuthToken(): void {
     delete this.defaultHeaders['Authorization'];
+  }
+
+  // Get storage statistics
+  getStorageStats() {
+    return conversationStorage.getStats();
+  }
+
+  // Force refresh conversations from server
+  async refreshConversations(): Promise<ApiResponse<{ data: any[] }>> {
+    // Clear cache and force fresh fetch
+    this.clearCacheEntry('lcp/get_all_threads');
+    if (this.currentUserId) {
+      conversationStorage.clear();
+    }
+    return this.getThreads();
   }
 }
 

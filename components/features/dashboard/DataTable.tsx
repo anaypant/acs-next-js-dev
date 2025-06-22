@@ -158,7 +158,7 @@ export function DataTable({
 
   if (error) {
     return (
-      <div className={cn("bg-white rounded-lg shadow-sm p-6", className)}>
+      <div className={cn("bg-white rounded-lg shadow-sm p-6 h-full flex items-center justify-center", className)}>
         <div className="text-center">
           <h3 className="text-lg font-semibold text-red-600 mb-2">Error Loading Data</h3>
           <p className="text-gray-600 mb-4">{error}</p>
@@ -176,9 +176,9 @@ export function DataTable({
   }
 
   return (
-    <div className={cn("bg-white rounded-lg shadow-sm", className)}>
+    <div className={cn("bg-white rounded-lg shadow-sm h-full flex flex-col", className)}>
       {/* Header */}
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-6 border-b border-gray-200 flex-shrink-0">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
           <div className="flex items-center space-x-2">
@@ -230,120 +230,129 @@ export function DataTable({
         )}
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('lead_name')}>
-                <div className="flex items-center space-x-1">
-                  <span>Lead</span>
-                  {sortConfig.key === 'lead_name' && (
-                    sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
-                  )}
-                </div>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('client_email')}>
-                <div className="flex items-center space-x-1">
-                  <span>Email</span>
-                  {sortConfig.key === 'client_email' && (
-                    sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
-                  )}
-                </div>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('lastMessage')}>
-                <div className="flex items-center space-x-1">
-                  <span>Last Message</span>
-                  {sortConfig.key === 'lastMessage' && (
-                    sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
-                  )}
-                </div>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Priority
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Messages
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {loading ? (
+      {/* Table Container - Takes remaining height */}
+      <div className="flex-1 min-h-0 flex flex-col">
+        {/* Table Header - Fixed */}
+        <div className="flex-shrink-0">
+          <table className="w-full">
+            <thead className="bg-gray-50">
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center">
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                    <span className="ml-2 text-gray-600">Loading conversations...</span>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('lead_name')}>
+                  <div className="flex items-center space-x-1">
+                    <span>Lead</span>
+                    {sortConfig.key === 'lead_name' && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                    )}
                   </div>
-                </td>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('client_email')}>
+                  <div className="flex items-center space-x-1">
+                    <span>Email</span>
+                    {sortConfig.key === 'client_email' && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                    )}
+                  </div>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('lastMessage')}>
+                  <div className="flex items-center space-x-1">
+                    <span>Last Message</span>
+                    {sortConfig.key === 'lastMessage' && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                    )}
+                  </div>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Priority
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Messages
+                </th>
               </tr>
-            ) : sortedConversations.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                  {emptyMessage}
-                </td>
-              </tr>
-            ) : (
-              sortedConversations.map((conversation) => (
-                <tr
-                  key={conversation.thread.conversation_id}
-                  onClick={() => {
-                    const id = conversation.thread.conversation_id;
-                    if (id) handleRowClick(id);
-                  }}
-                  className="hover:bg-gray-50 cursor-pointer transition-colors"
-                >
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {conversation.thread.lead_name || 'Unknown Lead'}
-                      </div>
-                      {conversation.thread.location && (
-                        <div className="text-sm text-gray-500">{conversation.thread.location}</div>
-                      )}
+            </thead>
+          </table>
+        </div>
+
+        {/* Table Body - Scrollable */}
+        <div className="flex-1 overflow-y-auto">
+          <table className="w-full">
+            <tbody className="bg-white divide-y divide-gray-200">
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      <span className="ml-2 text-gray-600">Loading conversations...</span>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {conversation.thread.client_email || 'No email'}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {getLastMessageTime(conversation)}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={cn(
-                      "inline-flex px-2 py-1 text-xs font-semibold rounded-full",
-                      getStatusColor(getStatusText(conversation))
-                    )}>
-                      {getStatusText(conversation)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={cn(
-                      "inline-flex px-2 py-1 text-xs font-semibold rounded-full",
-                      getPriorityColor(conversation.thread.priority)
-                    )}>
-                      {conversation.thread.priority}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {conversation.messages.length}
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : sortedConversations.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                    {emptyMessage}
+                  </td>
+                </tr>
+              ) : (
+                sortedConversations.map((conversation) => (
+                  <tr
+                    key={conversation.thread.conversation_id}
+                    onClick={() => {
+                      const id = conversation.thread.conversation_id;
+                      if (id) handleRowClick(id);
+                    }}
+                    className="hover:bg-gray-50 cursor-pointer transition-colors"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {conversation.thread.lead_name || 'Unknown Lead'}
+                        </div>
+                        {conversation.thread.location && (
+                          <div className="text-sm text-gray-500">{conversation.thread.location}</div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {conversation.thread.client_email || 'No email'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {getLastMessageTime(conversation)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={cn(
+                        "inline-flex px-2 py-1 text-xs font-semibold rounded-full",
+                        getStatusColor(getStatusText(conversation))
+                      )}>
+                        {getStatusText(conversation)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={cn(
+                        "inline-flex px-2 py-1 text-xs font-semibold rounded-full",
+                        getPriorityColor(conversation.thread.priority || 'low')
+                      )}>
+                        {conversation.thread.priority || 'low'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {conversation.messages.length}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Footer */}
-      <div className="px-6 py-3 border-t border-gray-200">
+      <div className="px-6 py-3 border-t border-gray-200 flex-shrink-0">
         <div className="flex items-center justify-between text-sm text-gray-500">
           <span>Showing {sortedConversations.length} of {conversations.length} conversations</span>
           {loading && <span>Refreshing...</span>}

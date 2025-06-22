@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { useConversationById } from "@/lib/utils/api"
+import type { Session } from "next-auth"
+import { useOptimisticConversations } from "@/hooks/useOptimisticConversations"
 import type { Conversation } from "@/types/conversation"
 
 // Temporary state type, will be removed.
@@ -15,15 +16,24 @@ interface ColumnState {
  */
 export function useConversationDetail() {
   const params = useParams();
-  const { data: session } = useSession();
+  const { data: session } = useSession() as { 
+    data: (Session & { user: { id: string; email?: string } }) | null; 
+    status: 'loading' | 'authenticated' | 'unauthenticated';
+  };
   const conversationId = params?.id as string;
 
-  // Centralized data fetching
+  // Use the new optimistic conversations hook
   const { 
-    conversation, 
+    conversations, 
     loading: isLoading, 
     error: conversationError
-  } = useConversationById(conversationId);
+  } = useOptimisticConversations({
+    autoRefresh: true,
+    checkNewEmails: true
+  });
+
+  // Get the specific conversation from the optimistic system
+  const conversation = conversations.find(conv => conv.thread.conversation_id === conversationId);
 
   // UI State
   const [messageInput, setMessageInput] = useState('');

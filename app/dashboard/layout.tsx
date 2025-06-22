@@ -10,6 +10,7 @@
 
 import AuthGuard from '@/components/features/auth/AuthGuard';
 import DashboardLayout from '@/components/common/Layout/DashboardLayout';
+import { ConversationsProvider } from './lib/conversations-context';
 import React from 'react';
 
 export default function ProtectedDashboardLayout({
@@ -19,7 +20,9 @@ export default function ProtectedDashboardLayout({
 }) {
   return (
     <AuthGuard>
-      <DashboardLayout>{children}</DashboardLayout>
+      <ConversationsProvider>
+        <DashboardLayout>{children}</DashboardLayout>
+      </ConversationsProvider>
     </AuthGuard>
   );
 } 

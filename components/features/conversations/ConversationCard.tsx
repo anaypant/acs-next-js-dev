@@ -3,7 +3,7 @@
  * Purpose: Consolidated conversation card component for displaying conversations across the application
  * Author: AI Assistant
  * Date: 2024-12-19
- * Version: 2.0.0 - Consolidated from multiple duplicate components
+ * Version: 2.1.0 - Updated to use optimistic conversations system
  */
 
 import React, { useState, useEffect } from 'react';
@@ -25,20 +25,15 @@ import {
   getConversationTitle, 
   getLatestEvaluableMessage 
 } from '@/lib/utils/conversation';
+import { useOptimisticConversations } from '@/hooks/useOptimisticConversations';
 import type { Conversation } from '@/types/conversation';
 
 // Props interface for the consolidated component
 interface ConversationCardProps {
   conversation: Conversation;
-  isUpdating?: boolean;
-  updatingRead?: string | null;
-  updatingLcp?: string | null;
-  deletingThread?: string | null;
-  onMarkAsRead?: (conversationId: string) => void;
-  onLcpToggle?: (conversationId: string, currentStatus: boolean) => void;
-  onDeleteThread?: (conversationId: string, conversationName: string) => void;
   variant?: 'simple' | 'detailed';
   showActions?: boolean;
+  // Remove the old callback props since we'll use the optimistic hook
 }
 
 // Color palette for conversation avatars
@@ -83,27 +78,31 @@ const getEvScoreColor = (score: number) => {
 
 export function ConversationCard({ 
   conversation, 
-  isUpdating = false,
-  updatingRead = null,
-  updatingLcp = null,
-  deletingThread = null,
-  onMarkAsRead,
-  onLcpToggle,
-  onDeleteThread,
   variant = 'detailed',
   showActions = true
 }: ConversationCardProps) {
   const router = useRouter();
   const { thread, messages } = conversation;
 
-  // Local state for LCP status
+  // Use the optimistic conversations hook for actions
+  const { 
+    markAsRead, 
+    toggleLcp, 
+    deleteConversation 
+  } = useOptimisticConversations();
+
+  // Local state for optimistic updates
   const [localLcpEnabled, setLocalLcpEnabled] = useState(thread.lcp_enabled || false);
+  const [localRead, setLocalRead] = useState(thread.read || false);
   const [isUpdatingLcp, setIsUpdatingLcp] = useState(false);
+  const [isUpdatingRead, setIsUpdatingRead] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Update local state when prop changes
   useEffect(() => {
     setLocalLcpEnabled(thread.lcp_enabled || false);
-  }, [thread.lcp_enabled]);
+    setLocalRead(thread.read || false);
+  }, [thread.lcp_enabled, thread.read]);
 
   // Get the most recent message using centralized utility
   const mostRecentMessage = getMostRecentMessage(conversation);
@@ -113,7 +112,7 @@ export function ConversationCard({
   const subject = mostRecentMessage?.subject || 'No subject';
   const lastMessageTime = mostRecentMessage?.timestamp ? formatLocalTime(mostRecentMessage.timestamp) : null;
   const messageCount = messages.length;
-  const isUnread = !thread.read;
+  const isUnread = !localRead;
   const isFlagged = thread.flag;
   const isFlaggedForReview = thread.flag_for_review;
   const isPendingReply = mostRecentMessage?.type === 'inbound-email';
@@ -128,9 +127,19 @@ export function ConversationCard({
   const score = typeof ev_score === 'number' && !isNaN(ev_score) ? ev_score : -1;
   const evColorStyle = score >= 0 ? getEvScoreColor(score) : { backgroundColor: '#e5e7eb', color: '#374151' };
 
-  const handleClick = () => {
-    if (onMarkAsRead && isUnread) {
-      onMarkAsRead(thread.conversation_id);
+  const handleClick = async () => {
+    if (isUnread) {
+      setIsUpdatingRead(true);
+      try {
+        const success = await markAsRead(thread.conversation_id);
+        if (success) {
+          setLocalRead(true);
+        }
+      } catch (error) {
+        console.error('Error marking as read:', error);
+      } finally {
+        setIsUpdatingRead(false);
+      }
     } else {
       router.push(`/dashboard/conversations/${thread.conversation_id}`);
     }
@@ -138,13 +147,20 @@ export function ConversationCard({
 
   const handleLcpToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isUpdatingLcp || !onLcpToggle) return;
+    if (isUpdatingLcp) return;
 
     setIsUpdatingLcp(true);
     try {
+      // Optimistically update local state
       setLocalLcpEnabled(!localLcpEnabled);
-      await onLcpToggle(thread.conversation_id, localLcpEnabled);
+      
+      const success = await toggleLcp(thread.conversation_id);
+      if (!success) {
+        // Rollback on failure
+        setLocalLcpEnabled(localLcpEnabled);
+      }
     } catch (error) {
+      // Rollback on error
       setLocalLcpEnabled(localLcpEnabled);
       console.error('Error toggling LCP:', error);
     } finally {
@@ -152,10 +168,22 @@ export function ConversationCard({
     }
   };
 
-  const handleDelete = (e: React.MouseEvent) => {
+  const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (onDeleteThread) {
-      onDeleteThread(thread.conversation_id, conversationName);
+    if (isDeleting) return;
+
+    if (confirm(`Are you sure you want to delete the conversation "${conversationName}"?`)) {
+      setIsDeleting(true);
+      try {
+        const success = await deleteConversation(thread.conversation_id);
+        if (!success) {
+          console.error('Failed to delete conversation');
+        }
+      } catch (error) {
+        console.error('Error deleting conversation:', error);
+      } finally {
+        setIsDeleting(false);
+      }
     }
   };
 
@@ -163,7 +191,7 @@ export function ConversationCard({
     return (
       <div
         className={`relative p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors ${
-          isUpdating ? 'opacity-50 pointer-events-none' : ''
+          isUpdatingRead || isUpdatingLcp || isDeleting ? 'opacity-50 pointer-events-none' : ''
         } ${isFlagged ? 'border-green-200 bg-green-50' : isFlaggedForReview ? 'border-yellow-200 bg-yellow-50' : 'border-gray-200'}`}
         onClick={handleClick}
       >
@@ -244,7 +272,7 @@ export function ConversationCard({
   return (
     <div
       className={`flex flex-col sm:flex-row items-stretch gap-2 sm:gap-3 md:gap-4 p-2 sm:p-3 md:p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors relative ${
-        isUpdating ? 'opacity-50 pointer-events-none' : ''
+        isUpdatingRead || isUpdatingLcp || isDeleting ? 'opacity-50 pointer-events-none' : ''
       } ${
         isFlagged
           ? 'flagged-completion'
@@ -272,21 +300,21 @@ export function ConversationCard({
 
       {/* Avatar and Status Column */}
       <div className="flex flex-row sm:flex-col items-center justify-start gap-2 sm:gap-0 sm:w-10 md:w-12 pt-1">
-        {isUnread && !updatingRead && (
+        {isUnread && !isUpdatingRead && (
           <button
             className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 bg-red-100 text-red-800 text-xs rounded-full font-semibold shadow-md z-10 hover:bg-red-200 transition-colors cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
-              if (onMarkAsRead) onMarkAsRead(thread.conversation_id);
+              handleClick();
             }}
-            disabled={updatingRead === thread.conversation_id}
+            disabled={isUpdatingRead}
           >
             <Bell className="w-3 h-3" />
             <span className="hidden sm:inline">Mark as Read</span>
             <span className="sm:hidden">Read</span>
           </button>
         )}
-        {updatingRead === thread.conversation_id && (
+        {isUpdatingRead && (
           <div className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 bg-gray-100 text-gray-600 text-xs rounded-full font-semibold">
             <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
             <span className="hidden sm:inline">Updating...</span>
@@ -365,10 +393,10 @@ export function ConversationCard({
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
             onClick={handleLcpToggle}
-            disabled={isUpdatingLcp || updatingLcp === thread.conversation_id}
+            disabled={isUpdatingLcp}
             title={localLcpEnabled ? 'Disable LCP' : 'Enable LCP'}
           >
-            {isUpdatingLcp || updatingLcp === thread.conversation_id ? (
+            {isUpdatingLcp ? (
               <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
             ) : localLcpEnabled ? (
               <Shield className="w-4 h-4" />
@@ -378,20 +406,18 @@ export function ConversationCard({
           </button>
 
           {/* Delete Button */}
-          {onDeleteThread && (
-            <button
-              className="p-2 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
-              onClick={handleDelete}
-              disabled={deletingThread === thread.conversation_id}
-              title="Delete conversation"
-            >
-              {deletingThread === thread.conversation_id ? (
-                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Trash2 className="w-4 h-4" />
-              )}
-            </button>
-          )}
+          <button
+            className="p-2 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+            onClick={handleDelete}
+            disabled={isDeleting}
+            title="Delete conversation"
+          >
+            {isDeleting ? (
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Trash2 className="w-4 h-4" />
+            )}
+          </button>
         </div>
       )}
     </div>

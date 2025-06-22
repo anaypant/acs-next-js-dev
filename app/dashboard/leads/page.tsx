@@ -27,11 +27,14 @@ function LeadsContent() {
   const router = useRouter();
   const { 
     conversations, 
-    metrics, 
+    data,
     loading, 
     error, 
     refetch 
   } = useLeadsData();
+
+  // Use the full dashboard metrics instead of filtered metrics
+  const metrics = data?.metrics;
 
   if (loading) {
     return (
@@ -59,9 +62,9 @@ function LeadsContent() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col h-full space-y-6 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-shrink-0">
         <div className="flex items-center space-x-4">
           <button
             onClick={() => router.back()}
@@ -77,7 +80,7 @@ function LeadsContent() {
       </div>
 
       {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 flex-shrink-0">
         <LeadsMetricCard 
           value={metrics.totalLeads} 
           trend={metrics.monthlyGrowth}
@@ -101,23 +104,31 @@ function LeadsContent() {
       </div>
 
       {/* Leads Table */}
-      <DataTable
-        conversations={conversations}
-        loading={loading}
-        error={error}
-        onRefresh={refetch}
-        title="All Leads"
-        emptyMessage="No leads found"
-        showFilters={true}
-        showSearch={true}
-      />
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <DataTable
+          conversations={conversations}
+          loading={loading}
+          error={error}
+          onRefresh={refetch}
+          title="All Leads"
+          emptyMessage="No leads found"
+          showFilters={true}
+          showSearch={true}
+        />
+      </div>
     </div>
   );
 }
 
 export default function LeadsPage() {
   return (
-    <PageLayout title="Leads" showNavbar={false}>
+    <PageLayout 
+      title="Leads" 
+      showNavbar={false} 
+      fullHeight={true}
+      maxWidth="full"
+      padding="lg"
+    >
       <ErrorBoundary fallback={
         <div className="flex items-center justify-center h-full">
           <div className="text-center">

@@ -115,7 +115,7 @@ export default function DashboardPage() {
  * 
  * 5/26/25 - Version 1.1.0
  * - Extracted components: DeleteConfirmationModal, DashboardStyles, ConversationCard
- * - Extracted hooks: useConversations, useDashboardMetrics
+ * - Extracted hooks: useOptimisticConversations, useDashboardMetrics
  * - Simplified Page component to act as a container
  * - Centralized type definitions
  * 

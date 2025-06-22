@@ -1,46 +1,6 @@
 import type { Conversation, Message } from '@/types/conversation';
 import type { AnalyticsData, EVDataPoint, AnalyticsFilters } from '@/types/analytics';
-
-/**
- * Calculates average EV score by message number across all conversations
- */
-export function calculateAverageEVByMessage(conversations: Conversation[]): EVDataPoint[] {
-  const messageEVMap = new Map<number, { totalEV: number; count: number; conversationCount: number }>();
-  
-  conversations.forEach(conversation => {
-    const sortedMessages = [...conversation.messages].sort((a, b) => 
-      a.localDate.getTime() - b.localDate.getTime()
-    );
-    
-    sortedMessages.forEach((message, index) => {
-      const messageNumber = index + 1;
-      const evScore = message.ev_score;
-      
-      if (evScore !== null && evScore !== undefined && !isNaN(evScore)) {
-        const current = messageEVMap.get(messageNumber) || { 
-          totalEV: 0, 
-          count: 0, 
-          conversationCount: 0 
-        };
-        
-        messageEVMap.set(messageNumber, {
-          totalEV: current.totalEV + evScore,
-          count: current.count + 1,
-          conversationCount: current.conversationCount + 1
-        });
-      }
-    });
-  });
-  
-  return Array.from(messageEVMap.entries())
-    .map(([messageNumber, data]) => ({
-      messageNumber,
-      averageEV: data.count > 0 ? data.totalEV / data.count : 0,
-      totalMessages: data.count,
-      conversationCount: data.conversationCount
-    }))
-    .sort((a, b) => a.messageNumber - b.messageNumber);
-}
+import { compareDates } from '@/lib/utils/date';
 
 /**
  * Filters conversations based on analytics filters
@@ -170,4 +130,43 @@ export function generateMockAnalyticsData(filters: AnalyticsFilters): AnalyticsD
     dateRange: filters.dateRange,
     lastUpdated: new Date().toISOString()
   };
+}
+
+/**
+ * Calculates average EV score by message number across all conversations
+ */
+export function calculateAverageEVByMessage(conversations: Conversation[]): EVDataPoint[] {
+  const messageEVMap = new Map<number, { totalEV: number; count: number; conversationCount: number }>();
+  
+  conversations.forEach(conversation => {
+    const sortedMessages = [...conversation.messages].sort((a, b) => compareDates(a.localDate, b.localDate, true));
+    
+    sortedMessages.forEach((message, index) => {
+      const messageNumber = index + 1;
+      const evScore = message.ev_score;
+      
+      if (evScore !== null && evScore !== undefined && !isNaN(evScore)) {
+        const current = messageEVMap.get(messageNumber) || { 
+          totalEV: 0, 
+          count: 0, 
+          conversationCount: 0 
+        };
+        
+        messageEVMap.set(messageNumber, {
+          totalEV: current.totalEV + evScore,
+          count: current.count + 1,
+          conversationCount: current.conversationCount + 1
+        });
+      }
+    });
+  });
+  
+  return Array.from(messageEVMap.entries())
+    .map(([messageNumber, data]) => ({
+      messageNumber,
+      averageEV: data.count > 0 ? data.totalEV / data.count : 0,
+      totalMessages: data.count,
+      conversationCount: data.conversationCount
+    }))
+    .sort((a, b) => a.messageNumber - b.messageNumber);
 } 

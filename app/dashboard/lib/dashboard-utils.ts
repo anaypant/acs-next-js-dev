@@ -18,6 +18,7 @@ import {
   getLatestEvaluableMessage as getLatestEvaluableMessageUtil
 } from '@/lib/utils/conversation';
 import { processThreadsResponse } from '@/lib/utils/api';
+import { ensureLocalDate, compareDates, getSafeTime } from '@/lib/utils/date';
 
 // Define local types for dashboard functionality
 export interface ThreadMetrics {
@@ -26,11 +27,11 @@ export interface ThreadMetrics {
     unopenedLeads: number;
 }
 
-export type TimeRange = 'today' | 'week' | 'month' | 'quarter' | 'year' | 'all';
-
 export interface MessageWithResponseId extends Message {
     response_id: string;
 }
+
+export type TimeRange = 'today' | 'week' | 'month' | 'quarter' | 'year' | 'all';
 
 export interface LeadPerformanceData {
     threadId: string;
@@ -103,12 +104,7 @@ export const getLatestEvaluableMessage = (messages: Message[]): MessageWithRespo
     if (!messages?.length) return undefined;
     return messages
         .filter((msg): msg is MessageWithResponseId => Boolean(msg.response_id))
-        .sort((a, b) => {
-            // Use the centralized sorting utility
-            const timeA = a.localDate.getTime();
-            const timeB = b.localDate.getTime();
-            return timeB - timeA;
-        })[0];
+        .sort((a, b) => compareDates(a.localDate, b.localDate, false))[0];
 };
 
 export const calculateMetrics = (conversations: any[], timeRange: TimeRange): ThreadMetrics => {
@@ -130,9 +126,12 @@ export const calculateMetrics = (conversations: any[], timeRange: TimeRange): Th
         if (!thread.read) metrics.unopenedLeads++;
         if (latestMessage?.type === 'inbound-email') metrics.pendingReplies++;
         
-        // localDate is guaranteed to be a valid Date object from processThreadsResponse
-        if (latestMessage && latestMessage.localDate >= startDate) {
-            metrics.newLeads++;
+        // Ensure localDate is a valid Date object
+        if (latestMessage) {
+            const messageDate = ensureLocalDate(latestMessage.localDate);
+            if (messageDate >= startDate) {
+                metrics.newLeads++;
+            }
         }
 
         return metrics;
@@ -166,8 +165,9 @@ export const processThreadData = (rawData: any[], timeRange: TimeRange) => {
         const aLatest = getMostRecentMessage(a);
         const bLatest = getMostRecentMessage(b);
         
-        const aTime = aLatest?.localDate.getTime() || 0;
-        const bTime = bLatest?.localDate.getTime() || 0;
+        // Ensure localDate is a valid Date object
+        const aTime = aLatest ? getSafeTime(aLatest.localDate) : 0;
+        const bTime = bLatest ? getSafeTime(bLatest.localDate) : 0;
         
         return bTime - aTime;
     });

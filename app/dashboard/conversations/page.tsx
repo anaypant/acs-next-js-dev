@@ -1,49 +1,52 @@
 /**
  * File: app/dashboard/conversations/page.tsx
- * Purpose: Conversations management page with centralized data processing and modular components
+ * Purpose: Enhanced conversations management page with compact layout and modal metrics
  * Author: AI Assistant
  * Date: 2024-12-19
- * Version: 2.0.0
+ * Version: 4.0.0
  */
 
 "use client"
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useState } from 'react';
 import { ErrorBoundary } from '@/components/common/Feedback/ErrorBoundary';
 import { LoadingSpinner } from '@/components/common/Feedback/LoadingSpinner';
 import { PageLayout } from '@/components/common/Layout/PageLayout';
 import { useConversationsData } from '@/hooks/useCentralizedDashboardData';
-import { DataTable } from '@/components/features/dashboard/DataTable';
 import { 
-  ConversationsMetricCard, 
-  ConversionMetricCard, 
-  ResponseTimeMetricCard,
-  GrowthMetricCard 
-} from '@/components/features/dashboard/MetricsCard';
-import { ArrowLeft } from "lucide-react";
+  EnhancedConversationsTable,
+  ConversationMetricsModal,
+  CompactStatsSummary
+} from '@/components/features/conversations';
+import { ArrowLeft, Settings } from "lucide-react";
 import { useRouter } from 'next/navigation';
 
 function ConversationsContent() {
   const router = useRouter();
+  const [showMetricsModal, setShowMetricsModal] = useState(false);
+  
   const { 
     conversations, 
-    metrics, 
+    data,
     loading, 
     error, 
     refetch 
-  } = useConversationsData();
+  } = useConversationsData({
+    autoRefresh: true,
+    refreshInterval: 30000 // 30 seconds
+  });
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-full min-h-[400px]">
         <LoadingSpinner size="lg" text="Loading conversations..." />
       </div>
     );
   }
 
-  if (error || !metrics) {
+  if (error || !conversations) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-full min-h-[400px]">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-red-600 mb-4">Error Loading Conversations</h2>
           <p className="text-gray-600 mb-4">{error || 'An unexpected error occurred.'}</p>
@@ -59,57 +62,52 @@ function ConversationsContent() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={() => router.back()}
-            className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Active Conversations</h1>
-            <p className="text-gray-600">Manage ongoing conversations and responses</p>
+    <div className="h-full flex flex-col">
+      {/* Compact Header with Stats */}
+      <div className="flex-shrink-0 p-6 border-b border-gray-200 bg-white">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => router.back()}
+              className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Conversations Management</h1>
+              <p className="text-gray-600">Manage all conversations, filter pending emails, and track EV scores</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button className="p-2 text-gray-500 hover:text-gray-700 transition-colors">
+              <Settings className="w-5 h-5" />
+            </button>
           </div>
         </div>
-      </div>
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <ConversationsMetricCard 
-          value={metrics.activeConversations} 
-          trend={metrics.monthlyGrowth}
-          trendLabel="last month"
-        />
-        <ConversionMetricCard 
-          value={metrics.conversionRate} 
-          trend={metrics.monthlyGrowth}
-          trendLabel="last month"
-        />
-        <ResponseTimeMetricCard 
-          value={metrics.averageResponseTime} 
-          trend={-5}
-          trendLabel="last week"
-        />
-        <GrowthMetricCard 
-          value={metrics.monthlyGrowth} 
-          trend={metrics.monthlyGrowth}
-          trendLabel="last month"
+        {/* Compact Stats Summary */}
+        <CompactStatsSummary 
+          conversations={conversations}
+          onShowMetrics={() => setShowMetricsModal(true)}
         />
       </div>
 
-      {/* Conversations Table */}
-      <DataTable
+      {/* Enhanced Conversations Table - Takes remaining height */}
+      <div className="flex-1 min-h-0 p-6">
+        <EnhancedConversationsTable
+          conversations={conversations}
+          loading={loading}
+          error={error}
+          onRefresh={refetch}
+          className="h-full"
+        />
+      </div>
+
+      {/* Metrics Modal */}
+      <ConversationMetricsModal
         conversations={conversations}
-        loading={loading}
-        error={error}
-        onRefresh={refetch}
-        title="Active Conversations"
-        emptyMessage="No active conversations found"
-        showFilters={true}
-        showSearch={true}
+        isOpen={showMetricsModal}
+        onClose={() => setShowMetricsModal(false)}
       />
     </div>
   );
@@ -117,9 +115,14 @@ function ConversationsContent() {
 
 export default function ConversationsPage() {
   return (
-    <PageLayout title="Conversations" showNavbar={false}>
+    <PageLayout 
+      showNavbar={false}
+      maxWidth="full"
+      padding="none"
+      fullHeight={true}
+    >
       <ErrorBoundary fallback={
-        <div className="flex items-center justify-center h-full">
+        <div className="flex items-center justify-center h-full min-h-[400px]">
           <div className="text-center">
             <h2 className="text-2xl font-bold text-red-600 mb-4">Conversations Error</h2>
             <p className="text-gray-600 mb-4">Something went wrong with the conversations page.</p>
@@ -132,7 +135,11 @@ export default function ConversationsPage() {
           </div>
         </div>
       }>
-        <Suspense fallback={<LoadingSpinner size="lg" text="Loading conversations..." />}>
+        <Suspense fallback={
+          <div className="flex items-center justify-center h-full min-h-[400px]">
+            <LoadingSpinner size="lg" text="Loading conversations..." />
+          </div>
+        }>
           <ConversationsContent />
         </Suspense>
       </ErrorBoundary>

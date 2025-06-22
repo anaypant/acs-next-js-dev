@@ -27,12 +27,15 @@ function AnalyticsContent() {
   const router = useRouter();
   const { 
     conversations, 
-    metrics, 
+    data,
     analytics,
     loading, 
     error, 
     refetch 
   } = useAnalyticsData();
+
+  // Use the full dashboard metrics instead of filtered metrics
+  const metrics = data?.metrics;
 
   if (loading) {
     return (
@@ -60,9 +63,9 @@ function AnalyticsContent() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col h-full space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-shrink-0">
         <div className="flex items-center space-x-4">
           <button
             onClick={() => router.back()}
@@ -78,7 +81,7 @@ function AnalyticsContent() {
       </div>
 
       {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 flex-shrink-0">
         <LeadsMetricCard 
           value={metrics.totalLeads} 
           trend={metrics.monthlyGrowth}
@@ -103,7 +106,7 @@ function AnalyticsContent() {
 
       {/* Analytics Charts Section */}
       {analytics && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-shrink-0">
           {/* Conversation Trend Chart */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Conversation Trend</h3>
@@ -139,23 +142,25 @@ function AnalyticsContent() {
       )}
 
       {/* Conversations Table */}
-      <DataTable
-        conversations={conversations}
-        loading={loading}
-        error={error}
-        onRefresh={refetch}
-        title="All Conversations"
-        emptyMessage="No conversations found"
-        showFilters={true}
-        showSearch={true}
-      />
+      <div className="flex-1 min-h-0">
+        <DataTable
+          conversations={conversations}
+          loading={loading}
+          error={error}
+          onRefresh={refetch}
+          title="All Conversations"
+          emptyMessage="No conversations found"
+          showFilters={true}
+          showSearch={true}
+        />
+      </div>
     </div>
   );
 }
 
 export default function AnalyticsPage() {
   return (
-    <PageLayout title="Analytics" showNavbar={false}>
+    <PageLayout title="Analytics" showNavbar={false} fullHeight={true}>
       <ErrorBoundary fallback={
         <div className="flex items-center justify-center h-full">
           <div className="text-center">

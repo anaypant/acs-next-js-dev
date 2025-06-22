@@ -3,12 +3,12 @@
  * Purpose: Centralized hook for fetching and processing dashboard data used across all sections
  * Author: AI Assistant
  * Date: 2024-12-19
- * Version: 2.0.0
+ * Version: 2.1.0
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiClient } from '@/lib/api/client';
-import { processThreadsResponse } from '@/lib/utils/api';
+import { useOptimisticConversations } from '@/hooks/useOptimisticConversations';
 import { 
   calculateDashboardMetrics, 
   generateAnalytics, 
@@ -41,59 +41,57 @@ export function useCentralizedDashboardData(options: UseCentralizedDashboardData
     refreshInterval = 30000
   } = options;
 
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [usageData, setUsageData] = useState<DashboardUsage | null>(null);
+  const [usageLoading, setUsageLoading] = useState(false);
+  const [usageError, setUsageError] = useState<string | null>(null);
 
-  const fetchDashboardData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  // Use the new optimistic conversations hook
+  const {
+    conversations,
+    loading: conversationsLoading,
+    error: conversationsError,
+    lastUpdated,
+    refresh: refreshConversations,
+    storageStats
+  } = useOptimisticConversations({
+    autoRefresh,
+    refreshInterval,
+    checkNewEmails: true,
+    newEmailCheckInterval: 5 * 60 * 1000 // 5 minutes
+  });
+
+  // Fetch usage stats
+  const fetchUsageStats = useCallback(async () => {
+    setUsageLoading(true);
+    setUsageError(null);
 
     try {
-      const [conversationsResponse, usageStatsResponse] = await Promise.all([
-        apiClient.getThreads(),
-        apiClient.request('usage/stats')
-      ]);
-
-      if (conversationsResponse.success) {
-        const conversations: Conversation[] = processThreadsResponse(conversationsResponse.data?.data || []);
-        
-        const usageData = usageStatsResponse.success ? usageStatsResponse.data as DashboardUsage : {
-          emailsSent: 0,
-          logins: 0,
-          activeDays: 0,
-        };
-
-        const dashboardData: DashboardData = {
-          metrics: calculateDashboardMetrics(conversations, usageData),
-          conversations: conversations,
-          analytics: generateAnalytics(conversations),
-          recentActivity: [],
-          usage: usageData,
-        };
-
-        setData(dashboardData);
-        setLastUpdated(new Date());
+      const response = await apiClient.getUsageStats();
+      
+      if (response.success) {
+        setUsageData(response.data as DashboardUsage);
       } else {
-        const errorMessage = `Failed to load conversations: ${conversationsResponse.error}`;
-        console.error('[useCentralizedDashboardData] Error:', errorMessage);
-        setError(errorMessage);
+        setUsageError(response.error || 'Failed to fetch usage stats');
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred while loading dashboard data';
-      console.error('[useCentralizedDashboardData] Unexpected error:', err);
-      setError(errorMessage);
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred while loading usage stats';
+      setUsageError(errorMessage);
+      console.error('[useCentralizedDashboardData] Error loading usage stats:', err);
     } finally {
-      setLoading(false);
+      setUsageLoading(false);
     }
   }, []);
 
+  // Load usage stats on mount
+  useEffect(() => {
+    fetchUsageStats();
+  }, [fetchUsageStats]);
+
   // Filter and sort conversations based on options
   const processedConversations = useMemo(() => {
-    if (!data?.conversations) return [];
+    if (!conversations) return [];
 
-    let filtered = data.conversations;
+    let filtered = conversations;
 
     // Apply date range filter
     if (dateRange?.startDate && dateRange?.endDate) {
@@ -135,66 +133,69 @@ export function useCentralizedDashboardData(options: UseCentralizedDashboardData
 
     // Apply sorting
     return sortConversations(filtered, sortBy, sortOrder);
-  }, [data?.conversations, dateRange, statusFilter, searchQuery, sortBy, sortOrder]);
+  }, [conversations, dateRange, statusFilter, searchQuery, sortBy, sortOrder]);
 
   // Calculate filtered metrics
   const filteredMetrics = useMemo(() => {
-    if (!data?.metrics) return null;
+    if (!conversations) return null;
     
     const totalFiltered = processedConversations.length;
     const completedFiltered = processedConversations.filter(c => c.thread.completed).length;
     const conversionRate = totalFiltered > 0 ? Math.round((completedFiltered / totalFiltered) * 100) : 0;
 
     return {
-      ...data.metrics,
       totalConversations: totalFiltered,
       activeConversations: processedConversations.filter(c => !c.thread.completed).length,
       totalLeads: totalFiltered,
       conversionRate,
     };
-  }, [data?.metrics, processedConversations]);
+  }, [conversations, processedConversations]);
 
   // Calculate usage stats
   const usageStats = useMemo(() => {
-    if (!data?.usage) return null;
-    return calculateUsageStats(data.usage);
-  }, [data?.usage]);
+    if (!usageData) return null;
+    return calculateUsageStats(usageData);
+  }, [usageData]);
 
-  // Auto-refresh functionality
-  useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
+  // Combine data into dashboard format
+  const dashboardData = useMemo(() => {
+    if (!conversations || !usageData) return null;
 
-  useEffect(() => {
-    if (!autoRefresh) return;
-
-    const interval = setInterval(() => {
-      fetchDashboardData();
-    }, refreshInterval);
-
-    return () => clearInterval(interval);
-  }, [autoRefresh, refreshInterval, fetchDashboardData]);
+    return {
+      metrics: calculateDashboardMetrics(conversations, usageData),
+      conversations: conversations,
+      analytics: generateAnalytics(conversations),
+      recentActivity: [],
+      usage: usageData,
+    } as DashboardData;
+  }, [conversations, usageData]);
 
   const refetch = useCallback(async () => {
-    await fetchDashboardData();
-  }, [fetchDashboardData]);
+    await Promise.all([
+      refreshConversations(),
+      fetchUsageStats()
+    ]);
+  }, [refreshConversations, fetchUsageStats]);
 
   return {
     // Raw data
-    data,
-    loading,
-    error,
+    data: dashboardData,
+    loading: conversationsLoading || usageLoading,
+    error: conversationsError || usageError,
     lastUpdated,
     
     // Processed data
     conversations: processedConversations,
     metrics: filteredMetrics,
-    analytics: data?.analytics,
-    usage: data?.usage,
+    analytics: dashboardData?.analytics,
+    usage: usageData,
     usageStats,
     
     // Actions
     refetch,
+    
+    // Storage info
+    storageStats,
     
     // Helper functions
     getConversationsByStatus: () => groupConversationsByStatus(processedConversations),
@@ -254,7 +255,13 @@ export function useJunkData(options: Omit<UseCentralizedDashboardDataOptions, 's
 export function useEmailData(options: Omit<UseCentralizedDashboardDataOptions, 'statusFilter'> = {}) {
   return useCentralizedDashboardData({
     ...options,
-    statusFilter: 'all',
-    sortBy: 'date',
+    statusFilter: 'all'
+  });
+}
+
+export function useContactsData(options: Omit<UseCentralizedDashboardDataOptions, 'statusFilter'> = {}) {
+  return useCentralizedDashboardData({
+    ...options,
+    statusFilter: 'all'
   });
 } 

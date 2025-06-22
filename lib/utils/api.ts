@@ -3,84 +3,7 @@ import { useApi } from '@/hooks/useApi';
 import { useSession } from 'next-auth/react';
 import type { Session } from 'next-auth';
 import type { Conversation, Message, Thread } from '@/types/conversation';
-
-/**
- * Safely converts a timestamp to a Date object with proper error handling
- */
-function safeParseDate(timestamp: string | Date | undefined | null): Date {
-  if (timestamp instanceof Date) {
-    return timestamp;
-  }
-  
-  if (!timestamp) {
-    return new Date();
-  }
-  
-  try {
-    let normalized = timestamp;
-    
-    // Handle different timestamp formats
-    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}$/.test(timestamp)) {
-      // Format: 2025-06-18T02:24:04.542130 (microseconds, no timezone)
-      normalized = timestamp + 'Z';
-    } else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}$/.test(timestamp)) {
-      // Format: 2025-06-18T02:24:04.123 (milliseconds, no timezone)
-      normalized = timestamp + 'Z';
-    } else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(timestamp)) {
-      // Format: 2025-06-18T02:24:04 (no timezone)
-      normalized = timestamp + 'Z';
-    }
-    
-    const date = new Date(normalized);
-    
-    // Validate the date
-    if (isNaN(date.getTime())) {
-      console.warn('Invalid timestamp format:', timestamp);
-      return new Date();
-    }
-    
-    return date;
-  } catch (error) {
-    console.error('Error parsing timestamp:', error, 'Timestamp:', timestamp);
-    return new Date();
-  }
-}
-
-/**
- * Processes a raw message object into a properly formatted Message
- */
-function processMessage(msg: any, conversationId: string): Message {
-  const timestamp = msg.timestamp || new Date().toISOString();
-  const localDate = safeParseDate(timestamp);
-  
-  // Determine sender and recipient information
-  const sender = msg.sender || msg.sender_email || msg.from || '';
-  const recipient = msg.recipient || msg.receiver || msg.to || msg.receiver_email || '';
-  const senderName = msg.sender_name || msg.from_name || sender.split('@')[0] || 'Unknown';
-  
-  return {
-    id: msg.id || msg.response_id || `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    conversation_id: msg.conversation_id || conversationId,
-    response_id: msg.response_id,
-    sender_name: senderName,
-    sender_email: sender,
-    sender: sender,
-    recipient: recipient,
-    receiver: recipient,
-    body: msg.body || msg.content || '',
-    content: msg.content || msg.body || '',
-    subject: msg.subject || '',
-    timestamp: timestamp,
-    localDate: localDate, // Always a valid Date object
-    type: msg.type || 'inbound-email',
-    read: msg.read === true,
-    ev_score: typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score,
-    associated_account: msg.associated_account || msg.sender,
-    in_reply_to: msg.in_reply_to || null,
-    is_first_email: msg.is_first_email === true,
-    metadata: msg.metadata || {},
-  };
-}
+import { ensureLocalDate, safeParseDate, compareDates } from '@/lib/utils/date';
 
 /**
  * Calculates the AI score for a conversation based on its messages.
@@ -137,7 +60,7 @@ export function processThreadsResponse(responseData: any[]): Conversation[] {
       );
 
       // Calculate the actual last message timestamp from processed messages
-      const sortedMessages = messages.sort((a, b) => b.localDate.getTime() - a.localDate.getTime());
+      const sortedMessages = messages.sort((a, b) => compareDates(a.localDate, b.localDate, false));
       const mostRecentMessage = sortedMessages[0];
       const actualLastMessageAt = mostRecentMessage?.timestamp || rawThread.lastMessageAt || rawThread.last_updated || new Date().toISOString();
       
@@ -292,5 +215,41 @@ export function useConversationById(conversationId: string, options: any = {}) {
     loading,
     error,
     refetch,
+  };
+}
+
+/**
+ * Processes a raw message object into a properly formatted Message
+ */
+function processMessage(msg: any, conversationId: string): Message {
+  const timestamp = msg.timestamp || new Date().toISOString();
+  const localDate = safeParseDate(timestamp);
+  
+  // Determine sender and recipient information
+  const sender = msg.sender || msg.sender_email || msg.from || '';
+  const recipient = msg.recipient || msg.receiver || msg.to || msg.receiver_email || '';
+  const senderName = msg.sender_name || msg.from_name || sender.split('@')[0] || 'Unknown';
+  
+  return {
+    id: msg.id || msg.response_id || `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    conversation_id: msg.conversation_id || conversationId,
+    response_id: msg.response_id,
+    sender_name: senderName,
+    sender_email: sender,
+    sender: sender,
+    recipient: recipient,
+    receiver: recipient,
+    body: msg.body || msg.content || '',
+    content: msg.content || msg.body || '',
+    subject: msg.subject || '',
+    timestamp: timestamp,
+    localDate: localDate, // Always a valid Date object
+    type: msg.type || 'inbound-email',
+    read: msg.read === true,
+    ev_score: typeof msg.ev_score === 'string' ? parseFloat(msg.ev_score) : msg.ev_score,
+    associated_account: msg.associated_account || msg.sender,
+    in_reply_to: msg.in_reply_to || null,
+    is_first_email: msg.is_first_email === true,
+    metadata: msg.metadata || {},
   };
 } 

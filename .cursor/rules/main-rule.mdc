@@ -11,6 +11,50 @@ This guide provides comprehensive instructions for AI agents on how to make edit
 
 ---
 
+## 🎯 Core Development Principles
+
+### 1. Centralization First
+**ALWAYS centralize functionality at the earliest possible point in the data flow:**
+
+- **Data Processing**: All raw API responses must be processed through centralized functions in `lib/utils/api.ts`
+- **Common Logic**: Shared business logic goes in `lib/utils/` with specific domain files
+- **API Operations**: Use the centralized `apiClient` from `lib/api/client.ts`
+- **State Management**: Centralized hooks in `hooks/` directory
+- **Type Definitions**: Centralized types in `types/` directory
+
+VERY IMPORTANT: BEFORE ADDING ANY FUNCTIONALITY, ALWAYS CHECK FOR EXISTING FUNCTIONALITY THAT CAN BE REUSED AND IMPROVED FOR EFFICIENCY, ROBUSTNESS AND PERFORMACE
+
+WE WANT TO MAKE SURE OUR FUNCTINALITY IS SIMPLE, EXTRENMELY ROBUST, AND FUTUREPROOF
+
+### 2. Modular Component Architecture
+**Every component should be modular and reusable:**
+
+- **Single Responsibility**: Each component has one clear purpose
+- **Composition Over Inheritance**: Use component composition patterns
+- **Props Interface**: Always define explicit TypeScript interfaces
+- **Barrel Exports**: Use index files for clean imports
+- **Feature Organization**: Group related components in feature directories
+
+### 3. Graceful Error Handling
+**Implement comprehensive error handling at every level:**
+
+- **Error Boundaries**: Wrap all major components with ErrorBoundary
+- **Loading States**: Always provide loading indicators
+- **Fallback UI**: Graceful degradation for all error scenarios
+- **User Feedback**: Clear error messages with recovery options
+- **Logging**: Proper error logging for debugging
+
+### 4. ACS Theme Compliance
+**Follow the established ACS design system:**
+
+- **Color Palette**: Use ACS theme colors from CSS variables
+- **Typography**: Follow established font hierarchy
+- **Spacing**: Use consistent spacing patterns
+- **Animations**: Leverage predefined animations
+- **Responsive Design**: Mobile-first approach
+
+---
+
 ## 🏗️ Architecture Overview
 
 ### Tech Stack
@@ -693,7 +737,6 @@ const [loading, setLoading] = useState(false);
 
 ---
 
-
 # Dashboard Data Flow Pattern
 
 ## Overview
@@ -945,4 +988,4 @@ describe('RecentConversations', () => {
 This centralized data flow pattern ensures that all dashboard components work with consistently processed data, reducing bugs, improving maintainability, and providing a better developer experience. All new components should follow this pattern and use the processed `Conversation` objects rather than implementing their own data processing logic.
 
 
-This guide ensures that all AI agents working on the ACS Next.js application follow consistent standards, maintain code quality, and contribute to the overall architecture goals outlined in the refactoring plan. Always prioritize maintainability, type safety, and user experience when making changes. 
+This guide ensures that all AI agents working on the ACS Next.js application follow consistent standards, maintain code quality, and contribute to the overall architecture goals outlined in the refactoring plan. Always prioritize maintainability, type safety, and user experience when making changes.

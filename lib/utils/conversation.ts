@@ -4,18 +4,14 @@
  */
 
 import type { Conversation, Message } from '@/types/conversation';
+import { ensureLocalDate, compareDates } from '@/lib/utils/date';
 
 /**
  * Sorts messages by timestamp in descending order (newest first)
  * Uses the guaranteed valid localDate field
  */
 export function sortMessagesByDate(messages: Message[], ascending: boolean = false): Message[] {
-  return [...messages].sort((a, b) => {
-    // localDate is guaranteed to be a valid Date object from processThreadsResponse
-    const timeA = a.localDate.getTime();
-    const timeB = b.localDate.getTime();
-    return ascending ? timeA - timeB : timeB - timeA;
-  });
+  return [...messages].sort((a, b) => compareDates(a.localDate, b.localDate, ascending));
 }
 
 /**
@@ -53,7 +49,11 @@ export function getConversationDuration(conversation: Conversation): number {
     return 0;
   }
   
-  return lastMessage.localDate.getTime() - firstMessage.localDate.getTime();
+  // Ensure localDate is a valid Date object
+  const firstDate = ensureLocalDate(firstMessage.localDate);
+  const lastDate = ensureLocalDate(lastMessage.localDate);
+  
+  return lastDate.getTime() - firstDate.getTime();
 }
 
 /**
@@ -65,7 +65,9 @@ export function getMessagesInTimeRange(
   endDate: Date
 ): Message[] {
   return conversation.messages.filter(message => {
-    const messageTime = message.localDate.getTime();
+    // Ensure localDate is a valid Date object
+    const messageDate = ensureLocalDate(message.localDate);
+    const messageTime = messageDate.getTime();
     return messageTime >= startDate.getTime() && messageTime <= endDate.getTime();
   });
 }
@@ -80,8 +82,9 @@ export function groupMessagesByDate(messages: Message[]): Record<string, Message
   const sortedMessages = sortMessagesByDate(messages, true);
   
   return sortedMessages.reduce((acc: Record<string, Message[]>, message) => {
-    // localDate is guaranteed to be a valid Date object
-    const date = message.localDate.toLocaleDateString('en-US', {
+    // Ensure localDate is a valid Date object
+    const messageDate = ensureLocalDate(message.localDate);
+    const date = messageDate.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -128,7 +131,11 @@ export function getAverageResponseTime(conversation: Conversation): number {
     const currentMsg = sortedMessages[i];
     const previousMsg = sortedMessages[i - 1];
     
-    const timeDiff = currentMsg.localDate.getTime() - previousMsg.localDate.getTime();
+    // Ensure localDate is a valid Date object
+    const currentDate = ensureLocalDate(currentMsg.localDate);
+    const previousDate = ensureLocalDate(previousMsg.localDate);
+    
+    const timeDiff = currentDate.getTime() - previousDate.getTime();
     totalTimeDiff += timeDiff;
     validPairs++;
   }
