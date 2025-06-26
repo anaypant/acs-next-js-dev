@@ -114,6 +114,11 @@ export function MetricsCard({
   const DefaultIcon = Icon || defaultIcons[title as keyof typeof defaultIcons] || BarChart3;
 
   const formatValue = (val: string | number) => {
+    // Handle unexpected types
+    if (val === null || val === undefined) return '0';
+    if (typeof val === 'object') {
+      return '0';
+    }
     if (typeof val === 'string') return val;
     
     switch (format) {

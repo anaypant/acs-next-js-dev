@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useSession, signOut } from 'next-auth/react';
-import { AlertCircle } from 'lucide-react';
+import { AlertTriangle, Trash2, X, Save, CheckCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export function DangerZone() {
     const { data: session } = useSession();
@@ -10,10 +11,17 @@ export function DangerZone() {
     const [emailInput, setEmailInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState(false);
 
     const handleDeleteAccount = async () => {
+        if (emailInput !== session?.user?.email) {
+            setError('Email does not match your account email.');
+            return;
+        }
+
         setLoading(true);
         setError(null);
+        setSuccess(false);
 
         try {
             const res = await fetch('/api/auth/delete', {
@@ -28,7 +36,11 @@ export function DangerZone() {
                 throw new Error(data.error || 'Failed to delete account.');
             }
 
-            await signOut({ callbackUrl: '/' });
+            setSuccess(true);
+            // Auto-redirect after 2 seconds
+            setTimeout(() => {
+                signOut({ callbackUrl: '/' });
+            }, 2000);
 
         } catch (err: any) {
             setError(err.message);
@@ -37,55 +49,170 @@ export function DangerZone() {
         }
     };
 
+    const resetDialog = () => {
+        setOpenDialog(false);
+        setEmailInput('');
+        setError(null);
+        setSuccess(false);
+    };
+
     return (
-        <section id="danger">
-            <h2 className="text-2xl font-bold mb-4 text-red-600 flex items-center gap-2"><AlertCircle /> Danger Zone</h2>
-            <div className="bg-white p-6 rounded-lg shadow border border-red-300">
-                <h3 className="text-lg font-medium text-red-900">Delete Account</h3>
-                <p className="mt-1 text-sm text-red-700">Once you delete your account, there is no going back. Please be certain.</p>
-                <button onClick={() => setOpenDialog(true)} className="mt-4 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                    Delete Your Account
-                </button>
+        <section id="danger" className="bg-white rounded-xl border border-red-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-red-200 bg-gradient-to-r from-red-600 to-red-700">
+                <h2 className="text-xl font-semibold text-white flex items-center gap-3">
+                    <AlertTriangle className="w-5 h-5" />
+                    Danger Zone
+                </h2>
+                <p className="text-sm text-red-100 mt-1">Irreversible actions that will permanently affect your account</p>
+            </div>
+            
+            <div className="p-6">
+                <div className="space-y-4">
+                    <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-red-900">Delete Account</h3>
+                            <p className="mt-1 text-sm text-red-700">
+                                Permanently delete your account and all associated data. This action cannot be undone.
+                            </p>
+                            <ul className="mt-2 text-xs text-red-600 space-y-1">
+                                <li>• All conversations and messages will be deleted</li>
+                                <li>• Your profile and settings will be removed</li>
+                                <li>• This action is irreversible</li>
+                            </ul>
+                        </div>
+                        <button 
+                            onClick={() => setOpenDialog(true)}
+                            className={cn(
+                                "ml-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200",
+                                "focus:outline-none focus:ring-2 focus:ring-offset-2",
+                                "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 shadow-sm hover:shadow-md"
+                            )}
+                        >
+                            <Trash2 className="w-4 h-4" />
+                            Delete Account
+                        </button>
+                    </div>
+                </div>
             </div>
 
+            {/* Delete Confirmation Modal */}
             {openDialog && (
-                <div className="fixed z-10 inset-0 overflow-y-auto">
-                    <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                        <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-                            <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-                        </div>
-                        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-                        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                            <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                                <div className="sm:flex sm:items-start">
-                                    <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                                        <AlertCircle className="h-6 w-6 text-red-600" aria-hidden="true" />
+                <div className="fixed inset-0 z-50 overflow-y-auto">
+                    <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                        {/* Backdrop */}
+                        <div 
+                            className="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-75"
+                            onClick={resetDialog}
+                        />
+                        
+                        {/* Modal */}
+                        <div className="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                            <div className="bg-white px-6 pt-6 pb-4">
+                                <div className="flex items-start">
+                                    <div className="flex-shrink-0">
+                                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+                                            <AlertTriangle className="h-6 w-6 text-red-600" />
+                                        </div>
                                     </div>
-                                    <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                                        <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                                            Delete account
+                                    <div className="ml-4 flex-1">
+                                        <h3 className="text-lg font-semibold text-gray-900">
+                                            Delete Account
                                         </h3>
                                         <div className="mt-2">
-                                            <p className="text-sm text-gray-500">
-                                                Are you sure you want to delete your account? All of your data will be permanently removed. This action cannot be undone.
+                                            <p className="text-sm text-gray-600">
+                                                Are you absolutely sure you want to delete your account? This action cannot be undone and will permanently remove all your data.
                                             </p>
-                                            <p className="text-sm text-gray-500 mt-2">
-                                                Please type your email <strong className="font-bold">{session?.user?.email}</strong> to confirm.
-                                            </p>
-                                            <input type="email" value={emailInput} onChange={(e) => setEmailInput(e.target.value)} className="mt-2 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                                            
+                                            <div className="mt-4">
+                                                <label htmlFor="confirm-email" className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Type your email to confirm
+                                                </label>
+                                                <input 
+                                                    type="email" 
+                                                    id="confirm-email"
+                                                    value={emailInput} 
+                                                    onChange={(e) => setEmailInput(e.target.value)}
+                                                    placeholder={session?.user?.email || ''}
+                                                    className={cn(
+                                                        "block w-full px-4 py-3 rounded-lg border shadow-sm transition-all duration-200",
+                                                        "focus:ring-2 focus:ring-red-500/50 focus:border-red-500",
+                                                        "text-gray-900 placeholder-gray-500",
+                                                        error ? "border-red-300" : "border-gray-300"
+                                                    )}
+                                                />
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    Expected: <span className="font-mono">{session?.user?.email}</span>
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                                <button type="button" disabled={loading || emailInput !== session?.user?.email} onClick={handleDeleteAccount} className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50">
-                                    {loading ? "Deleting..." : "Delete"}
-                                </button>
-                                <button type="button" onClick={() => setOpenDialog(false)} className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            
+                            {/* Status Messages */}
+                            {error && (
+                                <div className="px-6 pb-4">
+                                    <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                        <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                                        <p className="text-sm text-red-700">{error}</p>
+                                    </div>
+                                </div>
+                            )}
+                            
+                            {success && (
+                                <div className="px-6 pb-4">
+                                    <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                        <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                        <p className="text-sm text-green-700">Account deleted successfully. Redirecting...</p>
+                                    </div>
+                                </div>
+                            )}
+                            
+                            <div className="bg-gray-50 px-6 py-4 flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-3">
+                                <button 
+                                    type="button" 
+                                    onClick={resetDialog}
+                                    disabled={loading}
+                                    className={cn(
+                                        "mt-3 sm:mt-0 inline-flex justify-center items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200",
+                                        "focus:outline-none focus:ring-2 focus:ring-offset-2",
+                                        "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-gray-500",
+                                        loading && "opacity-50 cursor-not-allowed"
+                                    )}
+                                >
+                                    <X className="w-4 h-4" />
                                     Cancel
                                 </button>
+                                <button 
+                                    type="button" 
+                                    disabled={loading || emailInput !== session?.user?.email || success}
+                                    onClick={handleDeleteAccount}
+                                    className={cn(
+                                        "inline-flex justify-center items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200",
+                                        "focus:outline-none focus:ring-2 focus:ring-offset-2",
+                                        loading || emailInput !== session?.user?.email || success
+                                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                            : "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 shadow-sm hover:shadow-md"
+                                    )}
+                                >
+                                    {loading ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                            Deleting...
+                                        </>
+                                    ) : success ? (
+                                        <>
+                                            <CheckCircle className="w-4 h-4" />
+                                            Deleted
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Trash2 className="w-4 h-4" />
+                                            Delete Account
+                                        </>
+                                    )}
+                                </button>
                             </div>
-                            {error && <p className="text-sm text-red-600 p-4">{error}</p>}
                         </div>
                     </div>
                 </div>

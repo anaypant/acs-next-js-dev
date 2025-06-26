@@ -112,7 +112,7 @@ export const navigationGroups: NavigationGroup[] = [
       {
         title: "Settings",
         icon: Settings,
-        url: "/settings",
+        url: "/dashboard/settings",
         description: "Account & Preferences"
       }
     ]

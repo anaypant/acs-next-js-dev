@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Bot } from 'lucide-react';
+import { Settings, Save, CheckCircle, AlertCircle, Zap, Clock, Shield } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface LCPSettingsProps {
     userData: any;
@@ -9,11 +10,16 @@ interface LCPSettingsProps {
 }
 
 export function LCPSettings({ userData, onSave }: LCPSettingsProps) {
-    const [form, setForm] = useState({
-        lcp_tone: 'professional',
-        lcp_style: 'concise',
-        lcp_sample_prompt: '',
-        lcp_automatic_enabled: true,
+    const [form, setForm] = useState({ 
+        autoResponse: true,
+        responseDelay: 5,
+        maxConcurrentConversations: 10,
+        enableNotifications: true,
+        notificationFrequency: 'immediate',
+        enableAutoFollowUp: true,
+        followUpDelay: 24,
+        enableSpamFilter: true,
+        spamSensitivity: 'medium'
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -22,18 +28,26 @@ export function LCPSettings({ userData, onSave }: LCPSettingsProps) {
     useEffect(() => {
         if (userData) {
             setForm({
-                lcp_tone: userData.lcp_tone || 'professional',
-                lcp_style: userData.lcp_style || 'concise',
-                lcp_sample_prompt: userData.lcp_sample_prompt || '',
-                lcp_automatic_enabled: userData.lcp_automatic_enabled === 'true',
+                autoResponse: userData.autoResponse !== false,
+                responseDelay: userData.responseDelay || 5,
+                maxConcurrentConversations: userData.maxConcurrentConversations || 10,
+                enableNotifications: userData.enableNotifications !== false,
+                notificationFrequency: userData.notificationFrequency || 'immediate',
+                enableAutoFollowUp: userData.enableAutoFollowUp !== false,
+                followUpDelay: userData.followUpDelay || 24,
+                enableSpamFilter: userData.enableSpamFilter !== false,
+                spamSensitivity: userData.spamSensitivity || 'medium'
             });
         }
     }, [userData]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value, type } = e.target;
-        const checked = (e.target as HTMLInputElement).checked;
-        setForm({ ...form, [name]: type === 'checkbox' ? checked : value });
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value, type, checked } = e.target;
+        setForm({ 
+            ...form, 
+            [name]: type === 'checkbox' ? checked : 
+                    type === 'number' ? parseInt(value) : value 
+        });
         setError(null);
         setSuccess(false);
     };
@@ -44,57 +58,265 @@ export function LCPSettings({ userData, onSave }: LCPSettingsProps) {
         setError(null);
         setSuccess(false);
 
-        const result = await onSave({
-            ...form,
-            lcp_automatic_enabled: form.lcp_automatic_enabled ? 'true' : 'false'
-        });
+        try {
+            const result = await onSave(form);
 
-        if (result.success) {
-            setSuccess(true);
-        } else {
-            setError(result.error || 'Failed to update LCP settings.');
+            if (result.success) {
+                setSuccess(true);
+                // Auto-hide success message after 3 seconds
+                setTimeout(() => setSuccess(false), 3000);
+            } else {
+                setError(result.error || 'Failed to update LCP settings.');
+            }
+        } catch (err) {
+            setError('An unexpected error occurred. Please try again.');
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     return (
-        <section id="lcp-settings">
-            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><Bot /> LCP AI Settings</h2>
-            <div className="bg-white p-6 rounded-lg shadow">
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label htmlFor="lcp_tone" className="block text-sm font-medium text-gray-700">Tone</label>
-                            <select name="lcp_tone" id="lcp_tone" value={form.lcp_tone} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                                <option>Professional</option>
-                                <option>Casual</option>
-                                <option>Enthusiastic</option>
-                            </select>
+        <section id="lcp-settings" className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-[#0a5a2f] to-[#157a42]">
+                <h2 className="text-xl font-semibold text-white flex items-center gap-3">
+                    <Settings className="w-5 h-5" />
+                    LCP (Lead Conversation Platform) Settings
+                </h2>
+                <p className="text-sm text-green-100 mt-1">Configure your automated conversation and response settings</p>
+            </div>
+            
+            <div className="p-6">
+                <form onSubmit={handleSubmit} className="space-y-8">
+                    {/* Auto Response Settings */}
+                    <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                            <Zap className="w-5 h-5 text-[#0e6537]" />
+                            Auto Response Settings
+                        </h3>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        name="autoResponse" 
+                                        checked={form.autoResponse} 
+                                        onChange={handleChange}
+                                        className="w-4 h-4 text-[#0e6537] border-gray-300 rounded focus:ring-[#0e6537] focus:ring-2"
+                                    />
+                                    <span className="text-sm font-medium text-gray-700">Enable Auto Response</span>
+                                </label>
+                                <p className="text-xs text-gray-500 mt-1 ml-7">Automatically respond to new leads</p>
+                            </div>
+                            
+                            <div>
+                                <label htmlFor="responseDelay" className="block text-sm font-medium text-gray-700 mb-2">
+                                    Response Delay (minutes)
+                                </label>
+                                <input 
+                                    type="number" 
+                                    name="responseDelay" 
+                                    id="responseDelay" 
+                                    value={form.responseDelay} 
+                                    onChange={handleChange}
+                                    min="1"
+                                    max="60"
+                                    className={cn(
+                                        "block w-full px-4 py-3 rounded-lg border shadow-sm transition-all duration-200",
+                                        "focus:ring-2 focus:ring-[#0e6537]/50 focus:border-[#0e6537]",
+                                        "text-gray-900 placeholder-gray-500",
+                                        error ? "border-red-300 focus:border-red-500 focus:ring-red-500/50" : "border-gray-300"
+                                    )}
+                                />
+                            </div>
                         </div>
-                        <div>
-                            <label htmlFor="lcp_style" className="block text-sm font-medium text-gray-700">Style</label>
-                            <select name="lcp_style" id="lcp_style" value={form.lcp_style} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                                <option>Concise</option>
-                                <option>Detailed</option>
-                                <option>Formal</option>
-                            </select>
+                    </div>
+
+                    {/* Conversation Management */}
+                    <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                            <Clock className="w-5 h-5 text-[#0e6537]" />
+                            Conversation Management
+                        </h3>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label htmlFor="maxConcurrentConversations" className="block text-sm font-medium text-gray-700 mb-2">
+                                    Max Concurrent Conversations
+                                </label>
+                                <input 
+                                    type="number" 
+                                    name="maxConcurrentConversations" 
+                                    id="maxConcurrentConversations" 
+                                    value={form.maxConcurrentConversations} 
+                                    onChange={handleChange}
+                                    min="1"
+                                    max="50"
+                                    className={cn(
+                                        "block w-full px-4 py-3 rounded-lg border shadow-sm transition-all duration-200",
+                                        "focus:ring-2 focus:ring-[#0e6537]/50 focus:border-[#0e6537]",
+                                        "text-gray-900 placeholder-gray-500",
+                                        error ? "border-red-300 focus:border-red-500 focus:ring-red-500/50" : "border-gray-300"
+                                    )}
+                                />
+                            </div>
+                            
+                            <div>
+                                <label htmlFor="notificationFrequency" className="block text-sm font-medium text-gray-700 mb-2">
+                                    Notification Frequency
+                                </label>
+                                <select 
+                                    name="notificationFrequency" 
+                                    id="notificationFrequency" 
+                                    value={form.notificationFrequency} 
+                                    onChange={handleChange}
+                                    className={cn(
+                                        "block w-full px-4 py-3 rounded-lg border shadow-sm transition-all duration-200",
+                                        "focus:ring-2 focus:ring-[#0e6537]/50 focus:border-[#0e6537]",
+                                        "text-gray-900",
+                                        error ? "border-red-300 focus:border-red-500 focus:ring-red-500/50" : "border-gray-300"
+                                    )}
+                                >
+                                    <option value="immediate">Immediate</option>
+                                    <option value="hourly">Hourly</option>
+                                    <option value="daily">Daily</option>
+                                    <option value="weekly">Weekly</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
-                    <div>
-                        <label htmlFor="lcp_sample_prompt" className="block text-sm font-medium text-gray-700">Sample Prompt</label>
-                        <textarea name="lcp_sample_prompt" id="lcp_sample_prompt" value={form.lcp_sample_prompt} onChange={handleChange} rows={4} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="e.g., 'Draft a follow-up email to a new lead...'" />
+
+                    {/* Follow-up Settings */}
+                    <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                            <Clock className="w-5 h-5 text-[#0e6537]" />
+                            Follow-up Settings
+                        </h3>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        name="enableAutoFollowUp" 
+                                        checked={form.enableAutoFollowUp} 
+                                        onChange={handleChange}
+                                        className="w-4 h-4 text-[#0e6537] border-gray-300 rounded focus:ring-[#0e6537] focus:ring-2"
+                                    />
+                                    <span className="text-sm font-medium text-gray-700">Enable Auto Follow-up</span>
+                                </label>
+                                <p className="text-xs text-gray-500 mt-1 ml-7">Automatically follow up with leads</p>
+                            </div>
+                            
+                            <div>
+                                <label htmlFor="followUpDelay" className="block text-sm font-medium text-gray-700 mb-2">
+                                    Follow-up Delay (hours)
+                                </label>
+                                <input 
+                                    type="number" 
+                                    name="followUpDelay" 
+                                    id="followUpDelay" 
+                                    value={form.followUpDelay} 
+                                    onChange={handleChange}
+                                    min="1"
+                                    max="168"
+                                    className={cn(
+                                        "block w-full px-4 py-3 rounded-lg border shadow-sm transition-all duration-200",
+                                        "focus:ring-2 focus:ring-[#0e6537]/50 focus:border-[#0e6537]",
+                                        "text-gray-900 placeholder-gray-500",
+                                        error ? "border-red-300 focus:border-red-500 focus:ring-red-500/50" : "border-gray-300"
+                                    )}
+                                />
+                            </div>
+                        </div>
                     </div>
-                    <div className="flex items-center">
-                        <input id="lcp_automatic_enabled" name="lcp_automatic_enabled" type="checkbox" checked={form.lcp_automatic_enabled} onChange={handleChange} className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" />
-                        <label htmlFor="lcp_automatic_enabled" className="ml-2 block text-sm text-gray-900">Enable Automated Emailing</label>
+
+                    {/* Spam Filter Settings */}
+                    <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                            <Shield className="w-5 h-5 text-[#0e6537]" />
+                            Spam Filter Settings
+                        </h3>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        name="enableSpamFilter" 
+                                        checked={form.enableSpamFilter} 
+                                        onChange={handleChange}
+                                        className="w-4 h-4 text-[#0e6537] border-gray-300 rounded focus:ring-[#0e6537] focus:ring-2"
+                                    />
+                                    <span className="text-sm font-medium text-gray-700">Enable Spam Filter</span>
+                                </label>
+                                <p className="text-xs text-gray-500 mt-1 ml-7">Filter out spam and unwanted messages</p>
+                            </div>
+                            
+                            <div>
+                                <label htmlFor="spamSensitivity" className="block text-sm font-medium text-gray-700 mb-2">
+                                    Spam Sensitivity
+                                </label>
+                                <select 
+                                    name="spamSensitivity" 
+                                    id="spamSensitivity" 
+                                    value={form.spamSensitivity} 
+                                    onChange={handleChange}
+                                    className={cn(
+                                        "block w-full px-4 py-3 rounded-lg border shadow-sm transition-all duration-200",
+                                        "focus:ring-2 focus:ring-[#0e6537]/50 focus:border-[#0e6537]",
+                                        "text-gray-900",
+                                        error ? "border-red-300 focus:border-red-500 focus:ring-red-500/50" : "border-gray-300"
+                                    )}
+                                >
+                                    <option value="low">Low (Fewer false positives)</option>
+                                    <option value="medium">Medium (Balanced)</option>
+                                    <option value="high">High (More aggressive)</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
-                    <div className="mt-4">
-                        <button type="submit" disabled={loading} className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
-                            {loading ? 'Saving...' : 'Save LCP Settings'}
+                    
+                    {/* Status Messages */}
+                    {error && (
+                        <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+                            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                            <p className="text-sm text-red-700">{error}</p>
+                        </div>
+                    )}
+                    
+                    {success && (
+                        <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
+                            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                            <p className="text-sm text-green-700">LCP settings updated successfully!</p>
+                        </div>
+                    )}
+                    
+                    <div className="flex justify-end">
+                        <button 
+                            type="submit" 
+                            disabled={loading}
+                            className={cn(
+                                "inline-flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200",
+                                "focus:outline-none focus:ring-2 focus:ring-offset-2",
+                                loading 
+                                    ? "bg-gray-300 text-gray-500 cursor-not-allowed" 
+                                    : "bg-gradient-to-r from-[#0a5a2f] to-[#157a42] text-white hover:from-[#0e6537] hover:to-[#157a42] focus:ring-[#0e6537]/50 shadow-lg hover:shadow-xl"
+                            )}
+                        >
+                            {loading ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    Saving...
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="w-4 h-4" />
+                                    Save Settings
+                                </>
+                            )}
                         </button>
                     </div>
-                    {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
-                    {success && <p className="text-sm text-green-600 mt-2">LCP settings updated successfully!</p>}
                 </form>
             </div>
         </section>
