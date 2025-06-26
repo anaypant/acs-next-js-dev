@@ -1,5 +1,6 @@
 import React from 'react';
 import { ErrorBoundary } from '../Feedback/ErrorBoundary';
+import Footer from '@/app/Footer';
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -7,6 +8,7 @@ interface PageLayoutProps {
   description?: string;
   showNavbar?: boolean;
   showFooter?: boolean;
+  customFooter?: boolean;
   className?: string;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
   padding?: 'none' | 'sm' | 'md' | 'lg';
@@ -19,6 +21,7 @@ export function PageLayout({
   description,
   showNavbar = true,
   showFooter = true,
+  customFooter = false,
   className = '',
   maxWidth = 'lg',
   padding = 'md',
@@ -76,13 +79,19 @@ export function PageLayout({
         </main>
         
         {showFooter && (
-          <footer className="bg-white border-t border-gray-200 flex-shrink-0">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-              <div className="text-center text-gray-500">
-                <p>&copy; 2024 ACS. All rights reserved.</p>
-              </div>
+          customFooter ? (
+            <div className="flex-shrink-0">
+              <Footer />
             </div>
-          </footer>
+          ) : (
+            <footer className="bg-white border-t border-gray-200 flex-shrink-0">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="text-center text-gray-500">
+                  <p>&copy; 2024 ACS. All rights reserved.</p>
+                </div>
+              </div>
+            </footer>
+          )
         )}
       </div>
     );
@@ -121,13 +130,17 @@ export function PageLayout({
       </main>
       
       {showFooter && (
-        <footer className="bg-white border-t border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="text-center text-gray-500">
-              <p>&copy; 2024 ACS. All rights reserved.</p>
+        customFooter ? (
+          <Footer />
+        ) : (
+          <footer className="bg-white border-t border-gray-200">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <div className="text-center text-gray-500">
+                <p>&copy; 2024 ACS. All rights reserved.</p>
+              </div>
             </div>
-          </div>
-        </footer>
+          </footer>
+        )
       )}
     </div>
   );

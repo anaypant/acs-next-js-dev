@@ -77,20 +77,11 @@ const DemoPage = () => {
 
   return (
     <PageLayout>
-      <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] to-[#e6f5ec] flex flex-col">
-        {/* Header */}
-        <div className="p-6">
-          <div className="flex items-center">
-            <Link href="/" className="no-underline">
-              <span className="text-xl font-semibold bg-gradient-to-br from-[#0e6537] to-[#157a42] bg-clip-text text-transparent">
-                ACS
-              </span>
-            </Link>
-          </div>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] to-[#e6f5ec] flex flex-col w-full h-full">
+        
 
         {/* Main Content */}
-        <div className="flex-1 flex items-center justify-center px-4 pb-16">
+        <div className="flex-1 flex items-center justify-center px-4 pb-16 w-full h-full">
           <div className="w-full max-w-md">
             <motion.div 
               initial={{ opacity: 0, y: 20 }}

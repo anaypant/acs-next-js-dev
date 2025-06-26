@@ -3,7 +3,7 @@
  * Purpose: Renders the contact page with a contact form, team section, and testimonials.
  * Author: acagliol
  * Date: 06/15/25
- * Version: 1.1.1
+ * Version: 1.1.2
  */
 
 "use client"
@@ -11,7 +11,6 @@
 import React, { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import Navbar from "../../Navbar"
-import Footer from "../../Footer"
 
 /**
  * Input Component
@@ -625,7 +624,6 @@ export default function ContactPage() {
 
   return (
     <>
-      <Navbar />
       <div className="relative min-h-screen bg-gradient-to-b from-[#e6f5ec] via-[#f0f9f4] to-white">
         {/* Background patterns */}
         <div className="absolute inset-0 overflow-hidden">
@@ -713,12 +711,13 @@ export default function ContactPage() {
                     </div>
                   </div>
 
-                  <div className="space-y-4">
+                  {/* LinkedIn Button with improved styling */}
+                  <div className="mt-8 pt-6 border-t border-gray-100">
                     <a
                       href="https://www.linkedin.com/company/automated-consultancy-services/posts/?feedView=all"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-3 bg-[#0e6537] text-white px-6 py-3 rounded-lg hover:bg-[#0a5a2f] transition-colors shadow-md"
+                      className=" !text-white inline-flex items-center justify-center gap-3 bg-gradient-to-r from-[#0077b5] to-[#005885] px-6 py-3 rounded-lg hover:from-[#005885] hover:to-[#004065] transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium"
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -726,11 +725,11 @@ export default function ContactPage() {
                         height="24"
                         viewBox="0 0 24 24"
                         fill="currentColor"
-                        className="w-6 h-6"
+                        className="w-5 h-5"
                       >
                         <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
                       </svg>
-                      LinkedIn
+                      Follow us on LinkedIn
                     </a>
                   </div>
                 </div>
@@ -859,7 +858,7 @@ export default function ContactPage() {
                           <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-[#0e6537] hover:bg-[#0a5a2f] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0e6537] disabled:opacity-50 transition-all duration-200"
+                            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-[#0e6537] to-[#157a42] hover:from-[#0a5a2f] hover:to-[#0e6537] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0e6537] disabled:opacity-50 transition-all duration-200 transform hover:scale-[1.02]"
                           >
                             {isSubmitting ? 'Sending...' : 'Send Message'}
                           </button>
@@ -899,7 +898,7 @@ export default function ContactPage() {
                   },
                   {
                     q: "What are your payment terms?",
-                    a: "We offer flexible payment options including monthly retainers, project-based billing, and customized payment plans.",
+                    a: "Currently, ACS operates on a case-by-case basis. We are open to discussing payment options with our clients depending on their needs.",
                   },
                 ].map((faq, index) => (
                   <div
@@ -915,13 +914,19 @@ export default function ContactPage() {
           </div>
         </motion.div>
       </div>
-      <Footer />
     </>
   )
 }
 
 /**
  * Change Log:
+ * 06/15/25 - Version 1.1.2
+ * - Removed duplicate Footer component (footer is now handled by PageLayout)
+ * - Improved LinkedIn button styling with proper LinkedIn brand colors
+ * - Added better spacing and visual separation for LinkedIn button
+ * - Enhanced button hover effects and transitions
+ * - Updated submit button with gradient and hover effects
+ * 
  * 06/15/25 - Version 1.1.1
  * - Removed: -- a/app/contact/page.tsx
  * - Added: ++ b/app/contact/page.tsx

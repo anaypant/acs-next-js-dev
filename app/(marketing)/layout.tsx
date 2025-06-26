@@ -1,5 +1,6 @@
-import { PageLayout } from '@/components/common/Layout/PageLayout';
 import React from 'react';
+import { PageLayout } from '@/components/common/Layout/PageLayout';
+import Navbar from '@/app/Navbar';
 
 export default function MarketingLayout({
     children,
@@ -7,8 +8,16 @@ export default function MarketingLayout({
     children: React.ReactNode;
 }) {
     return (
-        <PageLayout>
-            {children}
-        </PageLayout>
+        <>
+            {/* Sticky Navbar at top */}
+            <div className="sticky top-0 z-50">
+                <Navbar />
+            </div>
+            
+            {/* PageLayout with content and footer */}
+            <PageLayout maxWidth="full" showNavbar={false} showFooter={true} customFooter={true} padding="none">
+                {children}
+            </PageLayout>
+        </>
     );
 } 

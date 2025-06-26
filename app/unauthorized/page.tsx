@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ShieldX, LogOut, AlertTriangle } from 'lucide-react';
 import { clearAuthData } from '@/lib/auth-utils';
 import { PageLayout } from '@/components/common/Layout/PageLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function UnauthorizedPage() {
   const router = useRouter();
@@ -36,7 +36,7 @@ export default function UnauthorizedPage() {
                 <CardTitle className="text-2xl font-bold">
                     Session Verification Failed
                 </CardTitle>
-                <CardDescription className="space-y-2">
+                <div className="text-sm text-muted-foreground space-y-2">
                     <div>
                         Your session could not be verified. This may be due to:
                     </div>
@@ -54,7 +54,7 @@ export default function UnauthorizedPage() {
                             <span>Session expiration or security violation</span>
                         </li>
                     </ul>
-                </CardDescription>
+                </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                 <Button 
