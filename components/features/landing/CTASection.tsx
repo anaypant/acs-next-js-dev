@@ -38,7 +38,7 @@ export function CTASection({
 }: CTASectionProps) {
   return (
     <section className={cn(
-      "py-12 sm:py-16 md:py-20 bg-[#0e6537] relative overflow-hidden",
+      "py-12 sm:py-16 md:py-20 bg-[var(--primary-dark)] relative overflow-hidden",
       className
     )}>
       <div className="absolute inset-0">
@@ -73,7 +73,7 @@ export function CTASection({
           >
             <Link
               href={ctaLink}
-              className="group inline-flex items-center justify-center px-4 sm:px-6 md:px-8 py-3 bg-white !text-[#0e6537] hover:bg-gray-100 rounded-xl font-medium transition-all duration-300 text-sm sm:text-base shadow-lg shadow-black/20 hover:shadow-xl transform hover:-translate-y-1 min-h-[44px] sm:min-h-[48px]"
+              className="group inline-flex items-center justify-center px-4 sm:px-6 md:px-8 py-3 bg-white !text-secondary-dark hover:bg-gray-100 rounded-xl font-medium transition-all duration-300 text-sm sm:text-base shadow-lg shadow-black/20 hover:shadow-xl transform hover:-translate-y-1 min-h-[44px] sm:min-h-[48px]"
             >
               {ctaText}
               <ArrowRight className="ml-2 h-3 w-3 sm:h-4 sm:w-4 group-hover:translate-x-1 transition-transform duration-300" />

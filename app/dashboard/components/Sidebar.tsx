@@ -6,7 +6,7 @@
  * Version: 2.0.0
  */
 
-export { SidebarProvider, AppSidebar, SidebarInset, useSidebar, SidebarTrigger } from '@/components/common/Navigation/Sidebar';
+export { SidebarProvider, AppSidebar, useSidebar, SidebarTrigger } from '@/components/common/Navigation/Sidebar';
 
 /**
  * Change Log:

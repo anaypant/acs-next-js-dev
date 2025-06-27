@@ -3,7 +3,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { ThemeProvider as NextThemesProvider, useTheme as useNextTheme } from 'next-themes';
 import { ThemeProvider as MuiThemeProvider, CssBaseline, PaletteMode } from '@mui/material';
-import { getTheme } from '@/app/theme/theme'; // Assuming the theme definition is here
+import { getTheme } from '@/app/theme/theme';
+import { ThemeProvider as ACSThemeProvider } from '@/lib/theme/theme-context';
 
 interface ThemeContextType {
   mode: PaletteMode;
@@ -44,9 +45,11 @@ function MuiAndTailwindThemeProvider({ children }: { children: React.ReactNode }
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <NextThemesProvider attribute="class" defaultTheme="system" enableSystem>
-      <MuiAndTailwindThemeProvider>
-        {children}
-      </MuiAndTailwindThemeProvider>
+      <ACSThemeProvider>
+        <MuiAndTailwindThemeProvider>
+          {children}
+        </MuiAndTailwindThemeProvider>
+      </ACSThemeProvider>
     </NextThemesProvider>
   );
 }

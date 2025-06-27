@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
+import { addCacheBustingToSplineUrl, isValidSplineUrl, clearSplineCache } from '@/lib/utils/spline';
 
 // Type declaration for Spline
 declare global {
@@ -11,28 +12,56 @@ declare global {
 interface ThreeJSViewerProps {
   splineUrl?: string;
   className?: string;
+  cacheBust?: boolean;
+  forceRefresh?: boolean;
 }
 
 /**
- * Simple ThreeJSViewer Component
+ * Enhanced ThreeJSViewer Component
  * 
- * A simplified component for displaying Spline 3D scenes.
+ * A component for displaying Spline 3D scenes with cache-busting capabilities.
  * 
  * @param splineUrl - The URL of the Spline scene to display
  * @param className - Additional CSS classes for the container
+ * @param cacheBust - Force cache busting by adding timestamp to URL
+ * @param forceRefresh - Force clear all cache and reload
  */
-export function ThreeJSViewer({ splineUrl, className }: ThreeJSViewerProps) {
+export function ThreeJSViewer({ 
+  splineUrl, 
+  className, 
+  cacheBust = true,
+  forceRefresh = false 
+}: ThreeJSViewerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const currentSplineViewerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!splineUrl || !containerRef.current) return;
+
+    // Validate Spline URL
+    if (!isValidSplineUrl(splineUrl)) {
+      setError('Invalid Spline URL provided');
+      setIsLoading(false);
+      return;
+    }
 
     const loadSplineScene = async () => {
       try {
         setIsLoading(true);
         setError(null);
+
+        // Clear cache if force refresh is enabled
+        if (forceRefresh) {
+          clearSplineCache();
+        }
+
+        // Clear any existing viewer
+        if (currentSplineViewerRef.current) {
+          currentSplineViewerRef.current.remove();
+          currentSplineViewerRef.current = null;
+        }
 
         // Load Spline script if not already loaded
         if (!window.SPLINE) {
@@ -62,10 +91,17 @@ export function ThreeJSViewer({ splineUrl, className }: ThreeJSViewerProps) {
 
         // Create and configure the spline-viewer element
         const splineViewer = document.createElement('spline-viewer');
-        splineViewer.setAttribute('url', splineUrl);
+        
+        // Add cache-busting parameter if enabled
+        const finalUrl = addCacheBustingToSplineUrl(splineUrl, cacheBust);
+        
+        splineViewer.setAttribute('url', finalUrl);
         splineViewer.style.width = '100%';
         splineViewer.style.height = '100%';
         splineViewer.style.borderRadius = '16px';
+
+        // Store reference for cleanup
+        currentSplineViewerRef.current = splineViewer;
 
         // Add event listeners
         splineViewer.addEventListener('load', () => {
@@ -92,20 +128,41 @@ export function ThreeJSViewer({ splineUrl, className }: ThreeJSViewerProps) {
     };
 
     loadSplineScene();
-  }, [splineUrl]);
+
+    // Cleanup function
+    return () => {
+      if (currentSplineViewerRef.current) {
+        currentSplineViewerRef.current.remove();
+        currentSplineViewerRef.current = null;
+      }
+    };
+  }, [splineUrl, cacheBust, forceRefresh]);
+
+  // Function to manually refresh the scene
+  const handleRefresh = () => {
+    if (containerRef.current) {
+      // Force a complete reload by clearing and recreating
+      containerRef.current.innerHTML = '';
+      setIsLoading(true);
+      setError(null);
+      
+      // Trigger useEffect by updating a dependency
+      // This will be handled by the useEffect above
+    }
+  };
 
   return (
     <div 
       ref={containerRef}
       className={cn(
-        "relative w-full h-full min-h-[300px] bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl",
+        "relative w-full h-full min-h-[300px]",
         className
       )}
     >
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="flex flex-col items-center space-y-4">
-            <div className="w-8 h-8 border-4 border-gray-300 border-t-[#0e6537] rounded-full animate-spin"></div>
+            <div className="w-8 h-8 border-4 border-gray-300 border-t-secondary-dark rounded-full animate-spin"></div>
             <p className="text-sm text-gray-600">Loading 3D Scene...</p>
           </div>
         </div>
@@ -116,6 +173,20 @@ export function ThreeJSViewer({ splineUrl, className }: ThreeJSViewerProps) {
           <div className="text-center p-6">
             <p className="text-red-600 text-sm mb-2">3D Scene Unavailable</p>
             <p className="text-gray-500 text-xs">{error}</p>
+            <div className="flex gap-2 mt-3">
+              <button 
+                onClick={handleRefresh}
+                className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
+              >
+                Refresh Scene
+              </button>
+              <button 
+                onClick={() => window.location.reload()}
+                className="px-3 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600 transition-colors"
+              >
+                Reload Page
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -30,17 +30,17 @@ import { LandingPage } from '@/components/features/landing';
 function LandingPageContainer() {
   return (
     <ErrorBoundary fallback={
-      <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+          <h1 className="text-2xl font-bold text-foreground mb-4 font-display">
             Something went wrong
           </h1>
-          <p className="text-gray-600 mb-6">
+          <p className="text-muted-foreground mb-6 font-sans">
             We're having trouble loading the landing page. Please try refreshing.
           </p>
           <button 
             onClick={() => window.location.reload()}
-            className="px-6 py-3 bg-[#0e6537] text-white rounded-xl hover:bg-[#0a5a2f] transition-colors"
+            className="px-6 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors font-sans"
           >
             Refresh Page
           </button>
@@ -48,7 +48,7 @@ function LandingPageContainer() {
       </div>
     }>
       <Suspense fallback={
-        <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="min-h-screen flex items-center justify-center bg-background">
           <LoadingSpinner size="lg" text="Loading landing page..." />
         </div>
       }>

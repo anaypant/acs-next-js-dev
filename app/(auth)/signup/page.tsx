@@ -12,11 +12,16 @@ import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { CircularProgress, Snackbar, Alert as MuiAlert } from '@mui/material';
 import { signIn } from 'next-auth/react';
 import { SignupData } from '@/types/auth';
 import Script from 'next/script';
 import { handleAuthError, validateAuthForm, clearAuthData, setAuthType } from '@/lib/auth-utils';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Check, X, AlertTriangle } from 'lucide-react';
+import { LoadingSpinner } from '@/components/common/Feedback/LoadingSpinner';
 
 /**
  * Global type declaration for reCAPTCHA
@@ -321,251 +326,12 @@ const SignupPage: React.FC = () => {
           setRecaptchaError('Failed to load reCAPTCHA. Please refresh the page.');
         }}
       />
-      {/* Global styles for the signup page */}
-      <style jsx global>{`
-        /* Base font definitions */
-        :root {
-          --font-inter: "Inter", system-ui, arial;
-          --font-playfair: "Playfair Display", Georgia, serif;
-          --font-montserrat: "Montserrat", system-ui, arial;
-          
-          /* Green color palette */
-          --dark-green: #0a5a2f;
-          --medium-green: #0e6537;
-          --bright-green: #157a42;
-          --forest-green: #002417;
-          --light-green: #e6f5ec;
-          --pale-mint: #f0f9f4;
-          --pale-sage: #d8eee1;
-        }
-
-        /* Import fonts locally or use system fallbacks */
-        @font-face {
-          font-family: "Inter";
-          src: local("Inter"), local("Inter-Regular");
-          font-weight: 300 700;
-          font-display: swap;
-        }
-
-        @font-face {
-          font-family: "Playfair Display";
-          src: local("Playfair Display"), local("PlayfairDisplay-Regular");
-          font-weight: 400 900;
-          font-display: swap;
-        }
-
-        @font-face {
-          font-family: "Montserrat";
-          src: local("Montserrat"), local("Montserrat-Regular");
-          font-weight: 400 700;
-          font-display: swap;
-        }
-
-        /* Typography */
-        .brand-logo {
-          color: #fff !important;
-          font-size: 8.75rem !important;
-          font-weight: 900 !important;
-          letter-spacing: 0.04em !important;
-          text-shadow: 0 2px 24px rgba(0, 0, 0, 0.18) !important;
-          line-height: 1 !important;
-          font-family: "Montserrat", system-ui, arial !important;
-        }
-
-        .heading-text {
-          color: var(--forest-green) !important;
-          font-size: 1.875rem !important;
-          font-weight: 700 !important;
-          font-family: "Montserrat", system-ui, arial !important;
-        }
-
-        .subheading-text {
-          color: var(--medium-green) !important;
-          font-family: "Inter", system-ui, arial !important;
-        }
-
-        /* Form elements */
-        .form-input {
-          margin-bottom: 32px !important;
-        }
-
-        .form-input .MuiOutlinedInput-root {
-          background-color: white !important;
-          border-radius: 12px !important;
-          color: var(--forest-green) !important;
-          font-family: "Montserrat", system-ui, arial !important;
-        }
-
-        .form-input .MuiOutlinedInput-root fieldset {
-          border-color: var(--medium-green) !important;
-          border-width: 1px !important;
-        }
-
-        .form-input .MuiOutlinedInput-root:hover fieldset {
-          border-color: var(--dark-green) !important;
-          border-width: 1px !important;
-        }
-
-        .form-input .MuiOutlinedInput-root.Mui-focused fieldset {
-          border-color: var(--dark-green) !important;
-          border-width: 2px !important;
-        }
-
-        .form-input .MuiInputLabel-root {
-          color: var(--medium-green) !important;
-          font-family: "Montserrat", system-ui, arial !important;
-        }
-
-        .form-input .MuiInputLabel-root.Mui-focused {
-          color: var(--dark-green) !important;
-        }
-
-        .password-input {
-          margin-bottom: 16px !important;
-        }
-
-        .password-toggle {
-          display: flex;
-          align-items: center;
-          border: none;
-          background: none;
-          cursor: pointer;
-          transition: all 0.2s;
-          padding: 8px;
-          border-radius: 50%;
-        }
-
-        .password-toggle:hover {
-          background-color: var(--light-green);
-        }
-
-        .toggle-icon {
-          transition: transform 0.2s;
-          color: var(--medium-green);
-        }
-
-        .toggle-icon:hover {
-          transform: scale(1.1);
-        }
-
-        /* Password checklist */
-        .password-checklist {
-          margin-bottom: 24px;
-          background-color: rgba(14, 101, 55, 0.05);
-          padding: 16px;
-          border-radius: 8px;
-          border: 1px solid rgba(14, 101, 55, 0.2);
-        }
-
-        .checklist-title {
-          margin-bottom: 8px;
-          font-size: 0.875rem;
-          font-weight: 500;
-          color: var(--forest-green);
-          font-family: "Montserrat", system-ui, arial;
-        }
-
-        .checklist-items {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          font-size: 0.875rem;
-        }
-
-        .checklist-item {
-          display: flex;
-          align-items: center;
-          font-family: "Inter", system-ui, arial;
-        }
-
-        .checklist-item.passed {
-          color: var(--bright-green);
-          font-weight: 500;
-        }
-
-        .checklist-item.not-passed {
-          color: var(--forest-green);
-          opacity: 0.7;
-          font-weight: 500;
-        }
-
-        .check-icon {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 20px;
-          height: 20px;
-          margin-right: 8px;
-          border-radius: 50%;
-        }
-
-        .passed-icon {
-          background-color: var(--bright-green);
-        }
-
-        .not-passed-icon {
-          background-color: rgba(14, 101, 55, 0.1);
-          border: 1px solid rgba(14, 101, 55, 0.2);
-        }
-
-        .icon-svg {
-          width: 12px;
-          height: 12px;
-          color: white;
-        }
-
-        .not-passed-icon .icon-svg {
-          color: var(--medium-green);
-        }
-
-        /* Social buttons */
-        .social-button {
-          padding: 12px 0 !important;
-          border-color: rgba(14, 101, 55, 0.2) !important;
-          color: var(--forest-green) !important;
-          background-color: white !important;
-          border-radius: 10px !important;
-          text-transform: none !important;
-          font-family: "Montserrat", system-ui, arial !important;
-          font-weight: 500 !important;
-          margin-bottom: 24px !important;
-        }
-
-        .social-button:hover {
-          background-color: var(--light-green) !important;
-          border-color: var(--medium-green) !important;
-        }
-
-        /* Login link */
-        .login-text {
-          color: var(--medium-green) !important;
-          font-family: "Inter", system-ui, arial !important;
-        }
-
-        .login-link {
-          color: var(--dark-green) !important;
-          font-weight: 600 !important;
-          text-decoration: none !important;
-        }
-
-        .login-link:hover {
-          text-decoration: underline !important;
-          color: var(--bright-green) !important;
-        }
-
-        /* Error alert */
-        .error-alert {
-          border-radius: 10px !important;
-          background-color: #ffebee !important;
-        }
-      `}</style>
-
-      <div className="min-h-screen bg-gradient-to-br from-[#f0f9f4] to-[#e6f5ec] flex flex-col">
+      <div className="min-h-screen w-full bg-background flex flex-col">
         {/* Header */}
         <div className="p-6">
           <div className="flex items-center">
             <Link href="/" className="no-underline">
-              <span className="text-xl font-semibold bg-gradient-to-br from-[#0e6537] to-[#157a42] bg-clip-text text-transparent">
+              <span className="text-xl font-semibold bg-gradient-to-br from-primary to-secondary bg-clip-text text-transparent">
                 ACS
               </span>
             </Link>
@@ -574,97 +340,102 @@ const SignupPage: React.FC = () => {
 
         {/* Main Content */}
         <div className="flex-1 flex items-center justify-center px-4 pb-16">
-          <div className="w-full max-w-md">
-            <div className="bg-white rounded-2xl shadow-xl border border-[#0e6537]/5 p-8 transition-all duration-300 hover:shadow-2xl">
-              {/* Form Header */}
-              <div className="text-center mb-8">
-                <h1 className="text-2xl font-semibold text-[#002417]">Create Account</h1>
-                <p className="text-[#0e6537]/70 text-sm mt-2 transition-colors duration-200">
-                  Enter your details to create your account
-                </p>
-              </div>
-
-              {/* Error Message */}
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <CardTitle>Create Account</CardTitle>
+              <CardDescription>Enter your details to create your account</CardDescription>
+            </CardHeader>
+            <CardContent>
               {error && (
-                <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl transition-all duration-300">
-                  {error}
-                </div>
+                <Alert variant="destructive" className="mb-6">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Signup Error</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              {recaptchaError && (
+                <Alert variant="destructive" className="mb-6">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>reCAPTCHA Error</AlertTitle>
+                  <AlertDescription>{recaptchaError}</AlertDescription>
+                </Alert>
+              )}
+              {showUserExistsError && (
+                 <Alert variant="destructive" className="mb-6">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>User Exists</AlertTitle>
+                  <AlertDescription>
+                    An account with this email already exists. Please <Link href="/login" className="font-bold hover:underline">Sign In</Link> instead.
+                  </AlertDescription>
+                </Alert>
               )}
 
-              {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-4">
-                  <div>
-                    <input
-                      id="name"
-                      name="name"
-                      type="text"
-                      required
-                      value={formData.name}
-                      onChange={handleChange}
-                      placeholder="Full name"
-                      className="w-full px-4 py-3 border border-[#0e6537]/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0e6537]/20 focus:border-[#0e6537] transition-all duration-200 placeholder-[#0e6537]/50 text-[#002417] bg-white hover:border-[#0e6537]/30"
-                    />
-                  </div>
-                  <div>
-                    <input
-                      id="email"
-                      name="email"
-                      type="email"
-                      required
-                      value={formData.email}
-                      onChange={handleChange}
-                      placeholder="Email address"
-                      className="w-full px-4 py-3 border border-[#0e6537]/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0e6537]/20 focus:border-[#0e6537] transition-all duration-200 placeholder-[#0e6537]/50 text-[#002417] bg-white hover:border-[#0e6537]/30"
-                    />
-                  </div>
+                  <Input
+                    id="name"
+                    name="name"
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={handleChange}
+                    placeholder="Full name"
+                  />
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="Email address"
+                  />
                   <div className="relative">
-                    <input
+                    <Input
                       id="password"
                       name="password"
-                      type={showPassword ? "text" : "password"}
+                      type={showPassword ? 'text' : 'password'}
                       required
                       value={formData.password}
                       onChange={handleChange}
                       placeholder="Password"
-                      className="w-full px-4 py-3 border border-[#0e6537]/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0e6537]/20 focus:border-[#0e6537] transition-all duration-200 placeholder-[#0e6537]/50 text-[#002417] bg-white hover:border-[#0e6537]/30"
+                      onFocus={() => setShowRequirements(true)}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#0e6537] hover:text-[#157a42]"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
-                      {showPassword ? "Hide" : "Show"}
+                      {showPassword ? 'Hide' : 'Show'}
                     </button>
                   </div>
                   <div className="relative">
-                    <input
+                    <Input
                       id="confirmPassword"
                       name="confirmPassword"
-                      type={showConfirmPassword ? "text" : "password"}
+                      type={showConfirmPassword ? 'text' : 'password'}
                       required
                       value={confirmPassword}
                       onChange={handleChange}
                       placeholder="Confirm password"
-                      className="w-full px-4 py-3 border border-[#0e6537]/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0e6537]/20 focus:border-[#0e6537] transition-all duration-200 placeholder-[#0e6537]/50 text-[#002417] bg-white hover:border-[#0e6537]/30"
                     />
-                    <button
+                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#0e6537] hover:text-[#157a42]"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
-                      {showConfirmPassword ? "Hide" : "Show"}
+                      {showConfirmPassword ? 'Hide' : 'Show'}
                     </button>
                   </div>
                 </div>
 
-                {/* Password Requirements */}
                 {showRequirements && (
-                  <div className="p-4 bg-[#f0f9f4] border border-[#0e6537]/20 rounded-xl text-sm text-[#002417]">
-                    <h3 className="font-medium mb-2">Password Requirements:</h3>
-                    <ul className="list-disc list-inside space-y-1">
+                  <div className="p-4 bg-accent border border-neutral-200 rounded-xl text-sm">
+                    <h3 className="font-medium mb-2 text-foreground">Password Requirements:</h3>
+                    <ul className="space-y-1">
                       {passwordChecks.map((check) => (
-                        <li key={check.label} className={check.test(formData.password || "") ? "text-[#0e6537]" : ""}>
+                        <li key={check.label} className={`flex items-center ${check.test(formData.password || '') ? 'text-primary' : 'text-muted-foreground'}`}>
+                          {check.test(formData.password || '') ? <Check className="h-4 w-4 mr-2 text-primary" /> : <X className="h-4 w-4 mr-2 text-muted-foreground" />}
                           {check.label}
                         </li>
                       ))}
@@ -672,38 +443,32 @@ const SignupPage: React.FC = () => {
                   </div>
                 )}
 
-                <button
+                <Button
                   type="submit"
                   disabled={loading || recaptchaLoading}
-                  className="w-full py-3 px-4 bg-gradient-to-r from-[#0e6537] to-[#157a42] text-white text-sm font-medium rounded-xl hover:from-[#157a42] hover:to-[#0e6537] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0e6537]/50 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg hover:shadow-xl"
+                  className="w-full"
                 >
-                  {loading ? (
+                  {loading || recaptchaLoading ? (
                     <div className="flex items-center justify-center">
-                      <CircularProgress size={20} className="text-white mr-2" />
-                      Creating account...
-                    </div>
-                  ) : recaptchaLoading ? (
-                    <div className="flex items-center justify-center">
-                      <CircularProgress size={20} className="text-white mr-2" />
-                      Loading...
+                      <LoadingSpinner size="sm" className="mr-2" />
+                      {loading ? 'Creating account...' : 'Loading...'}
                     </div>
                   ) : (
-                    "Sign up"
+                    'Sign up'
                   )}
-                </button>
+                </Button>
               </form>
 
-              {/* Google Sign In */}
               <div className="mt-6">
-                <button
-                  type="button"
+                <Button
+                  variant="outline"
                   onClick={handleGoogleSignIn}
                   disabled={loading}
-                  className="w-full flex items-center justify-center py-3 px-4 border border-[#0e6537]/20 rounded-xl text-sm font-medium text-[#002417] hover:bg-[#f0f9f4] transition-all duration-200 hover:border-[#0e6537]/30 hover:scale-[1.01] active:scale-[0.99]"
+                  className="w-full"
                 >
                   {loading ? (
                     <div className="flex items-center justify-center">
-                      <CircularProgress size={20} className="text-[#0e6537] mr-2" />
+                      <LoadingSpinner size="sm" className="mr-2" />
                       Signing up...
                     </div>
                   ) : (
@@ -712,78 +477,21 @@ const SignupPage: React.FC = () => {
                       Sign up with Google
                     </>
                   )}
-                </button>
+                </Button>
               </div>
 
-              {/* Login Link */}
               <div className="mt-8 text-center">
-                <p className="text-sm text-gray-600">
-                  Already have an account?{" "}
-                  <Link 
-                    href="/login" 
-                    className="!text-black hover:!text-blue-600"
-                  >
+                <p className="text-sm text-muted-foreground">
+                  Already have an account?{' '}
+                  <Link href="/login" className="text-primary hover:text-secondary">
                     Sign in
                   </Link>
                 </p>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
-
-      {/* Snackbars */}
-      <Snackbar 
-        open={showRequirements} 
-        autoHideDuration={6000} 
-        onClose={() => setShowRequirements(false)} 
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-      >
-        <MuiAlert 
-          onClose={() => setShowRequirements(false)} 
-          severity="warning" 
-          sx={{ width: "100%" }}
-        >
-          Please complete all fields, ensure your password meets requirements, and matches confirmation.<br />
-          <ul style={{ margin: 0, paddingLeft: 20, textAlign: "left" }}>
-            <li>At least 8 characters</li>
-            <li>One uppercase letter</li>
-            <li>One number</li>
-            <li>One symbol</li>
-            <li>Passwords must match</li>
-          </ul>
-        </MuiAlert>
-      </Snackbar>
-
-      <Snackbar 
-        open={!!recaptchaError} 
-        autoHideDuration={6000} 
-        onClose={() => setRecaptchaError(null)}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-      >
-        <MuiAlert 
-          onClose={() => setRecaptchaError(null)} 
-          severity="error" 
-          sx={{ width: "100%" }}
-        >
-          {recaptchaError}
-        </MuiAlert>
-      </Snackbar>
-
-      <Snackbar 
-        open={showUserExistsError} 
-        autoHideDuration={6000} 
-        onClose={() => setShowUserExistsError(false)} 
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-      >
-        <MuiAlert 
-          onClose={() => setShowUserExistsError(false)} 
-          severity="error" 
-          sx={{ width: "100%" }}
-        >
-          An account with this email already exists. Please try logging in instead.
-        </MuiAlert>
-      </Snackbar>
     </>
   );
 };

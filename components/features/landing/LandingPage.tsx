@@ -37,7 +37,7 @@ export function LandingPage({ className }: LandingPageProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
-        className="min-h-screen bg-white relative overflow-hidden"
+        className="min-h-screen bg-background relative overflow-hidden font-sans"
       >
         {/* Hero Section */}
         <HeroSection data={hero} />

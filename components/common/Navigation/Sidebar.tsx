@@ -96,12 +96,10 @@ const Sidebar = memo(function Sidebar({ children }: { children: React.ReactNode 
 
   return (
     <div
-      className={`
-        ${isOpen
-          ? 'w-16 sm:w-20 md:w-64'
-          : 'w-12 sm:w-16 md:w-28'}
-        transition-all duration-300 ease-in-out bg-gradient-to-b from-[#0a5a2f] via-[#0e6537] to-[#157a42] border-r border-white/10 flex-shrink-0 shadow-xl h-full sidebar-transition
-      `}
+      className={cn(
+        'transition-all duration-300 bg-sidebar border-r border-sidebar-border flex-shrink-0 shadow-xl h-full sidebar-transition',
+        isOpen ? 'w-16 sm:w-20 md:w-64' : 'w-12 sm:w-16 md:w-28'
+      )}
     >
       {children}
     </div>
@@ -142,7 +140,7 @@ const SidebarContent = memo(function SidebarContent({ children }: { children: Re
   return (
     <div className="flex flex-col h-full max-h-full relative">
       {/* Header with logo and toggle */}
-      <div className="flex-shrink-0 flex items-center justify-between px-4 py-4 border-b border-white/10">
+      <div className="flex-shrink-0 flex items-center justify-between px-4 py-4 border-b border-sidebar-border">
         {/* Responsive Logo: show icon+text when open, icon-only when collapsed */}
         {isOpen ? (
           <Logo size={logoSize} variant="icon-only" whiteText />
@@ -153,22 +151,22 @@ const SidebarContent = memo(function SidebarContent({ children }: { children: Re
           {isMobile && (
             <button
               onClick={toggle}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors group"
+              className="p-2 hover:bg-sidebar-accent rounded-lg transition-colors group"
               title="Close sidebar"
             >
-              <X className="h-5 w-5 text-white group-hover:scale-110 transition-transform" />
+              <X className="h-5 w-5 text-sidebar-foreground group-hover:scale-110 transition-transform" />
             </button>
           )}
           {!isMobile && (
             <button
               onClick={toggle}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors group"
+              className="p-2 hover:bg-sidebar-accent rounded-lg transition-colors group"
               title={isOpen ? "Collapse sidebar" : "Expand sidebar"}
             >
               {isOpen ? (
-                <ChevronLeft className="h-5 w-5 text-white group-hover:scale-110 transition-transform" />
+                <ChevronLeft className="h-5 w-5 text-sidebar-foreground group-hover:scale-110 transition-transform" />
               ) : (
-                <ChevronRight className="h-5 w-5 text-white group-hover:scale-110 transition-transform" />
+                <ChevronRight className="h-5 w-5 text-sidebar-foreground group-hover:scale-110 transition-transform" />
               )}
             </button>
           )}
@@ -220,7 +218,7 @@ const SidebarGroup = memo(function SidebarGroup({
       <div className="px-2 py-2">
         <button
           onClick={handleCollapsedClick}
-          className="w-full flex items-center justify-center p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors group"
+          className="w-full flex items-center justify-center p-2 text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent rounded-lg transition-colors group"
           title={title}
         >
           {GroupIcon && <GroupIcon className="h-4 w-4" />}
@@ -234,7 +232,7 @@ const SidebarGroup = memo(function SidebarGroup({
       {title && (
         <button
           onClick={handleHeaderClick}
-          className="w-full flex items-center justify-between px-1 py-2 text-white/60 hover:text-white/80 transition-colors group"
+          className="w-full flex items-center justify-between px-1 py-2 text-sidebar-foreground/60 hover:text-sidebar-foreground/80 transition-colors group"
         >
           <div className="flex items-center gap-2">
             {GroupIcon && <GroupIcon className="h-3 w-3" />}
@@ -304,19 +302,21 @@ const NavigationItem = memo(function NavigationItem({ item, unreadCount }: Navig
     <SidebarMenuItem>
       <button
         onClick={handleClick}
-        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative ${
+        className={cn(
+          'w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative',
           isActive
-            ? 'bg-white/20 text-white shadow-sm'
-            : 'text-white/80 hover:text-white hover:bg-white/10'
-        }`}
+            ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-sm'
+            : 'text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent'
+        )}
         title={!isOpen ? item.title : undefined}
       >
         <div className="relative flex-shrink-0">
-          <item.icon className={`h-4 w-4 group-hover:scale-110 transition-transform ${
-            isActive ? 'text-white' : 'text-white/80 group-hover:text-white'
-          }`} />
+          <item.icon className={cn(
+            'h-4 w-4 group-hover:scale-110 transition-transform',
+            isActive ? 'text-sidebar-accent-foreground' : 'text-sidebar-foreground/80 group-hover:text-sidebar-foreground'
+          )} />
           {unreadCount && unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-xs rounded-full flex items-center justify-center">
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
@@ -324,7 +324,7 @@ const NavigationItem = memo(function NavigationItem({ item, unreadCount }: Navig
         {isOpen && (
           <div className="flex flex-col items-start min-w-0">
             <span className="text-sm font-medium truncate">{item.title}</span>
-            <span className="text-xs text-white/60 truncate">{item.description}</span>
+            <span className="text-xs text-sidebar-foreground/60 truncate">{item.description}</span>
           </div>
         )}
       </button>
@@ -351,7 +351,7 @@ const LogoutButton = memo(function LogoutButton() {
   return (
     <button
       onClick={handleLogout}
-      className="w-full flex items-center gap-3 px-3 py-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors group"
+      className="w-full flex items-center gap-3 px-3 py-2 text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent rounded-lg transition-colors group"
       title="Logout"
     >
       <LogOut className="h-4 w-4 group-hover:scale-110 transition-transform" />
@@ -376,9 +376,9 @@ const UserProfile = memo(function UserProfile({ user }: UserProfileProps) {
 
   return (
     <SidebarGroup isExpanded={true} onToggle={() => {}} onExpand={() => {}}>
-      <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/10 user-profile-hover">
-        <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-          <span className="text-white font-semibold text-sm">
+      <div className="flex items-center gap-3 p-3 bg-sidebar-accent/50 rounded-lg border border-sidebar-border user-profile-hover">
+        <div className="w-8 h-8 bg-sidebar-accent/80 rounded-full flex items-center justify-center flex-shrink-0">
+          <span className="text-sidebar-foreground font-semibold text-sm">
             {user.name
               ? user.name.split(' ').map(n => n[0]).join('').toUpperCase()
               : user.email?.charAt(0).toUpperCase() || 'U'
@@ -387,8 +387,8 @@ const UserProfile = memo(function UserProfile({ user }: UserProfileProps) {
         </div>
         {isOpen && (
           <div className="flex flex-col min-w-0">
-            <span className="text-white font-medium text-sm truncate">{user.name || 'User'}</span>
-            <span className="text-white/60 text-xs truncate">{user.email}</span>
+            <span className="text-sidebar-foreground font-medium text-sm truncate">{user.name || 'User'}</span>
+            <span className="text-sidebar-foreground/60 text-xs truncate">{user.email}</span>
           </div>
         )}
       </div>
@@ -406,14 +406,14 @@ const SidebarFooter = memo(function SidebarFooter() {
   if (!isOpen) return null
 
   return (
-    <div className="px-3 py-3 border-t border-white/10">
-      <div className="flex flex-col gap-2 text-xs text-white/60">
+    <div className="px-3 py-3 border-t border-sidebar-border">
+      <div className="flex flex-col gap-2 text-xs text-sidebar-foreground/60">
         <div className="flex flex-wrap gap-x-3 gap-y-1">
-          <a href="/legal/terms" className="hover:text-white transition-colors">Terms</a>
-          <a href="/legal/privacy" className="hover:text-white transition-colors">Privacy</a>
-          <a href="/legal/cookies" className="hover:text-white transition-colors">Cookies</a>
+          <a href="/legal/terms" className="hover:text-sidebar-foreground transition-colors">Terms</a>
+          <a href="/legal/privacy" className="hover:text-sidebar-foreground transition-colors">Privacy</a>
+          <a href="/legal/cookies" className="hover:text-sidebar-foreground transition-colors">Cookies</a>
         </div>
-        <span className="text-white/40 text-center">© 2025 ACS. All rights reserved.</span>
+        <span className="text-sidebar-foreground/40 text-center">© 2025 ACS. All rights reserved.</span>
       </div>
     </div>
   )
@@ -433,10 +433,10 @@ const SidebarTrigger = memo(function SidebarTrigger() {
   return (
     <button 
       onClick={toggle} 
-      className="p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+      className="p-2 -ml-2 rounded-full hover:bg-accent transition-colors"
       aria-label="Toggle sidebar"
     >
-      <Menu className="h-6 w-6 text-gray-600 dark:text-gray-300" />
+      <Menu className="h-6 w-6 text-foreground" />
     </button>
   )
 })

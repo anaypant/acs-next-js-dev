@@ -5,20 +5,93 @@ const config: Config = {
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './app/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
     extend: {
       colors: {
-        background: 'var(--background)',
-        foreground: 'var(--foreground)',
-        accent: 'var(--accent)',
-        'accent-light': 'var(--accent-light)',
-        'text-muted': 'var(--text-muted)',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        primary: {
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))',
+        },
+        secondary: {
+          DEFAULT: 'hsl(var(--secondary))',
+          light: 'hsl(var(--secondary-light))',
+          dark: 'hsl(var(--secondary-dark))',
+          foreground: 'hsl(var(--secondary-foreground))',
+        },
+        destructive: {
+          DEFAULT: 'hsl(var(--destructive))',
+          foreground: 'hsl(var(--destructive-foreground))',
+        },
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))',
+        },
+        accent: {
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))',
+        },
+        popover: {
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))',
+        },
+        card: {
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))',
+        },
+        border: 'hsl(var(--border))',
+        status: {
+          success: 'var(--status-success)',
+          warning: 'var(--status-warning)',
+          error: 'var(--status-error)',
+          info: 'var(--status-info)',
+        },
+        chart: {
+          '1': 'var(--chart-1)',
+          '2': 'var(--chart-2)',
+          '3': 'var(--chart-3)',
+          '4': 'var(--chart-4)',
+          '5': 'var(--chart-5)',
+        },
+        sidebar: {
+          DEFAULT: 'var(--sidebar)',
+          foreground: 'var(--sidebar-foreground)',
+          primary: 'var(--sidebar-primary)',
+          'primary-foreground': 'var(--sidebar-primary-foreground)',
+          accent: 'var(--sidebar-accent)',
+          'accent-foreground': 'var(--sidebar-accent-foreground)',
+          border: 'var(--sidebar-border)',
+          ring: 'var(--sidebar-ring)',
+        },
+        neutral: {
+          50: '#fafafa',
+          100: '#f5f5f5',
+          200: '#e5e5e5',
+          300: '#d4d4d4',
+          400: '#a3a3a3',
+          500: '#737373',
+          600: '#525252',
+          700: '#404040',
+          800: '#262626',
+          900: '#171717',
+          950: '#0a0a0a',
+        },
+        'text-gradient': 'hsl(var(--text-gradient))',
+      },
+      borderRadius: {
+        lg: `var(--radius)`,
+        md: `calc(var(--radius) - 2px)`,
+        sm: 'calc(var(--radius) - 4px)',
       },
       fontFamily: {
-        sans: ['var(--font-inter)'],
-        display: ['var(--font-playfair)'],
-        montserrat: ['var(--font-montserrat)'],
+        sans: ['var(--font-inter)', 'system-ui', 'arial'],
+        display: ['var(--font-playfair)', 'Georgia', 'serif'],
+        montserrat: ['var(--font-montserrat)', 'system-ui', 'arial'],
       },
       animation: {
         'gradient-x': 'gradient-x 15s ease infinite',
@@ -29,6 +102,7 @@ const config: Config = {
         'float-1': 'float-1 10s ease-in-out infinite',
         'float-2': 'float-2 12s ease-in-out infinite',
         'float-3': 'float-3 8s ease-in-out infinite',
+        'slide-gradient': 'slide-gradient 3s ease-in-out infinite',
       },
       keyframes: {
         'gradient-x': {
@@ -103,6 +177,17 @@ const config: Config = {
           '66%': { 
             transform: 'translate(-20px, 30px) scale(0.9)',
             opacity: '0.4'
+          },
+        },
+        'slide-gradient': {
+          '0%': {
+            'background-position': '-150% 50%',
+          },
+          '50%': {
+            'background-position': '250% 50%',
+          },
+          '100%': {
+            'background-position': '-150% 50%',
           },
         },
       },

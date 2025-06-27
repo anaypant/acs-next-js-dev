@@ -35,7 +35,7 @@ export function FeaturesSection({
 }: FeaturesSectionProps) {
   return (
     <section className={cn(
-      "py-16 sm:py-20 md:py-28 bg-gradient-to-br from-[#0a5a2f] via-[#0e6537] to-[#157a42] mb-8 sm:mb-12 md:mb-16 lg:mb-20",
+      "py-16 sm:py-20 md:py-28 bg-gradient-to-br from-[var(--midnight-800)] via-[var(--midnight-700)] to-[var(--midnight-600)] mb-8 sm:mb-12 md:mb-16 lg:mb-20",
       className
     )}>
       <div className="container mx-auto px-4 sm:px-6">
@@ -61,9 +61,9 @@ export function FeaturesSection({
               <div className="p-6 sm:p-8">
                 <div className="flex items-center gap-4 mb-6">
                   {feature.icon && (
-                    <div className="p-3 bg-green-50 rounded-xl">
+                    <div className="p-3 bg-[var(--midnight-50)] rounded-xl">
                       {React.createElement(feature.icon, { 
-                        className: "h-6 w-6 text-[#0e6537]" 
+                        className: "h-6 w-6 text-[var(--midnight-700)]" 
                       })}
                     </div>
                   )}
@@ -76,7 +76,7 @@ export function FeaturesSection({
                 </p>
               </div>
               {feature.demoImage && (
-                <div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg border border-[#0e6537]/20 bg-white">
+                <div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg border border-[var(--midnight-700)]/20 bg-white">
                   <Image
                     src={feature.demoImage}
                     alt={feature.title}

@@ -59,7 +59,7 @@ export function BenefitsSection({
             >
               <div className="p-3 bg-green-50 rounded-xl w-fit mb-6">
                 {React.createElement(benefit.icon, { 
-                  className: "h-6 w-6 text-[#0e6537]" 
+                  className: "h-6 w-6 text-secondary-dark" 
                 })}
               </div>
               <h3 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 mb-4">
