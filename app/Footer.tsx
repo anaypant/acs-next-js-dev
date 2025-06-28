@@ -73,7 +73,9 @@ export default function Footer() {
 
           {/* Legal documents section */}
           <div>
-            <h3 className="font-semibold text-foreground mb-3">Legal</h3>
+            <Link href="/legal" className="font-semibold text-foreground mb-3 hover:text-primary transition-colors duration-200 block">
+              Legal
+            </Link>
             <ul className="space-y-2">
               <li>
                 <Link href="/legal/terms" className="font-semibold text-primary hover:text-primary-light transition-colors duration-200">
