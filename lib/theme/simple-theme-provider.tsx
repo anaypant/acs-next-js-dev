@@ -19,11 +19,19 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function SimpleThemeProvider({ children }: { children: React.ReactNode }) {
   const [currentTheme, setCurrentTheme] = useState<SimpleTheme>(greenTheme);
+  const [mounted, setMounted] = useState(false);
 
-  // Apply theme to document when it changes
+  // Set mounted state after hydration
   useEffect(() => {
-    applyTheme(currentTheme);
-  }, [currentTheme]);
+    setMounted(true);
+  }, []);
+
+  // Apply theme to document when it changes, but only after mounting
+  useEffect(() => {
+    if (mounted) {
+      applyTheme(currentTheme);
+    }
+  }, [currentTheme, mounted]);
 
   const setTheme = (theme: SimpleTheme) => {
     setCurrentTheme(theme);
@@ -32,6 +40,8 @@ export function SimpleThemeProvider({ children }: { children: React.ReactNode })
   const switchToGreen = () => setTheme(greenTheme);
   const switchToBlue = () => setTheme(blueTheme);
 
+  // During SSR or before mounting, render children without theme application
+  // This prevents hydration mismatch
   return (
     <ThemeContext.Provider value={{
       currentTheme,

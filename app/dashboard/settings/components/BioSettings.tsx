@@ -61,20 +61,20 @@ export function BioSettings({ userData, onSave }: BioSettingsProps) {
     };
 
     return (
-        <section id="bio" className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-[#0a5a2f] to-[#157a42]">
-                <h2 className="text-xl font-semibold text-white flex items-center gap-3">
-                    <FileText className="w-5 h-5" />
+        <div className="bg-card rounded-lg shadow-sm border border-border">
+            <div className="px-6 py-4 border-b border-border">
+                <h2 className="text-xl font-semibold text-card-foreground flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-primary" />
                     Bio & Professional Information
                 </h2>
-                <p className="text-sm text-green-100 mt-1">Update your professional bio and company details</p>
+                <p className="text-sm text-muted-foreground mt-1">Update your professional bio and company details</p>
             </div>
             
             <div className="p-6">
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="space-y-4">
                         <div>
-                            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
+                            <label htmlFor="title" className="block text-sm font-medium text-card-foreground mb-2">
                                 Professional Title
                             </label>
                             <input 
@@ -85,16 +85,16 @@ export function BioSettings({ userData, onSave }: BioSettingsProps) {
                                 onChange={handleChange}
                                 className={cn(
                                     "block w-full px-4 py-3 rounded-lg border shadow-sm transition-all duration-200",
-                                    "focus:ring-2 focus:ring-[#0e6537]/50 focus:border-[#0e6537]",
-                                    "text-gray-900 placeholder-gray-500",
-                                    error ? "border-red-300 focus:border-red-500 focus:ring-red-500/50" : "border-gray-300"
+                                    "focus:ring-2 focus:ring-primary/50 focus:border-primary",
+                                    "text-card-foreground placeholder-muted-foreground bg-background",
+                                    error ? "border-status-error focus:border-status-error focus:ring-status-error/50" : "border-border"
                                 )}
                                 placeholder="e.g., Real Estate Agent, Broker, etc."
                             />
                         </div>
                         
                         <div>
-                            <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-2">
+                            <label htmlFor="company" className="block text-sm font-medium text-card-foreground mb-2">
                                 Company Name
                             </label>
                             <input 
@@ -105,16 +105,16 @@ export function BioSettings({ userData, onSave }: BioSettingsProps) {
                                 onChange={handleChange}
                                 className={cn(
                                     "block w-full px-4 py-3 rounded-lg border shadow-sm transition-all duration-200",
-                                    "focus:ring-2 focus:ring-[#0e6537]/50 focus:border-[#0e6537]",
-                                    "text-gray-900 placeholder-gray-500",
-                                    error ? "border-red-300 focus:border-red-500 focus:ring-red-500/50" : "border-gray-300"
+                                    "focus:ring-2 focus:ring-primary/50 focus:border-primary",
+                                    "text-card-foreground placeholder-muted-foreground bg-background",
+                                    error ? "border-status-error focus:border-status-error focus:ring-status-error/50" : "border-border"
                                 )}
                                 placeholder="Enter your company name"
                             />
                         </div>
                         
                         <div>
-                            <label htmlFor="website" className="block text-sm font-medium text-gray-700 mb-2">
+                            <label htmlFor="website" className="block text-sm font-medium text-card-foreground mb-2">
                                 Website URL
                             </label>
                             <input 
@@ -125,16 +125,16 @@ export function BioSettings({ userData, onSave }: BioSettingsProps) {
                                 onChange={handleChange}
                                 className={cn(
                                     "block w-full px-4 py-3 rounded-lg border shadow-sm transition-all duration-200",
-                                    "focus:ring-2 focus:ring-[#0e6537]/50 focus:border-[#0e6537]",
-                                    "text-gray-900 placeholder-gray-500",
-                                    error ? "border-red-300 focus:border-red-500 focus:ring-red-500/50" : "border-gray-300"
+                                    "focus:ring-2 focus:ring-primary/50 focus:border-primary",
+                                    "text-card-foreground placeholder-muted-foreground bg-background",
+                                    error ? "border-status-error focus:border-status-error focus:ring-status-error/50" : "border-border"
                                 )}
                                 placeholder="https://your-website.com"
                             />
                         </div>
                         
                         <div>
-                            <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-2">
+                            <label htmlFor="bio" className="block text-sm font-medium text-card-foreground mb-2">
                                 Professional Bio
                             </label>
                             <textarea 
@@ -145,13 +145,13 @@ export function BioSettings({ userData, onSave }: BioSettingsProps) {
                                 rows={4}
                                 className={cn(
                                     "block w-full px-4 py-3 rounded-lg border shadow-sm transition-all duration-200",
-                                    "focus:ring-2 focus:ring-[#0e6537]/50 focus:border-[#0e6537]",
-                                    "text-gray-900 placeholder-gray-500 resize-none",
-                                    error ? "border-red-300 focus:border-red-500 focus:ring-red-500/50" : "border-gray-300"
+                                    "focus:ring-2 focus:ring-primary/50 focus:border-primary",
+                                    "text-card-foreground placeholder-muted-foreground bg-background resize-none",
+                                    error ? "border-status-error focus:border-status-error focus:ring-status-error/50" : "border-border"
                                 )}
                                 placeholder="Tell clients about your experience, specialties, and what makes you unique..."
                             />
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-muted-foreground mt-1">
                                 {form.bio.length}/500 characters
                             </p>
                         </div>
@@ -159,16 +159,16 @@ export function BioSettings({ userData, onSave }: BioSettingsProps) {
                     
                     {/* Status Messages */}
                     {error && (
-                        <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
-                            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                            <p className="text-sm text-red-700">{error}</p>
+                        <div className="flex items-center gap-3 p-4 bg-status-error/10 border border-status-error/20 rounded-lg">
+                            <AlertCircle className="w-5 h-5 text-status-error flex-shrink-0" />
+                            <p className="text-sm text-status-error">{error}</p>
                         </div>
                     )}
                     
                     {success && (
-                        <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
-                            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                            <p className="text-sm text-green-700">Bio information updated successfully!</p>
+                        <div className="flex items-center gap-3 p-4 bg-status-success/10 border border-status-success/20 rounded-lg">
+                            <CheckCircle className="w-5 h-5 text-status-success flex-shrink-0" />
+                            <p className="text-sm text-status-success">Bio information updated successfully!</p>
                         </div>
                     )}
                     
@@ -178,15 +178,13 @@ export function BioSettings({ userData, onSave }: BioSettingsProps) {
                             disabled={loading}
                             className={cn(
                                 "inline-flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200",
-                                "focus:outline-none focus:ring-2 focus:ring-offset-2",
-                                loading 
-                                    ? "bg-gray-300 text-gray-500 cursor-not-allowed" 
-                                    : "bg-gradient-to-r from-[#0a5a2f] to-[#157a42] text-white hover:from-[#0e6537] hover:to-[#157a42] focus:ring-[#0e6537]/50 shadow-lg hover:shadow-xl"
+                                "bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-2 focus:ring-primary/50",
+                                "disabled:opacity-50 disabled:cursor-not-allowed"
                             )}
                         >
                             {loading ? (
                                 <>
-                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                                     Saving...
                                 </>
                             ) : (
@@ -199,6 +197,6 @@ export function BioSettings({ userData, onSave }: BioSettingsProps) {
                     </div>
                 </form>
             </div>
-        </section>
+        </div>
     );
 } 

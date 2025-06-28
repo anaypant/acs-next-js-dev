@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useTheme } from '@/lib/theme/theme-context';
+import { useSimpleTheme } from '@/lib/theme/simple-theme-provider';
 import { ThemeSelector } from '@/components/features/theme/ThemeSelector';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 
 export function ThemeSettings() {
-  const { currentTheme, themeConfig } = useTheme();
+  const { currentTheme } = useSimpleTheme();
 
   return (
     <Card className="border-0 shadow-sm">
@@ -39,7 +39,7 @@ export function ThemeSettings() {
           <div className="flex items-center justify-between">
             <div>
               <h4 className="font-medium text-foreground">Current Theme</h4>
-              <p className="text-sm text-muted-foreground">{themeConfig.description}</p>
+              <p className="text-sm text-muted-foreground">{currentTheme.name}</p>
             </div>
             <ThemeSelector />
           </div>
@@ -134,17 +134,17 @@ export function ThemeSettings() {
         {/* Navigation Preview */}
         <div className="space-y-4">
           <h4 className="font-medium text-foreground">Navigation Preview</h4>
-          <div className="w-48 bg-sidebar border border-sidebar-border rounded-lg p-3">
+          <div className="w-48 bg-card border border-border rounded-lg p-3">
             <div className="space-y-1">
-              <div className="flex items-center space-x-2 p-2 rounded-md bg-sidebar-accent text-sidebar-accent-foreground">
+              <div className="flex items-center space-x-2 p-2 rounded-md bg-primary text-primary-foreground">
                 <User className="h-3 w-3" />
                 <span className="text-xs font-medium">Profile</span>
               </div>
-              <div className="flex items-center space-x-2 p-2 rounded-md hover:bg-sidebar-accent text-sidebar-foreground">
+              <div className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted text-foreground">
                 <Mail className="h-3 w-3" />
                 <span className="text-xs">Messages</span>
               </div>
-              <div className="flex items-center space-x-2 p-2 rounded-md hover:bg-sidebar-accent text-sidebar-foreground">
+              <div className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted text-foreground">
                 <Settings className="h-3 w-3" />
                 <span className="text-xs">Settings</span>
               </div>
@@ -160,23 +160,23 @@ export function ThemeSettings() {
               <dl className="space-y-1">
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Name:</dt>
-                  <dd className="text-foreground">{themeConfig.name}</dd>
+                  <dd className="text-foreground">{currentTheme.name}</dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Theme ID:</dt>
-                  <dd className="text-foreground">{currentTheme}</dd>
+                  <dt className="text-muted-foreground">Primary Color:</dt>
+                  <dd className="text-foreground">{currentTheme.colors.primary}</dd>
                 </div>
               </dl>
             </div>
             <div>
               <dl className="space-y-1">
                 <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Primary:</dt>
-                  <dd className="text-foreground">{themeConfig.colors.primary.main}</dd>
+                  <dt className="text-muted-foreground">Secondary Color:</dt>
+                  <dd className="text-foreground">{currentTheme.colors.secondary}</dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Secondary:</dt>
-                  <dd className="text-foreground">{themeConfig.colors.secondary.main}</dd>
+                  <dt className="text-muted-foreground">Background:</dt>
+                  <dd className="text-foreground">{currentTheme.colors.background}</dd>
                 </div>
               </dl>
             </div>

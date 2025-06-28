@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useTheme } from '@/lib/theme/theme-context';
+import { useSimpleTheme } from '@/lib/theme/simple-theme-provider';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,13 +52,32 @@ function ThemeOption({ theme, isSelected, onSelect }: ThemeOptionProps) {
 }
 
 export function ThemeSelector() {
-  const { currentTheme, themeConfig, availableThemes, setTheme } = useTheme();
+  const { currentTheme, switchToGreen, switchToBlue } = useSimpleTheme();
   const [isOpen, setIsOpen] = useState(false);
 
+  const availableThemes = [
+    {
+      value: 'green',
+      label: 'Green & White',
+      description: 'Clean and professional green theme'
+    },
+    {
+      value: 'blue',
+      label: 'Blue & White', 
+      description: 'Modern and trustworthy blue theme'
+    }
+  ];
+
   const handleThemeSelect = (themeName: string) => {
-    setTheme(themeName);
+    if (themeName === 'green') {
+      switchToGreen();
+    } else if (themeName === 'blue') {
+      switchToBlue();
+    }
     setIsOpen(false);
   };
+
+  const currentThemeValue = currentTheme.name === 'Green & White' ? 'green' : 'blue';
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -86,7 +105,7 @@ export function ThemeSelector() {
               <ThemeOption
                 key={theme.value}
                 theme={theme}
-                isSelected={currentTheme === theme.value}
+                isSelected={currentThemeValue === theme.value}
                 onSelect={() => handleThemeSelect(theme.value)}
               />
             ))}
@@ -99,13 +118,32 @@ export function ThemeSelector() {
 
 // Compact version for mobile or smaller spaces
 export function CompactThemeSelector() {
-  const { currentTheme, availableThemes, setTheme } = useTheme();
+  const { currentTheme, switchToGreen, switchToBlue } = useSimpleTheme();
   const [isOpen, setIsOpen] = useState(false);
 
+  const availableThemes = [
+    {
+      value: 'green',
+      label: 'Green & White',
+      description: 'Clean and professional green theme'
+    },
+    {
+      value: 'blue',
+      label: 'Blue & White', 
+      description: 'Modern and trustworthy blue theme'
+    }
+  ];
+
   const handleThemeSelect = (themeName: string) => {
-    setTheme(themeName);
+    if (themeName === 'green') {
+      switchToGreen();
+    } else if (themeName === 'blue') {
+      switchToBlue();
+    }
     setIsOpen(false);
   };
+
+  const currentThemeValue = currentTheme.name === 'Green & White' ? 'green' : 'blue';
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -130,14 +168,14 @@ export function CompactThemeSelector() {
                 key={theme.value}
                 className={cn(
                   "flex items-center justify-between p-2 rounded-md cursor-pointer transition-colors",
-                  currentTheme === theme.value
+                  currentThemeValue === theme.value
                     ? "bg-primary/10 text-primary"
                     : "hover:bg-muted"
                 )}
                 onClick={() => handleThemeSelect(theme.value)}
               >
                 <span className="text-sm font-medium">{theme.label}</span>
-                {currentTheme === theme.value && (
+                {currentThemeValue === theme.value && (
                   <Check className="h-4 w-4" />
                 )}
               </div>

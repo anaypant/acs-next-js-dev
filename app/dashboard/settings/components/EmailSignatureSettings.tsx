@@ -78,20 +78,20 @@ export function EmailSignatureSettings({ userData, onSave }: EmailSignatureSetti
     };
 
     return (
-        <section id="email-signature" className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-[#0a5a2f] to-[#157a42]">
-                <h2 className="text-xl font-semibold text-white flex items-center gap-3">
-                    <Mail className="w-5 h-5" />
+        <div className="bg-card rounded-lg shadow-sm border border-border">
+            <div className="px-6 py-4 border-b border-border">
+                <h2 className="text-xl font-semibold text-card-foreground flex items-center gap-2">
+                    <Mail className="w-5 h-5 text-primary" />
                     Email Signature
                 </h2>
-                <p className="text-sm text-green-100 mt-1">Customize your professional email signature</p>
+                <p className="text-sm text-muted-foreground mt-1">Customize your professional email signature</p>
             </div>
             
             <div className="p-6">
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="space-y-4">
                         <div>
-                            <label htmlFor="emailSignature" className="block text-sm font-medium text-gray-700 mb-2">
+                            <label htmlFor="emailSignature" className="block text-sm font-medium text-card-foreground mb-2">
                                 Email Signature Content
                             </label>
                             <textarea 
@@ -102,9 +102,9 @@ export function EmailSignatureSettings({ userData, onSave }: EmailSignatureSetti
                                 rows={6}
                                 className={cn(
                                     "block w-full px-4 py-3 rounded-lg border shadow-sm transition-all duration-200",
-                                    "focus:ring-2 focus:ring-[#0e6537]/50 focus:border-[#0e6537]",
-                                    "text-gray-900 placeholder-gray-500 resize-none font-mono text-sm",
-                                    error ? "border-red-300 focus:border-red-500 focus:ring-red-500/50" : "border-gray-300"
+                                    "focus:ring-2 focus:ring-primary/50 focus:border-primary",
+                                    "text-card-foreground placeholder-muted-foreground bg-background resize-none font-mono text-sm",
+                                    error ? "border-status-error focus:border-status-error focus:ring-status-error/50" : "border-border"
                                 )}
                                 placeholder={`John Doe
 Real Estate Agent
@@ -112,13 +112,13 @@ ACS Real Estate
 Phone: (555) 123-4567
 Email: john.doe@acsrealestate.com`}
                             />
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-muted-foreground mt-1">
                                 {form.emailSignature.length}/1000 characters
                             </p>
                         </div>
                         
                         <div className="space-y-3">
-                            <label className="text-sm font-medium text-gray-700">Signature Options</label>
+                            <label className="text-sm font-medium text-card-foreground">Signature Options</label>
                             
                             <div className="space-y-3">
                                 <label className="flex items-center gap-3 cursor-pointer">
@@ -127,9 +127,9 @@ Email: john.doe@acsrealestate.com`}
                                         name="includeLogo" 
                                         checked={form.includeLogo} 
                                         onChange={handleChange}
-                                        className="w-4 h-4 text-[#0e6537] border-gray-300 rounded focus:ring-[#0e6537] focus:ring-2"
+                                        className="w-4 h-4 text-primary border-border rounded focus:ring-primary focus:ring-2 bg-background"
                                     />
-                                    <span className="text-sm text-gray-700">Include ACS logo in signature</span>
+                                    <span className="text-sm text-card-foreground">Include ACS logo in signature</span>
                                 </label>
                                 
                                 <label className="flex items-center gap-3 cursor-pointer">
@@ -138,9 +138,9 @@ Email: john.doe@acsrealestate.com`}
                                         name="includeSocialLinks" 
                                         checked={form.includeSocialLinks} 
                                         onChange={handleChange}
-                                        className="w-4 h-4 text-[#0e6537] border-gray-300 rounded focus:ring-[#0e6537] focus:ring-2"
+                                        className="w-4 h-4 text-primary border-border rounded focus:ring-primary focus:ring-2 bg-background"
                                     />
-                                    <span className="text-sm text-gray-700">Include social media links</span>
+                                    <span className="text-sm text-card-foreground">Include social media links</span>
                                 </label>
                             </div>
                         </div>
@@ -148,11 +148,11 @@ Email: john.doe@acsrealestate.com`}
                         {/* Preview Section */}
                         <div className="mt-6">
                             <div className="flex items-center justify-between mb-3">
-                                <label className="text-sm font-medium text-gray-700">Signature Preview</label>
+                                <label className="text-sm font-medium text-card-foreground">Signature Preview</label>
                                 <button
                                     type="button"
                                     onClick={() => setPreviewMode(!previewMode)}
-                                    className="flex items-center gap-2 text-sm text-[#0e6537] hover:text-[#157a42] transition-colors"
+                                    className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors"
                                 >
                                     {previewMode ? (
                                         <>
@@ -169,8 +169,8 @@ Email: john.doe@acsrealestate.com`}
                             </div>
                             
                             {previewMode && (
-                                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                                    <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono">
+                                <div className="p-4 bg-muted border border-border rounded-lg">
+                                    <pre className="text-sm text-card-foreground whitespace-pre-wrap font-mono">
                                         {generatePreviewSignature()}
                                     </pre>
                                 </div>
@@ -180,16 +180,16 @@ Email: john.doe@acsrealestate.com`}
                     
                     {/* Status Messages */}
                     {error && (
-                        <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
-                            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                            <p className="text-sm text-red-700">{error}</p>
+                        <div className="flex items-center gap-3 p-4 bg-status-error/10 border border-status-error/20 rounded-lg">
+                            <AlertCircle className="w-5 h-5 text-status-error flex-shrink-0" />
+                            <p className="text-sm text-status-error">{error}</p>
                         </div>
                     )}
                     
                     {success && (
-                        <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
-                            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                            <p className="text-sm text-green-700">Email signature updated successfully!</p>
+                        <div className="flex items-center gap-3 p-4 bg-status-success/10 border border-status-success/20 rounded-lg">
+                            <CheckCircle className="w-5 h-5 text-status-success flex-shrink-0" />
+                            <p className="text-sm text-status-success">Email signature updated successfully!</p>
                         </div>
                     )}
                     
@@ -199,15 +199,13 @@ Email: john.doe@acsrealestate.com`}
                             disabled={loading}
                             className={cn(
                                 "inline-flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200",
-                                "focus:outline-none focus:ring-2 focus:ring-offset-2",
-                                loading 
-                                    ? "bg-gray-300 text-gray-500 cursor-not-allowed" 
-                                    : "bg-gradient-to-r from-[#0a5a2f] to-[#157a42] text-white hover:from-[#0e6537] hover:to-[#157a42] focus:ring-[#0e6537]/50 shadow-lg hover:shadow-xl"
+                                "bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-2 focus:ring-primary/50",
+                                "disabled:opacity-50 disabled:cursor-not-allowed"
                             )}
                         >
                             {loading ? (
                                 <>
-                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                                     Saving...
                                 </>
                             ) : (
@@ -220,6 +218,6 @@ Email: john.doe@acsrealestate.com`}
                     </div>
                 </form>
             </div>
-        </section>
+        </div>
     );
 } 
