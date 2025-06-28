@@ -8,7 +8,7 @@ import { SettingsContent } from './SettingsContent';
 export default function SettingsPage() {
     return (
         <div 
-            className="min-h-screen bg-gray-50"
+            className="min-h-screen bg-muted"
             style={{ minHeight: '100vh', overflow: 'auto' }}
         >
             <ErrorBoundary>

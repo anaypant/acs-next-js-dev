@@ -176,14 +176,19 @@ export function useThreadsApi(options: any = {}) {
       }
     };
 
-    // Check every 5 minutes
-    intervalRef.current = setInterval(checkForNewEmails, 5 * 60 * 1000);
+    // Check for new emails when page becomes visible
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('Page became visible, checking for new emails...');
+        checkForNewEmails();
+      }
+    };
+
+    // Add visibility change listener
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [options.polling, session?.user?.id, refetch]);
 

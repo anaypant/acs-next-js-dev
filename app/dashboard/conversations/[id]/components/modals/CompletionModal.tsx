@@ -41,8 +41,8 @@ export const CompletionModal: React.FC<{
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-card rounded-lg shadow-xl w-full max-w-md">
         <div className="p-6">
           <h3 className="text-lg font-semibold mb-4">Complete Conversation</h3>
           <p className="text-gray-600 mb-4">
@@ -105,7 +105,7 @@ export const CompletionModal: React.FC<{
             <button
               onClick={handleSubmit}
               disabled={isSubmitting || !reason.trim() || (reason === 'Other' && !customReason.trim())}
-              className="flex-1 px-4 py-2 bg-[#0e6537] text-white rounded-lg hover:bg-[#0a5a2f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? 'Completing...' : 'Complete'}
             </button>

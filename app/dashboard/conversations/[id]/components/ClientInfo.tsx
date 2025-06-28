@@ -13,7 +13,7 @@ export function ClientInfo({ thread }: { thread: Thread | null }) {
   const clientEmail = thread.client_email || 'unknown@email.com';
 
   return (
-    <div className="bg-white rounded-2xl border shadow-lg p-6 flex flex-col items-center text-center">
+    <div className="bg-card rounded-2xl border shadow-lg p-6 flex flex-col items-center text-center">
       <div className="w-14 h-14 bg-[#0e6537]/10 rounded-full flex items-center justify-center mb-3">
         <span className="text-2xl font-semibold text-[#0e6537]">{leadName[0]?.toUpperCase()}</span>
       </div>

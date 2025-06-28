@@ -190,20 +190,20 @@ export function ConversationCard({
   if (variant === 'simple') {
     return (
       <div
-        className={`relative p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors ${
+        className={`relative p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors ${
           isUpdatingRead || isUpdatingLcp || isDeleting ? 'opacity-50 pointer-events-none' : ''
-        } ${isFlagged ? 'border-green-200 bg-green-50' : isFlaggedForReview ? 'border-yellow-200 bg-yellow-50' : 'border-gray-200'}`}
+        } ${isFlagged ? 'border-status-success/20 bg-status-success/5' : isFlaggedForReview ? 'border-status-warning/20 bg-status-warning/5' : 'border-border'}`}
         onClick={handleClick}
       >
         {/* Status badges */}
         {isFlagged && (
-          <div className="absolute -top-2 -right-2 bg-green-400 text-green-900 px-2 py-0.5 rounded-full text-xs font-semibold shadow-sm flex items-center gap-1">
+          <div className="absolute -top-2 -right-2 bg-status-success text-status-success-foreground px-2 py-0.5 rounded-full text-xs font-semibold shadow-sm flex items-center gap-1">
             <CheckCircle className="w-3 h-3" />
             <span className="hidden sm:inline">Complete</span>
           </div>
         )}
         {!isFlagged && isFlaggedForReview && (
-          <div className="absolute -top-2 -right-2 bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full text-xs font-semibold shadow-sm flex items-center gap-1">
+          <div className="absolute -top-2 -right-2 bg-status-warning text-status-warning-foreground px-2 py-0.5 rounded-full text-xs font-semibold shadow-sm flex items-center gap-1">
             <Flag className="w-3 h-3" />
             <span className="hidden sm:inline">Review</span>
           </div>
@@ -225,42 +225,42 @@ export function ConversationCard({
           {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between mb-1">
-              <h4 className="text-sm font-medium text-gray-900 truncate">
+              <h4 className="text-sm font-medium text-card-foreground truncate">
                 {conversationName}
               </h4>
               <div className="flex items-center gap-2">
                 {isUnread && (
-                  <div className="flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded-full font-semibold">
+                  <div className="flex items-center gap-1 px-2 py-0.5 bg-status-error/10 text-status-error text-xs rounded-full font-semibold">
                     <Bell className="w-3 h-3" />
                     <span className="hidden sm:inline">New</span>
                   </div>
                 )}
                 {isPendingReply && (
-                  <div className="flex items-center gap-1 text-amber-600" title="Awaiting your reply">
+                  <div className="flex items-center gap-1 text-status-warning" title="Awaiting your reply">
                     <Clock className="w-3 h-3" />
                   </div>
                 )}
               </div>
             </div>
 
-            <p className="text-sm text-gray-600 font-medium mb-1 truncate">
+            <p className="text-sm text-muted-foreground font-medium mb-1 truncate">
               {subject}
             </p>
 
             {thread.ai_summary && (
-              <p className="text-xs text-gray-500 mb-2 line-clamp-2">
+              <p className="text-xs text-muted-foreground/70 mb-2 line-clamp-2">
                 {thread.ai_summary}
               </p>
             )}
 
-            <div className="flex items-center justify-between text-xs text-gray-500">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
               <div className="flex items-center gap-3">
                 <span>{messageCount} message{messageCount !== 1 ? 's' : ''}</span>
                 {lastMessageTime && (
                   <span>{lastMessageTime.toLocaleString()}</span>
                 )}
               </div>
-              <ChevronRight className="w-4 h-4 text-gray-400" />
+              <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
             </div>
           </div>
         </div>
@@ -271,27 +271,27 @@ export function ConversationCard({
   // Detailed variant
   return (
     <div
-      className={`flex flex-col sm:flex-row items-stretch gap-2 sm:gap-3 md:gap-4 p-2 sm:p-3 md:p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors relative ${
+      className={`flex flex-col sm:flex-row items-stretch gap-2 sm:gap-3 md:gap-4 p-2 sm:p-3 md:p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors relative ${
         isUpdatingRead || isUpdatingLcp || isDeleting ? 'opacity-50 pointer-events-none' : ''
       } ${
         isFlagged
-          ? 'flagged-completion'
+          ? 'border-status-success/20 bg-status-success/5'
           : isFlaggedForReview
-          ? 'flagged-review'
-          : 'border-[#0e6537]/20'
+          ? 'border-status-warning/20 bg-status-warning/5'
+          : 'border-border'
       }`}
       onClick={handleClick}
     >
       {/* Status badges */}
       {!isFlagged && isFlaggedForReview && (
-        <div className="absolute -top-2 -right-2 bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full text-xs font-semibold shadow-sm flex items-center gap-1">
+        <div className="absolute -top-2 -right-2 bg-status-warning text-status-warning-foreground px-2 py-0.5 rounded-full text-xs font-semibold shadow-sm flex items-center gap-1">
           <Flag className="w-3 h-3" />
           <span className="hidden xs:inline">Flagged for Review</span>
           <span className="xs:hidden">Review</span>
         </div>
       )}
       {isFlagged && (
-        <div className="absolute -top-2 -right-2 bg-green-400 text-green-900 px-2 py-0.5 rounded-full text-xs font-semibold shadow-sm flex items-center gap-1">
+        <div className="absolute -top-2 -right-2 bg-status-success text-status-success-foreground px-2 py-0.5 rounded-full text-xs font-semibold shadow-sm flex items-center gap-1">
           <CheckCircle className="w-3 h-3" />
           <span className="hidden xs:inline">Flagged for Completion</span>
           <span className="xs:hidden">Complete</span>
@@ -302,7 +302,7 @@ export function ConversationCard({
       <div className="flex flex-row sm:flex-col items-center justify-start gap-2 sm:gap-0 sm:w-10 md:w-12 pt-1">
         {isUnread && !isUpdatingRead && (
           <button
-            className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 bg-red-100 text-red-800 text-xs rounded-full font-semibold shadow-md z-10 hover:bg-red-200 transition-colors cursor-pointer"
+            className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 bg-status-error/10 text-status-error text-xs rounded-full font-semibold shadow-md z-10 hover:bg-status-error/20 transition-colors cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
               handleClick();
@@ -315,7 +315,7 @@ export function ConversationCard({
           </button>
         )}
         {isUpdatingRead && (
-          <div className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 bg-gray-100 text-gray-600 text-xs rounded-full font-semibold">
+          <div className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 bg-muted text-muted-foreground text-xs rounded-full font-semibold">
             <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
             <span className="hidden sm:inline">Updating...</span>
             <span className="sm:hidden">...</span>
@@ -340,12 +340,12 @@ export function ConversationCard({
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm font-medium text-gray-900 truncate">
+            <h4 className="text-sm font-medium text-card-foreground truncate">
               {conversationName}
             </h4>
             <div className="flex items-center gap-2">
               {isPendingReply && (
-                <div className="flex items-center gap-1 text-amber-600" title="Awaiting your reply">
+                <div className="flex items-center gap-1 text-status-warning" title="Awaiting your reply">
                   <Clock className="w-4 h-4" />
                 </div>
               )}
@@ -360,24 +360,24 @@ export function ConversationCard({
             </div>
           </div>
 
-          <p className="text-sm text-gray-600 font-medium mb-1 truncate">
+          <p className="text-sm text-muted-foreground font-medium mb-1 truncate">
             {subject}
           </p>
 
           {thread.ai_summary && (
-            <p className="text-xs text-gray-500 mb-2 line-clamp-2">
+            <p className="text-xs text-muted-foreground/70 mb-2 line-clamp-2">
               {thread.ai_summary}
             </p>
           )}
 
-          <div className="flex items-center justify-between text-xs text-gray-500">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
             <div className="flex items-center gap-3">
               <span>{messageCount} message{messageCount !== 1 ? 's' : ''}</span>
               {lastMessageTime && (
                 <span>{lastMessageTime.toLocaleString()}</span>
               )}
             </div>
-            <ChevronRight className="w-4 h-4 text-gray-400" />
+            <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
           </div>
         </div>
       </div>
@@ -389,8 +389,8 @@ export function ConversationCard({
           <button
             className={`p-2 rounded-lg transition-colors ${
               localLcpEnabled 
-                ? 'bg-green-100 text-green-700 hover:bg-green-200' 
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-status-success/10 text-status-success hover:bg-status-success/20' 
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
             }`}
             onClick={handleLcpToggle}
             disabled={isUpdatingLcp}
@@ -407,7 +407,7 @@ export function ConversationCard({
 
           {/* Delete Button */}
           <button
-            className="p-2 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+            className="p-2 rounded-lg bg-status-error/10 text-status-error hover:bg-status-error/20 transition-colors"
             onClick={handleDelete}
             disabled={isDeleting}
             title="Delete conversation"

@@ -81,7 +81,7 @@ export function ResizableSidebar({
     <div
       ref={sidebarRef}
       className={cn(
-        "relative flex flex-col bg-white/80 border border-gray-100 rounded-2xl shadow-sm overflow-hidden",
+        "relative flex flex-col bg-card/80 border border-border rounded-2xl shadow-sm overflow-hidden",
         "transition-all duration-300 ease-in-out",
         className
       )}

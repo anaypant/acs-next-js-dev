@@ -49,7 +49,7 @@ export function MessageItem({
       className={`flex ${isUser ? "justify-end" : "justify-start"}`}
     >
       <div className={`max-w-md w-full flex flex-col gap-1 ${isUser ? "items-end" : "items-start"}`}>
-        <div className={`rounded-xl px-6 py-4 shadow-sm ${isUser ? "bg-gradient-to-br from-[#0e6537] to-[#157a42] text-white" : "bg-gray-50 text-gray-900 border"}`}>
+        <div className={`rounded-xl px-6 py-4 shadow-sm ${isUser ? "bg-gradient-to-br from-secondary to-secondary-dark text-secondary-foreground" : "bg-muted text-card-foreground border"}`}>
           <div className="whitespace-pre-line text-base">{message.body}</div>
         </div>
         <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">

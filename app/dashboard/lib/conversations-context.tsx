@@ -33,8 +33,7 @@ export function ConversationsProvider({ children }: { children: React.ReactNode 
     storageStats
   } = useOptimisticConversations({
     autoRefresh: false, // Let individual components control refresh
-    checkNewEmails: true,
-    newEmailCheckInterval: 5 * 60 * 1000 // 5 minutes
+    checkNewEmails: true
   });
 
   const getConversation = (conversationId: string) => {

@@ -55,6 +55,14 @@
     --status-error: #ef4444;
     --status-info: #3b82f6;
     
+    /* Enhanced text contrast variants with fallbacks */
+    --text-on-primary: #FFFFFF;
+    --text-on-secondary: #FFFFFF;
+    --text-on-accent: #0A2F1F;
+    --text-on-muted: #0A2F1F;
+    --text-on-card: #0A2F1F;
+    --text-on-gradient: #FFFFFF;
+    
     /* Chart variables with fallbacks */
     --chart-1: #0A2F1F;
     --chart-2: #137954;
@@ -121,6 +129,14 @@
     --sidebar-accent-foreground: #FFFFFF;
     --sidebar-border: rgba(255,255,255,0.08);
     --sidebar-ring: #38b88b;
+    
+    /* Dark mode text contrast variants */
+    --text-on-primary: #FFFFFF;
+    --text-on-secondary: #0A2F1F;
+    --text-on-accent: #FFFFFF;
+    --text-on-muted: #FFFFFF;
+    --text-on-card: #FFFFFF;
+    --text-on-gradient: #FFFFFF;
   }
 }
 

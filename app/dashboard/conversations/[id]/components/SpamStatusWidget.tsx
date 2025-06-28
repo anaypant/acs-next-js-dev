@@ -19,7 +19,7 @@ export function SpamStatusWidget({
   if (!isSpam) return null;
 
   return (
-    <div className="bg-white rounded-2xl border shadow-lg p-6 flex flex-col items-center text-center">
+    <div className="bg-card rounded-2xl border shadow-lg p-6 flex flex-col items-center text-center">
       <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mb-3">
         <AlertTriangle className="h-7 w-7 text-red-500" />
       </div>
@@ -30,7 +30,7 @@ export function SpamStatusWidget({
       <button
         onClick={onMarkAsNotSpam}
         disabled={updating}
-        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="flex items-center gap-2 px-4 py-2 bg-card border border-border text-card-foreground rounded-lg hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {updating ? (
           <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />

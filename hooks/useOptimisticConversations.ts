@@ -19,7 +19,6 @@ interface UseOptimisticConversationsOptions {
   autoRefresh?: boolean;
   refreshInterval?: number;
   checkNewEmails?: boolean;
-  newEmailCheckInterval?: number;
 }
 
 interface UseOptimisticConversationsReturn {
@@ -51,7 +50,6 @@ export function useOptimisticConversations(options: UseOptimisticConversationsOp
     autoRefresh = false,
     refreshInterval = 30000, // 30 seconds
     checkNewEmails = true,
-    newEmailCheckInterval = 5 * 60 * 1000 // 5 minutes
   } = options;
 
   const { data: session, status } = useSession() as { 
@@ -65,7 +63,6 @@ export function useOptimisticConversations(options: UseOptimisticConversationsOp
   const [isInitialized, setIsInitialized] = useState(false);
   
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const newEmailCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Initialize API client and storage when user is authenticated
   useEffect(() => {
@@ -174,17 +171,21 @@ export function useOptimisticConversations(options: UseOptimisticConversationsOp
   useEffect(() => {
     if (!checkNewEmails || !isInitialized) return;
 
-    newEmailCheckIntervalRef.current = setInterval(() => {
-      checkForNewEmails();
-    }, newEmailCheckInterval);
-
-    return () => {
-      if (newEmailCheckIntervalRef.current) {
-        clearInterval(newEmailCheckIntervalRef.current);
-        newEmailCheckIntervalRef.current = null;
+    // Check for new emails when page becomes visible
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('[useOptimisticConversations] Page became visible, checking for new emails...');
+        checkForNewEmails();
       }
     };
-  }, [checkNewEmails, newEmailCheckInterval, isInitialized, checkForNewEmails]);
+
+    // Add visibility change listener
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [checkNewEmails, isInitialized, checkForNewEmails]);
 
   // Optimistic update conversation
   const updateConversation = useCallback(async (conversationId: string, updates: Partial<Conversation>): Promise<boolean> => {

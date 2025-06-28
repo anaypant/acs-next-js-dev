@@ -26,7 +26,7 @@ export function AIInsights({ thread }: { thread: Thread | null }) {
   ].filter(insight => insight.value && insight.value !== 'UNKNOWN');
 
   return (
-    <div className="bg-white rounded-2xl border shadow-lg p-6">
+    <div className="bg-card rounded-2xl border shadow-lg p-6">
       <h3 className="text-lg font-semibold mb-4">AI Insights</h3>
       <div className="space-y-3">
         {insights.map(insight => (

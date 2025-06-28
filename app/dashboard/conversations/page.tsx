@@ -48,11 +48,11 @@ function ConversationsContent() {
     return (
       <div className="flex items-center justify-center h-full min-h-[400px]">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Error Loading Conversations</h2>
-          <p className="text-gray-600 mb-4">{error || 'An unexpected error occurred.'}</p>
+          <h2 className="text-2xl font-bold text-status-error mb-4">Error Loading Conversations</h2>
+          <p className="text-muted-foreground mb-4">{error || 'An unexpected error occurred.'}</p>
           <button 
             onClick={() => refetch()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
           >
             Try Again
           </button>
@@ -64,22 +64,22 @@ function ConversationsContent() {
   return (
     <div className="h-full flex flex-col">
       {/* Compact Header with Stats */}
-      <div className="flex-shrink-0 p-6 border-b border-gray-200 bg-white">
+      <div className="flex-shrink-0 p-6 border-b border-border bg-card">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-4">
             <button
               onClick={() => router.back()}
-              className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
+              className="p-2 text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Conversations Management</h1>
-              <p className="text-gray-600">Manage all conversations, filter pending emails, and track EV scores</p>
+              <h1 className="text-2xl font-bold text-card-foreground">Conversations Management</h1>
+              <p className="text-muted-foreground">Manage all conversations, filter pending emails, and track EV scores</p>
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <button className="p-2 text-gray-500 hover:text-gray-700 transition-colors">
+            <button className="p-2 text-muted-foreground hover:text-foreground transition-colors">
               <Settings className="w-5 h-5" />
             </button>
           </div>
@@ -124,11 +124,11 @@ export default function ConversationsPage() {
       <ErrorBoundary fallback={
         <div className="flex items-center justify-center h-full min-h-[400px]">
           <div className="text-center">
-            <h2 className="text-2xl font-bold text-red-600 mb-4">Conversations Error</h2>
-            <p className="text-gray-600 mb-4">Something went wrong with the conversations page.</p>
+            <h2 className="text-2xl font-bold text-status-error mb-4">Conversations Error</h2>
+            <p className="text-muted-foreground mb-4">Something went wrong with the conversations page.</p>
             <button 
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
             >
               Reload Page
             </button>

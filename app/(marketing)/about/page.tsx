@@ -5,9 +5,10 @@
  * - Mobile-first design approach with enhanced touch interactions
  * - Properly centered content on all screen sizes
  * - Enhanced animations and interactions
+ * - Uses theme colors for dynamic theming
  * Author: acagliol
  * Date: 06/15/25
- * Version: 1.5.0
+ * Version: 1.6.0
  */
 
 /**
@@ -20,6 +21,7 @@
  * - Optimized for large screens with proper content scaling
  * - MUI-style animations and shadows
  * - Enhanced interactivity with touch-friendly elements
+ * - Dynamic theming using theme CSS variables
  * 
  * Sections:
  * - Hero section with gradient background
@@ -50,7 +52,7 @@ function Avatar({ src, fallback, alt }: AvatarProps) {
       {src ? (
         <img src={src} alt={alt} className="w-full h-full object-cover" />
       ) : (
-        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#0e6537]/20 to-[#157a42]/20 text-[#0e6537] text-base sm:text-lg md:text-xl font-medium">
+        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-secondary/20 text-primary text-base sm:text-lg md:text-xl font-medium">
           {fallback}
         </div>
       )}
@@ -60,9 +62,24 @@ function Avatar({ src, fallback, alt }: AvatarProps) {
 
 export default function AboutPage() {
   const [isVisible, setIsVisible] = useState(false)
+  const [themeLoaded, setThemeLoaded] = useState(false)
 
   useEffect(() => {
     setIsVisible(true)
+    
+    // Ensure theme variables are loaded
+    const checkThemeLoaded = () => {
+      const root = document.documentElement
+      const backgroundAccent = getComputedStyle(root).getPropertyValue('--background-accent')
+      if (backgroundAccent && backgroundAccent.trim() !== '') {
+        setThemeLoaded(true)
+      } else {
+        // Retry after a short delay
+        setTimeout(checkThemeLoaded, 100)
+      }
+    }
+    
+    checkThemeLoaded()
   }, [])
 
   const leadershipTeam = [
@@ -89,28 +106,28 @@ export default function AboutPage() {
       description: "Automate contacting and converting leads with intelligent email routing, conversation management, and conversion tracking through our comprehensive dashboard.",
       icon: <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6" />,
       stats: "24/7 Lead Management",
-      color: "from-green-500 to-green-600",
+      color: "from-secondary to-secondary-dark",
     },
     {
       title: "Lead Generation Workflow (LGW)",
       description: "Strategic advertising and channel management to generate new leads through Facebook Marketplace, Google PPC, and other major ad platforms.",
       icon: <Target className="h-5 w-5 sm:h-6 sm:w-6" />,
       stats: "Expanded Funnel",
-      color: "from-blue-500 to-blue-600",
+      color: "from-primary to-primary-light",
     },
     {
       title: "AI-Powered Automation",
       description: "Leverage artificial intelligence to automate complex business processes, identify inefficiencies, and streamline operations for small businesses.",
       icon: <Zap className="h-5 w-5 sm:h-6 sm:w-6" />,
       stats: "Process Optimization",
-      color: "from-purple-500 to-purple-600",
+      color: "from-status-info to-blue-600",
     },
     {
       title: "Real Estate Specialization",
       description: "Industry-specific solutions designed for real estate professionals",
       icon: <BarChart className="h-5 w-5 sm:h-6 sm:w-6" />,
       stats: "Industry Focus",
-      color: "from-orange-500 to-orange-600",
+      color: "from-status-warning to-orange-600",
     },
   ]
 
@@ -163,7 +180,7 @@ export default function AboutPage() {
   return (
     <>
       {/* Hero */}
-      <section className="bg-gradient-to-b from-[#0a5a2f] via-[#0e6537] to-[#157a42] py-12 sm:py-16 md:py-20 lg:py-24 xl:py-32 relative overflow-hidden">
+      <section className="bg-gradient-to-b from-primary via-secondary to-secondary-light py-12 sm:py-16 md:py-20 lg:py-24 xl:py-32 relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
         <div className="absolute inset-0 bg-gradient-to-r from-black/10 to-transparent"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4 sm:space-y-6 md:space-y-8">
@@ -185,14 +202,14 @@ export default function AboutPage() {
       </section>
 
       {/* Introduction */}
-      <section className="py-12 sm:py-16 md:py-20 bg-white">
+      <section className="py-12 sm:py-16 md:py-20 bg-background">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div 
-            className={`bg-gradient-to-r from-gray-50 to-white p-6 sm:p-8 md:p-12 rounded-2xl shadow-xl hover:shadow-2xl border border-[#b7e2c7] hover:border-[#0e6537]/40 transition-all duration-500 transform hover:-translate-y-1 ${
+            className={`bg-gradient-to-r from-muted to-background p-6 sm:p-8 md:p-12 rounded-2xl shadow-xl hover:shadow-2xl border border-secondary/20 hover:border-secondary/40 transition-all duration-500 transform hover:-translate-y-1 ${
               isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
             }`}
           >
-            <p className="text-sm sm:text-base md:text-lg text-gray-700 leading-relaxed text-center">
+            <p className="text-sm sm:text-base md:text-lg text-foreground leading-relaxed text-center">
               We are a technology-driven company dedicated to helping real estate professionals thrive in a rapidly evolving market. Our AI-powered platform equips agents, brokers, developers, and teams with the tools they need to work faster, close smarter, and connect meaningfully with clients.
             </p>
           </div>
@@ -200,7 +217,7 @@ export default function AboutPage() {
       </section>
 
       {/* What We Do */}
-      <section className="py-12 sm:py-16 md:py-20 bg-gradient-to-br from-gray-50 to-white">
+      <section className="py-12 sm:py-16 md:py-20 bg-gradient-to-br from-muted to-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-8 sm:mb-12 md:mb-16">
             <h2 
@@ -211,7 +228,7 @@ export default function AboutPage() {
               What We Do
             </h2>
             <p 
-              className={`text-gray-600 max-w-3xl mx-auto text-sm sm:text-base md:text-lg transition-all duration-700 delay-200 px-4 sm:px-6 ${
+              className={`text-muted-foreground max-w-3xl mx-auto text-sm sm:text-base md:text-lg transition-all duration-700 delay-200 px-4 sm:px-6 ${
                 isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
               }`}
             >
@@ -222,7 +239,7 @@ export default function AboutPage() {
             {features.map((feature, index) => (
               <div 
                 key={index} 
-                className={`bg-white rounded-2xl p-4 sm:p-6 md:p-8 shadow-xl hover:shadow-2xl border border-[#b7e2c7] hover:border-[#0e6537]/40 transition-all duration-500 transform hover:-translate-y-2 ${
+                className={`bg-card rounded-2xl p-4 sm:p-6 md:p-8 shadow-xl hover:shadow-2xl border border-secondary/20 hover:border-secondary/40 transition-all duration-500 transform hover:-translate-y-2 ${
                   isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
                 }`}
                 style={{ transitionDelay: `${index * 150}ms` }}
@@ -230,36 +247,36 @@ export default function AboutPage() {
                 <div className={`inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-r ${feature.color} text-white mb-4 sm:mb-6 shadow-lg`}>
                   {feature.icon}
                 </div>
-                <h3 className="text-base sm:text-lg md:text-xl font-semibold mb-2 sm:mb-3 text-gray-900">{feature.title}</h3>
-                <p className="text-gray-600 text-xs sm:text-sm md:text-base leading-relaxed mb-3 sm:mb-4">{feature.description}</p>
+                <h3 className="text-base sm:text-lg md:text-xl font-semibold mb-2 sm:mb-3 text-card-foreground">{feature.title}</h3>
+                <p className="text-muted-foreground text-xs sm:text-sm md:text-base leading-relaxed mb-3 sm:mb-4">{feature.description}</p>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs sm:text-sm font-medium text-[#0e6537] bg-[#0e6537]/10 px-2 sm:px-3 py-1 rounded-full">
+                  <span className="text-xs sm:text-sm font-medium text-secondary bg-secondary/10 px-2 sm:px-3 py-1 rounded-full">
                     {feature.stats}
                   </span>
-                  <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400 group-hover:text-[#0e6537] transition-colors duration-300" />
+                  <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground group-hover:text-secondary transition-colors duration-300" />
                 </div>
               </div>
             ))}
           </div>
-          <p className="text-center text-gray-600 mt-6 sm:mt-8 md:mt-12 text-xs sm:text-sm md:text-base px-4 sm:px-6">
+          <p className="text-center text-muted-foreground mt-6 sm:mt-8 md:mt-12 text-xs sm:text-sm md:text-base px-4 sm:px-6">
             Each feature is built with a mobile-first, responsive design philosophy, ensuring accessibility across devices and platforms.
           </p>
         </div>
       </section>
 
       {/* Why We're Different */}
-      <section className="py-12 sm:py-16 md:py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-12 sm:py-16 md:py-20 bg-secondary">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 bg-secondary">
           <div className="text-center mb-8 sm:mb-12 md:mb-16">
             <h2 
-              className={`text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold tracking-tighter mb-3 sm:mb-4 transition-all duration-700 ${
+              className={`text-muted text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold tracking-tighter mb-3 sm:mb-4 transition-all duration-700 ${
                 isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
               }`}
             >
               Why We&apos;re Different
             </h2>
             <p 
-              className={`text-gray-600 max-w-3xl mx-auto text-sm sm:text-base md:text-lg transition-all duration-700 delay-200 px-4 sm:px-6 ${
+              className={`text-muted max-w-3xl mx-auto text-sm sm:text-base md:text-lg transition-all duration-700 delay-200 px-4 sm:px-6 ${
                 isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
               }`}
             >
@@ -270,30 +287,30 @@ export default function AboutPage() {
             {platformFeatures.map((feature, index) => (
               <div 
                 key={index} 
-                className={`bg-gradient-to-br from-gray-50 to-white rounded-2xl p-4 sm:p-6 md:p-8 hover:shadow-xl transition-all duration-500 transform hover:-translate-y-2 border border-gray-100 ${
+                className={`bg-gradient-to-br from-muted to-background rounded-2xl p-4 sm:p-6 md:p-8 hover:shadow-xl transition-all duration-500 transform hover:-translate-y-2 border border-border ${
                   isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
                 }`}
                 style={{ transitionDelay: `${index * 100}ms` }}
               >
-                <div className="text-[#0e6537] mb-3 sm:mb-4 bg-white p-2 sm:p-3 rounded-xl shadow-sm inline-block">
+                <div className="text-secondary mb-3 sm:mb-4 bg-card p-2 sm:p-3 rounded-xl shadow-sm inline-block">
                   {feature.icon}
                 </div>
-                <h3 className="text-base sm:text-lg md:text-xl font-semibold mb-2 sm:mb-3 text-gray-900">{feature.title}</h3>
-                <p className="text-gray-600 text-xs sm:text-sm md:text-base mb-3 sm:mb-4">{feature.description}</p>
-                <div className="text-xs font-medium text-[#0e6537] bg-[#0e6537]/10 px-2 py-1 rounded-full inline-block">
+                <h3 className="text-base sm:text-lg md:text-xl font-semibold mb-2 sm:mb-3 text-card-foreground">{feature.title}</h3>
+                <p className="text-muted-foreground text-xs sm:text-sm md:text-base mb-3 sm:mb-4">{feature.description}</p>
+                <div className="text-xs font-medium text-secondary bg-secondary/10 px-2 py-1 rounded-full inline-block">
                   {feature.metric}
                 </div>
               </div>
             ))}
           </div>
-          <p className="text-center text-gray-600 mt-6 sm:mt-8 md:mt-12 text-xs sm:text-sm md:text-base px-4 sm:px-6">
+          <p className="text-center text-muted mt-6 sm:mt-8 md:mt-12 text-xs sm:text-sm md:text-base px-4 sm:px-6">
             We also support seamless integration with your existing workflow tools, providing scalable solutions for teams of all sizes.
           </p>
         </div>
       </section>
 
       {/* Leadership Team */}
-      <section className="py-12 sm:py-16 md:py-20 bg-gradient-to-br from-gray-50 to-white">
+      <section className="py-12 sm:py-16 md:py-20 bg-gradient-to-br from-muted to-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-8 sm:mb-12 md:mb-16">
             <h2 
@@ -304,7 +321,7 @@ export default function AboutPage() {
               Our Team
             </h2>
             <p 
-              className={`text-gray-600 max-w-3xl mx-auto text-sm sm:text-base md:text-lg transition-all duration-700 delay-200 px-4 sm:px-6 ${
+              className={`text-muted-foreground max-w-3xl mx-auto text-sm sm:text-base md:text-lg transition-all duration-700 delay-200 px-4 sm:px-6 ${
                 isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
               }`}
             >
@@ -315,7 +332,7 @@ export default function AboutPage() {
             {leadershipTeam.map((member, index) => (
               <div 
                 key={index} 
-                className={`bg-white rounded-2xl p-4 sm:p-6 md:p-8 shadow-xl hover:shadow-2xl border border-[#b7e2c7] hover:border-[#0e6537]/40 transition-all duration-500 transform hover:-translate-y-2 text-center ${
+                className={`bg-gradient-to-br from-background to-muted rounded-2xl p-4 sm:p-6 md:p-8 shadow-xl hover:shadow-2xl border border-border hover:border-primary/40 transition-all duration-500 transform hover:-translate-y-2 text-center ${
                   isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
                 }`}
                 style={{ transitionDelay: `${index * 100}ms` }}
@@ -323,7 +340,7 @@ export default function AboutPage() {
                 <div className="flex justify-center mb-4 sm:mb-6">
                   <Avatar src={undefined} fallback={member.name[0]} alt={member.name} />
                 </div>
-                <h3 className="text-sm sm:text-base md:text-lg lg:text-xl font-semibold mb-2 text-gray-900">{member.name}</h3>
+                <h3 className="text-sm sm:text-base md:text-lg lg:text-xl font-semibold mb-2 text-card-foreground">{member.name}</h3>
               </div>
             ))}
           </div>
@@ -331,7 +348,7 @@ export default function AboutPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-12 sm:py-16 md:py-20 bg-gradient-to-br from-[#0e6537] to-[#157a42] relative overflow-hidden">
+      <section className="py-12 sm:py-16 md:py-20 bg-gradient-to-br from-secondary to-secondary-light relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-black/10 to-transparent"></div>
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 
@@ -362,7 +379,7 @@ export default function AboutPage() {
           >
             <Link
               href="/contact"
-              className="group inline-flex items-center justify-center px-4 sm:px-6 md:px-8 py-3 bg-white !text-[#0e6537] hover:bg-gray-100 rounded-xl font-medium transition-all duration-300 text-sm sm:text-base shadow-lg shadow-black/20 hover:shadow-xl transform hover:-translate-y-1 min-h-[44px] sm:min-h-[48px]"
+              className="group inline-flex items-center justify-center px-4 sm:px-6 md:px-8 py-3 bg-white !text-secondary hover:bg-gray-100 rounded-xl font-medium transition-all duration-300 text-sm sm:text-base shadow-lg shadow-black/20 hover:shadow-xl transform hover:-translate-y-1 min-h-[44px] sm:min-h-[48px]"
             >
               Contact Us
               <ArrowRight className="ml-2 h-3 w-3 sm:h-4 sm:w-4 group-hover:translate-x-1 transition-transform duration-300" />
@@ -423,5 +440,14 @@ export default function AboutPage() {
  * - Page content now flows directly within PageLayout's scrollable area
  * - Maintained all responsive design, animations, and user experience features
  * - Footer is now positioned at the bottom and scrolls with the page content
+ * 06/15/25 - Version 1.6.0
+ * - Updated to use theme colors instead of hardcoded values
+ * - Replaced hardcoded green colors with theme CSS variables
+ * - Updated hero section to use primary/secondary theme gradients
+ * - Updated feature cards to use theme colors for borders and accents
+ * - Updated platform features to use theme colors for icons and text
+ * - Updated team section to use theme colors for cards and borders
+ * - Updated CTA section to use secondary theme colors
+ * - Made the page dynamically themeable while maintaining visual consistency
  */
 

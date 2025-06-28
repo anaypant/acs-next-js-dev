@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useState, useEffect } from "react"
 import { Menu, X } from "lucide-react"
 import { Logo } from "@/app/utils/Logo"
+import { cn } from "@/lib/utils"
 
 interface NavbarProps {
   className?: string;
@@ -44,9 +45,8 @@ function NavigationItem({ item, href, isHovered, onHover, onClick, isMobile }: N
     return (
       <Link
         href={href}
-        className="block px-3 py-3 rounded-md text-base font-medium text-[#0e6537] hover:bg-[#E8F5EE] transition-colors duration-200"
+        className="block px-3 py-3 rounded-md text-base font-medium text-primary hover:bg-accent transition-colors duration-200"
         onClick={onClick}
-        style={{ color: '#0e6537' }}
       >
         {item}
       </Link>
@@ -59,14 +59,13 @@ function NavigationItem({ item, href, isHovered, onHover, onClick, isMobile }: N
       className="relative py-2 px-1"
       onMouseEnter={() => onHover(item)}
       onMouseLeave={() => onHover(null)}
-      style={{ color: '#0e6537', textDecoration: 'none' }}
     >
-      <span className="relative z-10 transition-colors duration-300 text-base lg:text-lg xl:text-xl font-medium" style={{ color: '#0e6537' }}>
+      <span className="relative z-10 transition-colors duration-300 text-base lg:text-lg xl:text-xl font-medium text-primary">
         {item}
       </span>
       {isHovered && (
         <motion.span
-          className="absolute inset-0 bg-[#E8F5EE] rounded-md z-0"
+          className="absolute inset-0 bg-accent rounded-md z-0"
           layoutId="navBackground"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -88,9 +87,13 @@ function AuthButton({ href, variant, isHovered, onHover, onClick, isMobile }: Au
     return (
       <Link
         href={href}
-        className={`block px-3 py-3 ${isSignIn ? 'rounded-md text-base font-medium text-[#0e6537] hover:bg-[#E8F5EE] transition-colors duration-200' : 'mt-2 rounded-md text-base font-medium text-white bg-gradient-to-r from-[#0e6537] to-[#157a42] hover:from-[#0a5a2f] hover:to-[#0e6537] transition-all duration-200'}`}
+        className={cn(
+          "block px-3 py-3 rounded-md text-base font-medium transition-colors duration-200",
+          isSignIn 
+            ? "text-primary hover:bg-accent" 
+            : "text-white bg-primary hover:bg-primary-dark"
+        )}
         onClick={onClick}
-        style={{ color: isSignIn ? '#0e6537' : '#ffffff' }}
       >
         {isSignIn ? 'Sign in' : 'Get Started'}
       </Link>
@@ -104,14 +107,13 @@ function AuthButton({ href, variant, isHovered, onHover, onClick, isMobile }: Au
         className="relative overflow-hidden group py-2 px-3 lg:px-4"
         onMouseEnter={() => onHover("signin")}
         onMouseLeave={() => onHover(null)}
-        style={{ color: '#0e6537', textDecoration: 'none' }}
       >
-        <span className="relative z-10 font-medium transition-colors duration-300 text-base lg:text-lg" style={{ color: '#0e6537' }}>
+        <span className="relative z-10 font-medium transition-colors duration-300 text-base lg:text-lg text-primary">
           Sign in
         </span>
         {isHovered && (
           <motion.span
-            className="absolute inset-0 bg-[#E8F5EE] rounded-md z-0"
+            className="absolute inset-0 bg-accent rounded-md z-0"
             layoutId="navBackground"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -129,7 +131,6 @@ function AuthButton({ href, variant, isHovered, onHover, onClick, isMobile }: Au
       className="relative group"
       onMouseEnter={() => onHover("getstarted")}
       onMouseLeave={() => onHover(null)}
-      style={{ textDecoration: 'none' }}
     >
       <span className="relative z-10 inline-flex items-center gap-2 px-4 lg:px-6 xl:px-8 py-2 lg:py-3 font-medium text-white rounded-full overflow-hidden whitespace-nowrap text-base lg:text-lg">
         Get Started
@@ -149,7 +150,7 @@ function AuthButton({ href, variant, isHovered, onHover, onClick, isMobile }: Au
           <path d="m12 5 7 7-7 7"></path>
         </svg>
       </span>
-      <span className="absolute inset-0 rounded-full bg-gradient-to-r from-[#0e6537] to-[#157a42] transition-all duration-300 ease-out group-hover:scale-[1.03] group-hover:shadow-[0_0_20px_rgba(14,101,55,0.4)]"></span>
+      <span className="absolute inset-0 rounded-full bg-primary transition-all duration-300 ease-out group-hover:scale-[1.03] group-hover:shadow-[0_0_20px_rgba(14,101,55,0.4)]"></span>
     </Link>
   )
 }
@@ -186,7 +187,7 @@ function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
                 />
               )
             })}
-            <div className="pt-4 border-t border-gray-200">
+            <div className="pt-4 border-t border-border">
               <AuthButton
                 href="/demo"
                 variant="signin"
@@ -242,7 +243,10 @@ export function Navbar({ className = "" }: NavbarProps) {
   }, [])
 
   return (
-    <nav className={`bg-white/90 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50 ${className}`}>
+    <nav className={cn(
+      "bg-background/90 backdrop-blur-md border-b border-border sticky top-0 z-50 font-sans",
+      className
+    )}>
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between py-3 sm:py-4 lg:py-5">
           {/* Logo/Brand link */}
@@ -253,14 +257,14 @@ export function Navbar({ className = "" }: NavbarProps) {
           {/* Mobile menu button - only show if not on dashboard */}
           {!isDashboard && (
             <button
-              className="md:hidden p-2 rounded-md hover:bg-gray-100 focus:outline-none"
+              className="md:hidden p-2 rounded-md hover:bg-accent focus:outline-none"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-label="Toggle menu"
             >
               {isMobileMenuOpen ? (
-                <X className="h-6 w-6 sm:h-7 sm:w-7 text-[#0e6537]" />
+                <X className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
               ) : (
-                <Menu className="h-6 w-6 sm:h-7 sm:w-7 text-[#0e6537]" />
+                <Menu className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
               )}
             </button>
           )}

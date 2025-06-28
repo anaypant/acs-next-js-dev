@@ -1,6 +1,6 @@
 import React from 'react';
 import { PageLayout } from '@/components/common/Layout/PageLayout';
-import Navbar from '@/app/Navbar';
+import Navbar from '@/components/common/Navigation/Navbar';
 
 export default function MarketingLayout({
     children,

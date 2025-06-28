@@ -252,7 +252,7 @@ export default function ConversationDetailPage() {
       />
 
       {/* Fixed Header */}
-      <header className="flex-shrink-0 bg-white/80 backdrop-blur-sm border-b border-gray-100 shadow-sm">
+      <header className="flex-shrink-0 bg-card/80 backdrop-blur-sm border-b border-border shadow-sm">
         <div className="w-full max-w-[1600px] mx-auto p-4">
           <div className="flex items-center gap-4">
             <Logo size="md" variant="icon-only" />
@@ -323,7 +323,7 @@ export default function ConversationDetailPage() {
 
         {/* Center Chat Area */}
         <div className="flex-1 flex flex-col min-w-0 min-h-0">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex-1 flex flex-col min-h-0">
+          <div className="bg-card rounded-2xl shadow-sm border border-border flex-1 flex flex-col min-h-0">
             <MessageList
               conversation={conversation}
               feedback={feedback}

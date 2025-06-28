@@ -123,19 +123,19 @@ export function QuickResources({ className }: QuickResourcesProps) {
   const getCategoryColor = (category: ResourceItem['category']) => {
     switch (category) {
       case 'getting-started':
-        return 'text-blue-600 bg-blue-50 border-blue-200';
+        return 'text-status-info bg-status-info/10 border-status-info/20';
       case 'best-practices':
-        return 'text-emerald-600 bg-emerald-50 border-emerald-200';
+        return 'text-status-success bg-status-success/10 border-status-success/20';
       case 'analytics':
-        return 'text-purple-600 bg-purple-50 border-purple-200';
+        return 'text-secondary bg-secondary/10 border-secondary/20';
       case 'features':
-        return 'text-orange-600 bg-orange-50 border-orange-200';
+        return 'text-status-warning bg-status-warning/10 border-status-warning/20';
       case 'security':
-        return 'text-red-600 bg-red-50 border-red-200';
+        return 'text-status-error bg-status-error/10 border-status-error/20';
       case 'troubleshooting':
-        return 'text-gray-600 bg-gray-50 border-gray-200';
+        return 'text-muted-foreground bg-muted border-border';
       default:
-        return 'text-gray-600 bg-gray-50 border-gray-200';
+        return 'text-muted-foreground bg-muted border-border';
     }
   };
 
@@ -161,13 +161,13 @@ export function QuickResources({ className }: QuickResourcesProps) {
   const getPriorityColor = (priority: ResourceItem['priority']) => {
     switch (priority) {
       case 'high':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'bg-status-error/10 text-status-error border-status-error/20';
       case 'medium':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'bg-status-warning/10 text-status-warning border-status-warning/20';
       case 'low':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-status-success/10 text-status-success border-status-success/20';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-muted text-muted-foreground border-border';
     }
   };
 
@@ -180,15 +180,15 @@ export function QuickResources({ className }: QuickResourcesProps) {
   });
 
   return (
-    <div className={cn("bg-white p-6 rounded-xl shadow-sm border border-gray-200/80", className)}>
+    <div className={cn("bg-card p-6 rounded-xl shadow-sm border border-border", className)}>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-gray-800 flex items-center">
-          <BookOpen className="h-5 w-5 mr-3 text-[#0e6537]" />
+        <h2 className="text-xl font-semibold text-card-foreground flex items-center">
+          <BookOpen className="h-5 w-5 mr-3 text-secondary" />
           Quick Resources
         </h2>
         <Link 
           href="/dashboard/resources" 
-          className="text-sm text-[#0e6537] hover:text-[#0a4a2a] transition-colors flex items-center"
+          className="text-sm text-secondary hover:text-secondary/80 transition-colors flex items-center"
         >
           View All
           <ChevronRight className="h-4 w-4 ml-1" />
@@ -199,94 +199,66 @@ export function QuickResources({ className }: QuickResourcesProps) {
         {sortedResources.map((item) => (
           <div
             key={item.title}
-            className="relative group"
+            className={cn(
+              "group relative p-4 rounded-lg border transition-all duration-200 cursor-pointer",
+              "hover:shadow-md hover:scale-[1.02]",
+              getCategoryColor(item.category),
+              hoveredItem === item.title && "ring-2 ring-secondary/20"
+            )}
             onMouseEnter={() => setHoveredItem(item.title)}
             onMouseLeave={() => setHoveredItem(null)}
           >
-            <Link
-              href={item.href}
-              className="block p-4 rounded-lg border border-gray-200 hover:border-[#0e6537] hover:shadow-md transition-all duration-200 bg-white hover:bg-gray-50"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-start space-x-3 flex-1">
-                  <div className="flex-shrink-0 p-2 rounded-lg bg-[#0e6537]/10 text-[#0e6537]">
-                    {item.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <h3 className="text-sm font-medium text-gray-900 group-hover:text-[#0e6537] transition-colors">
-                        {item.title}
-                      </h3>
-                      {item.priority && (
-                        <span className={cn(
-                          "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border",
-                          getPriorityColor(item.priority)
-                        )}>
-                          {item.priority}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-600 mb-2 line-clamp-2">
-                      {item.description}
-                    </p>
-                    <div className="flex items-center space-x-2">
-                      <span className={cn(
-                        "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border",
-                        getCategoryColor(item.category)
-                      )}>
-                        {getCategoryIcon(item.category)}
-                        <span className="ml-1 capitalize">
-                          {item.category.replace('-', ' ')}
-                        </span>
-                      </span>
-                      {item.estimatedTime && (
-                        <span className="text-xs text-gray-500">
-                          {item.estimatedTime}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <ExternalLink className="h-4 w-4 text-gray-400 group-hover:text-[#0e6537] transition-colors flex-shrink-0" />
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-2">
+                {item.icon}
+                <h3 className="font-semibold text-sm">{item.title}</h3>
               </div>
-            </Link>
-
-            {/* Enhanced Tooltip */}
+              <div className={cn(
+                "px-2 py-1 rounded-full text-xs font-medium border",
+                getPriorityColor(item.priority)
+              )}>
+                {item.priority}
+              </div>
+            </div>
+            
+            <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
+              {item.description}
+            </p>
+            
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>⏱️ {item.estimatedTime}</span>
+              <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+            
+            {/* Tooltip with tips */}
             {hoveredItem === item.title && item.tips && (
-              <div className="absolute z-10 w-80 p-4 bg-gray-900 text-white rounded-lg shadow-lg border border-gray-700 -top-2 left-full ml-2 transform -translate-y-1/2">
-                <div className="flex items-center mb-2">
-                  <Lightbulb className="h-4 w-4 mr-2 text-yellow-400" />
-                  <span className="text-sm font-medium">Quick Tips</span>
-                </div>
-                <ul className="space-y-1">
+              <div className="absolute left-full ml-2 top-0 w-64 bg-popover border border-border rounded-lg shadow-lg p-3 z-50">
+                <h4 className="font-semibold text-sm text-popover-foreground mb-2">Quick Tips:</h4>
+                <ul className="text-xs text-muted-foreground space-y-1">
                   {item.tips.map((tip, index) => (
-                    <li key={index} className="text-xs text-gray-300 flex items-start">
-                      <span className="text-[#0e6537] mr-2">•</span>
-                      {tip}
+                    <li key={index} className="flex items-start gap-2">
+                      <span className="text-status-success mt-0.5">•</span>
+                      <span>{tip}</span>
                     </li>
                   ))}
                 </ul>
-                <div className="mt-2 pt-2 border-t border-gray-700">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-400">Estimated time:</span>
-                    <span className="text-white">{item.estimatedTime}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs mt-1">
-                    <span className="text-gray-400">Priority:</span>
-                    <span className={cn(
-                      "capitalize",
-                      item.priority === 'high' ? 'text-red-400' : 
-                      item.priority === 'medium' ? 'text-yellow-400' : 'text-green-400'
-                    )}>
-                      {item.priority}
-                    </span>
-                  </div>
-                </div>
-                <div className="absolute top-1/2 -left-1 w-2 h-2 bg-gray-900 transform -translate-y-1/2 rotate-45 border-l border-b border-gray-700"></div>
               </div>
             )}
           </div>
         ))}
+      </div>
+      
+      <div className="mt-6 pt-4 border-t border-border">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Need help?</span>
+          <Link 
+            href="/dashboard/support" 
+            className="text-secondary hover:text-secondary/80 transition-colors flex items-center"
+          >
+            <HelpCircle className="h-4 w-4 mr-1" />
+            Contact Support
+          </Link>
+        </div>
       </div>
     </div>
   );

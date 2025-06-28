@@ -1,8 +1,8 @@
 import React from 'react';
 import { TrendingUp, TrendingDown, Users, MessageSquare, Target, Clock, DollarSign, Activity, Zap, Calendar } from 'lucide-react';
+import { DateRange } from 'react-day-picker';
 import type { DashboardMetrics as Metrics } from '@/types/dashboard';
 import { calculateTrends, shouldShowTrend, formatTrendChange, getTrendDirection, type TrendData } from '@/lib/utils/dashboard';
-import type { DateRange } from './DateRangePicker';
 
 interface DashboardMetricsProps {
   data: Metrics;
@@ -34,16 +34,16 @@ const MetricCard = ({
   showTrend?: boolean;
 }) => {
     const ChangeIcon = changeType === 'increase' ? TrendingUp : TrendingDown;
-    const changeColor = changeType === 'increase' ? 'text-green-600' : 'text-red-600';
-    const trendColor = trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-600' : 'text-gray-500';
+    const changeColor = changeType === 'increase' ? 'text-status-success' : 'text-status-error';
+    const trendColor = trend === 'up' ? 'text-status-success' : trend === 'down' ? 'text-status-error' : 'text-muted-foreground';
 
     return (
-        <div className="bg-white p-6 rounded-xl border border-gray-200/80 shadow-sm hover:shadow-lg transition-all duration-300 group">
+        <div className="bg-card p-6 rounded-xl border border-border shadow-sm hover:shadow-lg transition-all duration-300 group">
             <div className="flex items-center justify-between mb-4">
                 <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-500 mb-1">{name}</p>
+                    <p className="text-sm font-medium text-muted-foreground mb-1">{name}</p>
                     {subtitle && (
-                        <p className="text-xs text-gray-400">{subtitle}</p>
+                        <p className="text-xs text-muted-foreground/70">{subtitle}</p>
                     )}
                 </div>
                 <div className={`p-3 rounded-lg ${bgColor} group-hover:scale-110 transition-transform duration-200`}>
@@ -51,10 +51,10 @@ const MetricCard = ({
                 </div>
             </div>
             <div className="space-y-2">
-                <p className="text-3xl font-bold text-gray-800">{value}</p>
+                <p className="text-3xl font-bold text-card-foreground">{value}</p>
                 {change && showTrend && (
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center text-xs text-gray-500">
+                        <div className="flex items-center text-xs text-muted-foreground">
                             <ChangeIcon className={`h-4 w-4 mr-1 ${changeColor}`} />
                             <span>{change}</span>
                         </div>
@@ -75,16 +75,16 @@ const MetricCard = ({
 
 export function DashboardMetrics({ data, dateRange, conversations = [] }: DashboardMetricsProps) {
   // Calculate trends if we have date range and conversations
-  const trends = dateRange && conversations.length > 0 
-    ? calculateTrends(conversations, dateRange.start, dateRange.end)
+  const trends = dateRange && dateRange.from && dateRange.to && conversations.length > 0 
+    ? calculateTrends(conversations, dateRange.from, dateRange.to)
     : null;
 
   // Calculate additional metrics
   const calculateResponseTimeCategory = (time: number) => {
-    if (time <= 5) return { category: 'Excellent', color: 'text-green-600', bgColor: 'bg-green-100' };
-    if (time <= 15) return { category: 'Good', color: 'text-blue-600', bgColor: 'bg-blue-100' };
-    if (time <= 30) return { category: 'Fair', color: 'text-yellow-600', bgColor: 'bg-yellow-100' };
-    return { category: 'Needs Improvement', color: 'text-red-600', bgColor: 'bg-red-100' };
+    if (time <= 5) return { category: 'Excellent', color: 'text-status-success', bgColor: 'bg-status-success/10' };
+    if (time <= 15) return { category: 'Good', color: 'text-status-info', bgColor: 'bg-status-info/10' };
+    if (time <= 30) return { category: 'Fair', color: 'text-status-warning', bgColor: 'bg-status-warning/10' };
+    return { category: 'Needs Improvement', color: 'text-status-error', bgColor: 'bg-status-error/10' };
   };
 
   const responseTimeCategory = calculateResponseTimeCategory(data.averageResponseTime);
@@ -119,8 +119,8 @@ export function DashboardMetrics({ data, dateRange, conversations = [] }: Dashbo
       name: 'Total Conversations', 
       value: data.totalConversations, 
       icon: MessageSquare, 
-      color: 'text-blue-600', 
-      bgColor: 'bg-blue-100',
+      color: 'text-status-info', 
+      bgColor: 'bg-status-info/10',
       subtitle: 'All time conversations',
       change: totalConversationsTrend.change,
       changeType: totalConversationsTrend.trend === 'up' ? 'increase' : 'decrease' as 'increase' | 'decrease',
@@ -131,8 +131,8 @@ export function DashboardMetrics({ data, dateRange, conversations = [] }: Dashbo
       name: 'Active Conversations', 
       value: data.activeConversations, 
       icon: Activity, 
-      color: 'text-green-600', 
-      bgColor: 'bg-green-100',
+      color: 'text-status-success', 
+      bgColor: 'bg-status-success/10',
       subtitle: 'Currently in progress',
       change: activeConversationsTrend.change,
       changeType: activeConversationsTrend.trend === 'up' ? 'increase' : 'decrease' as 'increase' | 'decrease',
@@ -143,8 +143,8 @@ export function DashboardMetrics({ data, dateRange, conversations = [] }: Dashbo
       name: 'Conversion Rate', 
       value: `${data.conversionRate}%`, 
       icon: Target, 
-      color: 'text-orange-600', 
-      bgColor: 'bg-orange-100',
+      color: 'text-status-warning', 
+      bgColor: 'bg-status-warning/10',
       subtitle: 'Successfully closed',
       change: conversionRateTrend.change || `${data.conversionRate >= 0 ? '+' : ''}${data.conversionRate}% vs target`,
       changeType: conversionRateTrend.trend === 'up' || data.conversionRate >= 15 ? 'increase' : 'decrease' as 'increase' | 'decrease',
@@ -167,8 +167,8 @@ export function DashboardMetrics({ data, dateRange, conversations = [] }: Dashbo
       name: 'Conversation Velocity', 
       value: `${conversationsPerDay}/day`, 
       icon: Zap, 
-      color: 'text-purple-600', 
-      bgColor: 'bg-purple-100',
+      color: 'text-secondary', 
+      bgColor: 'bg-secondary/10',
       subtitle: 'Daily conversation rate',
       trend: conversationsPerDay > 1 ? 'up' : 'stable' as 'up' | 'stable',
       showTrend: false // No historical data for this metric yet
@@ -177,8 +177,8 @@ export function DashboardMetrics({ data, dateRange, conversations = [] }: Dashbo
       name: 'Engagement Rate', 
       value: `${engagementRate}%`, 
       icon: Users, 
-      color: 'text-indigo-600', 
-      bgColor: 'bg-indigo-100',
+      color: 'text-primary', 
+      bgColor: 'bg-primary/10',
       subtitle: 'Active engagement level',
       change: `${engagementRate >= 0 ? '+' : ''}${engagementRate}% of total`,
       changeType: engagementRate >= 50 ? 'increase' : 'decrease' as 'increase' | 'decrease',
@@ -197,41 +197,28 @@ export function DashboardMetrics({ data, dateRange, conversations = [] }: Dashbo
       </div>
       
       {/* Quick Stats Bar */}
-      <div className="bg-white p-4 rounded-lg border border-gray-200/80 shadow-sm">
-        <div className="flex items-center justify-between text-sm text-gray-600">
+      <div className="bg-card p-4 rounded-lg border border-border shadow-sm">
+        <div className="flex items-center justify-between text-sm">
           <div className="flex items-center space-x-6">
             <div className="flex items-center space-x-2">
-              <Calendar className="h-4 w-4 text-gray-400" />
-              <span>
-                {dateRange 
-                  ? `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}`
-                  : 'Last 30 days'
-                }
-              </span>
+              <div className="w-3 h-3 rounded-full bg-status-success"></div>
+              <span className="text-muted-foreground">Active: {data.activeConversations}</span>
             </div>
             <div className="flex items-center space-x-2">
-              <Clock className="h-4 w-4 text-gray-400" />
-              <span>Updated {new Date().toLocaleTimeString()}</span>
+              <div className="w-3 h-3 rounded-full bg-status-warning"></div>
+              <span className="text-muted-foreground">Pending: {data.totalConversations - data.activeConversations}</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 rounded-full bg-status-success"></div>
+              <span className="text-muted-foreground">Completed: {Math.round((data.conversionRate / 100) * data.totalConversations)}</span>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span>On track</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-              <span>Needs attention</span>
-            </div>
-            {trends && (
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span>Trends based on previous period</span>
-              </div>
-            )}
+          <div className="text-muted-foreground">
+            <Calendar className="w-4 h-4 inline mr-1" />
+            Last 30 days
           </div>
         </div>
       </div>
     </div>
   );
-} 
+}

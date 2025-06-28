@@ -21,7 +21,7 @@ export function ConversationHeader({
       <div className="flex gap-2">
         <button
           onClick={onCopy}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all duration-200 shadow-sm"
+          className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-lg hover:bg-muted transition-all duration-200 shadow-sm"
           title="Copy conversation to clipboard"
         >
           {copySuccess ? (
@@ -39,7 +39,7 @@ export function ConversationHeader({
         <button
           onClick={onGeneratePdf}
           disabled={generatingPdf}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all duration-200 shadow-sm disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-lg hover:bg-muted transition-all duration-200 shadow-sm disabled:opacity-50"
           title="Download conversation as PDF"
         >
           {generatingPdf ? (

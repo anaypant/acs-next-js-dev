@@ -30,11 +30,11 @@ function DashboardContent() {
     return (
       <div className="flex items-center justify-center h-full max-h-full">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Error Loading Dashboard</h2>
-          <p className="text-gray-600 mb-4">{error || 'An unexpected error occurred.'}</p>
+          <h2 className="text-2xl font-bold text-status-error mb-4">Error Loading Dashboard</h2>
+          <p className="text-muted-foreground mb-4">{error || 'An unexpected error occurred.'}</p>
           <button 
             onClick={() => refetch()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
           >
             Try Again
           </button>
@@ -53,11 +53,11 @@ export default function DashboardPage() {
         <ErrorBoundary fallback={
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-red-600 mb-4">Dashboard Error</h2>
-              <p className="text-gray-600 mb-4">Something went wrong with the dashboard.</p>
+              <h2 className="text-2xl font-bold text-status-error mb-4">Dashboard Error</h2>
+              <p className="text-muted-foreground mb-4">Something went wrong with the dashboard.</p>
               <button 
                 onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
               >
                 Reload Page
               </button>

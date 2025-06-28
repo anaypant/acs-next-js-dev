@@ -56,8 +56,7 @@ export function useCentralizedDashboardData(options: UseCentralizedDashboardData
   } = useOptimisticConversations({
     autoRefresh,
     refreshInterval,
-    checkNewEmails: true,
-    newEmailCheckInterval: 5 * 60 * 1000 // 5 minutes
+    checkNewEmails: true
   });
 
   // Fetch usage stats

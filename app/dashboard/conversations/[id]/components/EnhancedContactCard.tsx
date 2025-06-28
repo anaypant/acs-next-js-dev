@@ -29,7 +29,7 @@ export function EnhancedContactCard({
 
   return (
     <div className={cn(
-      "bg-white rounded-2xl border border-gray-100 shadow-sm p-6",
+      "bg-card rounded-2xl border border-border shadow-sm p-6",
       className
     )}>
       {/* Header */}
@@ -47,7 +47,7 @@ export function EnhancedContactCard({
       {/* Avatar and Name */}
       <div className="flex items-center gap-4 mb-4">
         <div className="w-16 h-16 bg-gradient-to-br from-[#0e6537] to-[#0a5a2f] rounded-full flex items-center justify-center">
-          <span className="text-2xl font-bold text-white">
+          <span className="text-2xl font-bold text-secondary-foreground">
             {leadName[0]?.toUpperCase() || 'U'}
           </span>
         </div>
@@ -102,7 +102,7 @@ export function EnhancedContactCard({
           className={cn(
             "flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
             phone 
-              ? "bg-[#0e6537] text-white hover:bg-[#0a5a2f]" 
+              ? "bg-secondary text-secondary-foreground hover:bg-secondary/90"
               : "bg-gray-100 text-gray-400 cursor-not-allowed"
           )}
         >

@@ -62,7 +62,7 @@ export function EnhancedAIInsights({ conversation, className }: EnhancedAIInsigh
 
   return (
     <div className={cn(
-      "bg-white rounded-2xl border border-gray-100 shadow-sm",
+      "bg-card rounded-2xl border border-border shadow-sm",
       className
     )}>
       {/* Header */}
@@ -71,8 +71,8 @@ export function EnhancedAIInsights({ conversation, className }: EnhancedAIInsigh
         className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors rounded-t-2xl"
       >
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-[#0e6537] to-[#0a5a2f] rounded-lg flex items-center justify-center">
-            <Sparkles className="w-4 h-4 text-white" />
+          <div className="w-8 h-8 bg-card rounded-lg flex items-center justify-center">
+            <Sparkles className="w-4 h-4 text-secondary-foreground" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900">AI Insights</h3>
         </div>
@@ -102,7 +102,7 @@ export function EnhancedAIInsights({ conversation, className }: EnhancedAIInsigh
             {insights.map((insight, index) => (
               <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                 <div className={cn(
-                  "w-8 h-8 bg-white rounded-lg flex items-center justify-center",
+                  "w-8 h-8 bg-card rounded-lg flex items-center justify-center",
                   insight.color
                 )}>
                   {insight.icon}

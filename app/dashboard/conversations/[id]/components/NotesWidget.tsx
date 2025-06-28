@@ -31,7 +31,7 @@ export const NotesWidget: FC<{
   };
 
   return (
-    <div className="bg-white rounded-2xl border shadow-lg p-6">
+    <div className="bg-card rounded-2xl border shadow-lg p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">Notes</h3>
         {!isEditing && (
@@ -56,7 +56,7 @@ export const NotesWidget: FC<{
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 px-3 py-1.5 bg-[#0e6537] text-white rounded-lg hover:bg-[#0a5a2f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              className="flex items-center gap-2 px-3 py-1.5 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               {saving ? (
                 <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />

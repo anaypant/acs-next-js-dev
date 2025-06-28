@@ -102,7 +102,7 @@ export function DashboardLayout({
   };
 
   return (
-    <div className="h-full bg-gray-50/50 overflow-y-auto">
+    <div className="h-full bg-muted/50 overflow-y-auto">
       {/* Centralized Header with Date Range */}
       <DashboardHeader 
         onRefresh={handleRefresh} 
@@ -123,8 +123,8 @@ export function DashboardLayout({
         {settings.showMetrics && (
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-800">Key Performance Metrics</h2>
-              <div className="flex items-center space-x-2 text-sm text-gray-500">
+              <h2 className="text-lg font-semibold text-foreground">Key Performance Metrics</h2>
+              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                 <span>Last updated: {new Date().toLocaleTimeString()}</span>
                 <span>•</span>
                 <span>{filteredData.conversations.length} conversations in selected range</span>
@@ -168,16 +168,16 @@ export function DashboardLayout({
         <div className="grid grid-cols-12 gap-6 mt-6">
           {/* Placeholder for future widgets or additional content */}
           <div className="col-span-12 lg:col-span-6">
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-              <p className="text-gray-600">Additional widgets can be added here to provide more insights.</p>
+            <div className="bg-card rounded-lg border border-border shadow-sm p-6">
+              <h3 className="text-lg font-semibold text-card-foreground mb-4">Recent Activity</h3>
+              <p className="text-muted-foreground">Additional widgets can be added here to provide more insights.</p>
             </div>
           </div>
           
           <div className="col-span-12 lg:col-span-6">
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-              <p className="text-gray-600">Common actions and shortcuts can be placed here for easy access.</p>
+            <div className="bg-card rounded-lg border border-border shadow-sm p-6">
+              <h3 className="text-lg font-semibold text-card-foreground mb-4">Quick Actions</h3>
+              <p className="text-muted-foreground">Common actions and shortcuts can be placed here for easy access.</p>
             </div>
           </div>
         </div>

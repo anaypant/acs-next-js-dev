@@ -22,10 +22,10 @@ export function RecentConversations({ conversations = [] }: RecentConversationsP
   const recentConversations = conversations.slice(0, 5);
 
   return (
-    <div className="bg-white p-6 rounded-xl border border-gray-200/80 shadow-sm">
+    <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-800">Recent Conversations</h3>
-        <a href="/dashboard/conversations" className="text-sm font-medium text-blue-600 hover:text-blue-800 flex items-center">
+        <h3 className="text-lg font-semibold text-card-foreground">Recent Conversations</h3>
+        <a href="/dashboard/conversations" className="text-sm font-medium text-primary hover:text-primary/80 flex items-center">
           View all <ArrowRight className="w-4 h-4 ml-1" />
         </a>
       </div>
@@ -41,9 +41,9 @@ export function RecentConversations({ conversations = [] }: RecentConversationsP
           ))
         ) : (
           <div className="text-center py-10">
-            <MessageSquare className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <h4 className="font-semibold text-gray-600">No recent activity</h4>
-            <p className="text-sm text-gray-400">New conversations will appear here.</p>
+            <MessageSquare className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+            <h4 className="font-semibold text-muted-foreground">No recent activity</h4>
+            <p className="text-sm text-muted-foreground/70">New conversations will appear here.</p>
           </div>
         )}
       </div>

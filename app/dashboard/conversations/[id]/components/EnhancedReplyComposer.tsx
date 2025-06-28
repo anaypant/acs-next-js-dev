@@ -80,7 +80,7 @@ export function EnhancedReplyComposer({
 
   return (
     <div className={cn(
-      "bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col h-full",
+      "bg-card rounded-2xl border border-border shadow-sm flex flex-col h-full",
       className
     )}>
       {/* Header */}
@@ -130,28 +130,28 @@ export function EnhancedReplyComposer({
             <div className="flex items-center gap-1 p-2 bg-gray-50 rounded-lg mb-4">
               <button
                 onClick={() => formatText('bold')}
-                className="p-2 hover:bg-white rounded transition-colors"
+                className="p-2 hover:bg-muted rounded transition-colors"
                 title="Bold"
               >
                 <Bold className="w-4 h-4 text-gray-600" />
               </button>
               <button
                 onClick={() => formatText('italic')}
-                className="p-2 hover:bg-white rounded transition-colors"
+                className="p-2 hover:bg-muted rounded transition-colors"
                 title="Italic"
               >
                 <Italic className="w-4 h-4 text-gray-600" />
               </button>
               <button
                 onClick={() => formatText('list')}
-                className="p-2 hover:bg-white rounded transition-colors"
+                className="p-2 hover:bg-muted rounded transition-colors"
                 title="List"
               >
                 <List className="w-4 h-4 text-gray-600" />
               </button>
               <button
                 onClick={() => formatText('link')}
-                className="p-2 hover:bg-white rounded transition-colors"
+                className="p-2 hover:bg-muted rounded transition-colors"
                 title="Link"
               >
                 <Link className="w-4 h-4 text-gray-600" />
@@ -188,7 +188,7 @@ export function EnhancedReplyComposer({
               <button
                 onClick={onGenerateResponse}
                 disabled={isBusy || generatingResponse || isFlagged || isFlaggedForCompletion}
-                className="flex items-center gap-2 px-4 py-2 bg-[#0e6537] text-white rounded-lg hover:bg-[#0a5a2f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                className="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
               >
                 {generatingResponse ? (
                   <>
@@ -205,7 +205,7 @@ export function EnhancedReplyComposer({
               <button
                 onClick={onSendEmail}
                 disabled={!messageInput.trim() || isBusy}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                className="flex items-center gap-2 px-4 py-2 bg-card border border-border text-card-foreground rounded-lg hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
               >
                 <Send className="w-4 h-4" />
                 <span>Send</span>

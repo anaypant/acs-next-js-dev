@@ -35,7 +35,7 @@ export function AIResponseSection({
   onOpenGenerateModal: () => void; 
 }) {
   return (
-    <div className="bg-white rounded-2xl border shadow-lg flex flex-col flex-1 min-h-0">
+    <div className="bg-card rounded-2xl border shadow-lg flex flex-col flex-1 min-h-0">
       <div className="px-6 py-4 border-b bg-[#f7faf9] flex items-center gap-2 flex-shrink-0">
         <Sparkles className="h-5 w-5 text-[#0e6537]" />
         <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -48,7 +48,7 @@ export function AIResponseSection({
             >
               <Sparkles className="h-4 w-4 text-[#0e6537]" />
             </button>
-            <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-10">
+            <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 bg-popover text-popover-foreground text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-10">
               Open AI Suggestions
             </span>
           </span>
@@ -97,7 +97,7 @@ export function AIResponseSection({
             <button
               onClick={onGenerateResponse}
               disabled={isBusy || generatingResponse || isFlagged || isFlaggedForCompletion}
-              className="flex items-center gap-1 px-3 py-2 bg-[#0e6537] text-white rounded-lg hover:bg-[#0a5a2f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              className="flex items-center gap-1 px-3 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               {generatingResponse ? (
                 <>
@@ -114,7 +114,7 @@ export function AIResponseSection({
             <button
               onClick={onSendEmail}
               disabled={!messageInput.trim() || isBusy}
-              className="flex items-center gap-1 px-3 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              className="flex items-center gap-1 px-3 py-2 bg-card border border-border text-card-foreground rounded-lg hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               <Mail className="w-4 h-4" />
               <span>Send</span>

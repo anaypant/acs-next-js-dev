@@ -8,7 +8,7 @@
 
 import React from 'react';
 import HomePage from './(marketing)/landing/page';
-import Navbar from './Navbar';
+import Navbar from '@/components/common/Navigation/Navbar';
 import Footer from './Footer';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-options';

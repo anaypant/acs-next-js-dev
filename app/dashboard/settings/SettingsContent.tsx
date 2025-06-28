@@ -55,7 +55,7 @@ export function SettingsContent() {
     return (
         <div className="w-full bg-background" style={{ minHeight: '100vh', overflow: 'auto' }}>
             {/* Header */}
-            <div className="bg-card border-b border-neutral-200 sticky top-0 z-10">
+            <div className="bg-card border-b border-border sticky top-0 z-10">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="py-6 sm:py-8">
                         <div className="flex items-center gap-3 mb-2">
@@ -139,7 +139,7 @@ export function SettingsContent() {
                     <section className="space-y-6">
                         <div>
                             <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                                <div className="w-2 h-2 bg-destructive rounded-full"></div>
+                                <div className="w-2 h-2 bg-status-error rounded-full"></div>
                                 Account Management
                             </h2>
                             <DangerZone />

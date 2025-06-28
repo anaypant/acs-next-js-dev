@@ -3,14 +3,13 @@
  * Purpose: Renders the contact page with a contact form, team section, and testimonials.
  * Author: acagliol
  * Date: 06/15/25
- * Version: 1.1.2
+ * Version: 1.2.0
  */
 
 "use client"
 
 import React, { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import Navbar from "../../Navbar"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
@@ -28,7 +27,7 @@ function TeamSection() {
   const teamMembers = [
     {
       name: "Anay Pant",
-      role: "Chief Excutive Officer",
+      role: "Chief Executive Officer",
       isCoFounder: true,
     },
     {
@@ -66,7 +65,7 @@ function TeamSection() {
       y: 0,
       opacity: 1,
       transition: {
-        type: "spring",
+        type: "spring" as const,
         stiffness: 100,
         damping: 15,
       },
@@ -92,17 +91,17 @@ function TeamSection() {
         {teamMembers.map((member, index) => (
           <motion.div
             key={index}
-            className="group overflow-hidden rounded-xl border border-neutral-200 bg-card shadow-sm transition-all hover:shadow-md"
+            className="group overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all hover:shadow-md"
             variants={itemVariants}
             whileHover={{ y: -5 }}
           >
             <div className="relative h-64 overflow-hidden bg-gradient-to-br from-accent to-accent/50">
               {member.isCoFounder && (
-                <span className="rounded-full bg-secondary-dark px-3 py-1 text-xs font-medium text-secondary-foreground">Co-Founder</span>
+                <span className="absolute top-4 left-4 rounded-full bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground">Co-Founder</span>
               )}
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="h-24 w-24 rounded-full bg-accent flex items-center justify-center">
-                  <span className="text-3xl font-bold text-secondary-dark">
+                  <span className="text-3xl font-bold text-secondary">
                     {member.name
                       .split(" ")
                       .map((n) => n[0])
@@ -110,7 +109,7 @@ function TeamSection() {
                   </span>
                 </div>
               </div>
-              <div className="absolute inset-0 bg-gradient-to-t from-primary-dark/70 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-primary/70 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
               <div className="absolute bottom-0 left-0 right-0 p-4 text-white opacity-0 transition-opacity duration-300 group-hover:opacity-100">
                 <Button
                   size="sm"
@@ -124,10 +123,10 @@ function TeamSection() {
             </div>
             <div className="p-6 text-center">
               <h3 className="mb-1 text-xl font-semibold text-card-foreground">{member.name}</h3>
-              <p className="text-sm font-medium text-secondary-dark">{member.role}</p>
+              <p className="text-sm font-medium text-secondary">{member.role}</p>
               {member.isCoFounder && (
                 <div className="mt-2 hidden md:block">
-                  <span className="inline-block rounded-full bg-accent px-3 py-1 text-xs font-medium text-primary-dark">
+                  <span className="inline-block rounded-full bg-accent px-3 py-1 text-xs font-medium text-primary">
                     Co-Founder
                   </span>
                 </div>
@@ -187,7 +186,7 @@ function TestimonialsSection() {
       y: 0,
       opacity: 1,
       transition: {
-        type: "spring",
+        type: "spring" as const,
         stiffness: 100,
         damping: 15,
       },
@@ -203,7 +202,7 @@ function TestimonialsSection() {
     >
       <div className="mb-6">
         <h2 className="mb-4 text-2xl font-semibold text-card-foreground">What Our Clients Say</h2>
-        <div className="h-1 w-16 bg-gradient-to-r from-secondary-dark to-secondary"></div>
+        <div className="h-1 w-16 bg-gradient-to-r from-secondary to-primary"></div>
         <p className="mt-4 text-muted-foreground">
           Don't just take our word for it. Here's what our clients have to say about working with ACS:
         </p>
@@ -213,14 +212,14 @@ function TestimonialsSection() {
         {testimonials.map((testimonial, index) => (
           <motion.div
             key={index}
-            className="relative rounded-lg border border-neutral-200 bg-gradient-to-br from-card to-accent p-6 shadow-sm"
+            className="relative rounded-lg border border-border bg-gradient-to-br from-card to-accent p-6 shadow-sm"
             variants={itemVariants}
           >
-            <div className="absolute -top-3 -left-3 rounded-full bg-secondary-dark p-2 text-secondary-foreground">
+            <div className="absolute -top-3 -left-3 rounded-full bg-secondary p-2 text-secondary-foreground">
               <Quote className="h-4 w-4" />
             </div>
             <p className="mb-4 italic text-muted-foreground">"{testimonial.quote}"</p>
-            <div className="mt-4 border-t border-neutral-200 pt-4">
+            <div className="mt-4 border-t border-border pt-4">
               <p className="font-medium text-card-foreground">{testimonial.author}</p>
               <p className="text-sm text-muted-foreground">
                 {testimonial.position}, {testimonial.company}
@@ -353,7 +352,7 @@ export default function ContactPage() {
       y: 0,
       opacity: 1,
       transition: {
-        type: "spring",
+        type: "spring" as const,
         stiffness: 100,
         damping: 15,
       },
@@ -366,16 +365,15 @@ export default function ContactPage() {
         {/* Background patterns */}
         <div className="absolute inset-0 overflow-hidden">
           {/* Subtle gradient circles */}
-          <div className="absolute -top-[15%] -right-[15%] h-[50%] w-[50%] rounded-full bg-secondary-dark/5 blur-3xl" />
-          <div className="absolute top-[60%] -left-[10%] h-[40%] w-[40%] rounded-full bg-secondary-dark/5 blur-3xl" />
-          <div className="absolute -bottom-[10%] right-[20%] h-[30%] w-[30%] rounded-full bg-secondary/5 blur-3xl" />
+          <div className="absolute -top-[15%] -right-[15%] h-[50%] w-[50%] rounded-full bg-secondary/5 blur-3xl" />
+          <div className="absolute top-[60%] -left-[10%] h-[40%] w-[40%] rounded-full bg-secondary/5 blur-3xl" />
+          <div className="absolute -bottom-[10%] right-[20%] h-[30%] w-[30%] rounded-full bg-primary/5 blur-3xl" />
 
-          {/* Remove the diagonal stripes and grid pattern */}
           {/* Add a subtle dot pattern instead */}
           <div
             className="absolute inset-0 opacity-[0.02]"
             style={{
-              backgroundImage: `radial-gradient(var(--secondary-dark) 1px, transparent 1px)`,
+              backgroundImage: `radial-gradient(var(--secondary) 1px, transparent 1px)`,
               backgroundSize: "40px 40px",
             }}
           />
@@ -389,7 +387,7 @@ export default function ContactPage() {
         >
           <motion.div className="mb-8 sm:mb-16 text-center" variants={itemVariants}>
             <h1 className="mb-3 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
-              <span className="bg-gradient-to-r from-secondary-dark to-secondary bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-secondary to-primary bg-clip-text text-transparent">
                 Contact Us
               </span>
             </h1>
@@ -406,12 +404,12 @@ export default function ContactPage() {
                 <div className="rounded-xl bg-card p-4 sm:p-8 shadow-lg">
                   <div className="mb-6 sm:mb-8">
                     <h2 className="mb-3 sm:mb-4 text-xl sm:text-2xl font-semibold text-card-foreground">Get in Touch</h2>
-                    <div className="h-1 w-12 sm:w-16 bg-gradient-to-r from-secondary-dark to-secondary"></div>
+                    <div className="h-1 w-12 sm:w-16 bg-gradient-to-r from-secondary to-primary"></div>
                   </div>
 
                   <div className="space-y-4 sm:space-y-6">
                     <div className="flex items-start gap-3 sm:gap-4">
-                      <div className="rounded-full bg-accent p-2 sm:p-3 text-secondary-dark">
+                      <div className="rounded-full bg-accent p-2 sm:p-3 text-secondary">
                         <MapPin className="h-4 w-4 sm:h-5 sm:w-5" />
                       </div>
                       <div>
@@ -425,7 +423,7 @@ export default function ContactPage() {
                     </div>
 
                     <div className="flex items-start gap-3 sm:gap-4">
-                      <div className="rounded-full bg-accent p-2 sm:p-3 text-secondary-dark">
+                      <div className="rounded-full bg-accent p-2 sm:p-3 text-secondary">
                         <Mail className="h-4 w-4 sm:h-5 sm:w-5" />
                       </div>
                       <div>
@@ -435,7 +433,7 @@ export default function ContactPage() {
                     </div>
 
                     <div className="flex items-start gap-3 sm:gap-4">
-                      <div className="rounded-full bg-accent p-2 sm:p-3 text-secondary-dark">
+                      <div className="rounded-full bg-accent p-2 sm:p-3 text-secondary">
                         <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
                       </div>
                       <div>
@@ -450,12 +448,12 @@ export default function ContactPage() {
                   </div>
 
                   {/* LinkedIn Button with improved styling */}
-                  <div className="mt-8 pt-6 border-t border-neutral-200">
+                  <div className="mt-8 pt-6 border-t border-border">
                     <a
                       href="https://www.linkedin.com/company/automated-consultancy-services/posts/?feedView=all"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className=" !text-white inline-flex items-center justify-center gap-3 bg-gradient-to-r from-[#0077b5] to-[#005885] px-6 py-3 rounded-lg hover:from-[#005885] hover:to-[#004065] transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium"
+                      className="!text-white inline-flex items-center justify-center gap-3 bg-gradient-to-r from-[#0077b5] to-[#005885] px-6 py-3 rounded-lg hover:from-[#005885] hover:to-[#004065] transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium"
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -484,7 +482,7 @@ export default function ContactPage() {
                       transition={{ duration: 0.5 }}
                     >
                       <div className="mb-4 sm:mb-6 rounded-full bg-accent p-3 sm:p-4">
-                        <CheckCircle className="h-8 w-8 sm:h-12 sm:w-12 text-secondary-dark" />
+                        <CheckCircle className="h-8 w-8 sm:h-12 sm:w-12 text-secondary" />
                       </div>
                       <h2 className="mb-2 text-xl sm:text-2xl font-bold text-card-foreground">Message Sent Successfully!</h2>
                       <p className="mb-6 sm:mb-8 max-w-md text-sm sm:text-base text-muted-foreground">
@@ -492,7 +490,7 @@ export default function ContactPage() {
                         possible.
                       </p>
                       <Button
-                        className="bg-gradient-to-r from-primary to-secondary hover:from-primary-dark hover:to-secondary-dark"
+                        className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90"
                         onClick={() => setIsSubmitted(false)}
                       >
                         Send Another Message
@@ -502,7 +500,7 @@ export default function ContactPage() {
                     <div className="overflow-hidden">
                       <div className="mb-6 sm:mb-8">
                         <h2 className="mb-3 sm:mb-4 text-xl sm:text-2xl font-semibold text-card-foreground">Send Us a Message</h2>
-                        <div className="h-1 w-12 sm:w-16 bg-gradient-to-r from-secondary-dark to-secondary"></div>
+                        <div className="h-1 w-12 sm:w-16 bg-gradient-to-r from-secondary to-primary"></div>
                         <p className="mt-3 sm:mt-4 text-sm sm:text-base text-muted-foreground">
                           Fill out the form below, and we'll be in touch as soon as possible.
                         </p>
@@ -572,7 +570,7 @@ export default function ContactPage() {
                             type="checkbox"
                             id="isDemoRequest"
                             name="isDemoRequest"
-                            className="h-4 w-4 rounded border-neutral-200 text-primary focus:ring-ring"
+                            className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
                             checked={formData.isDemoRequest}
                             onChange={handleChange}
                           />
@@ -600,7 +598,7 @@ export default function ContactPage() {
                           <Button
                             type="submit"
                             disabled={isSubmitting}
-                            className="w-full"
+                            className="w-full bg-gradient-to-r text-muted from-primary to-secondary hover:from-primary/90 hover:to-secondary/90"
                           >
                             {isSubmitting ? 'Sending...' : 'Send Message'}
                           </Button>
@@ -612,16 +610,11 @@ export default function ContactPage() {
               </motion.div>
             </div>
 
-            {/* Meet the Team Section */}
-            {/* <motion.div className="mt-6 sm:mt-8" variants={itemVariants}>
-              <TeamSection />
-            </motion.div> */}
-
             {/* FAQ Section */}
             <motion.div className="mt-6 sm:mt-8 overflow-hidden rounded-xl bg-card p-4 sm:p-8 shadow-lg" variants={itemVariants}>
               <div className="mb-6">
                 <h2 className="mb-3 sm:mb-4 text-xl sm:text-2xl font-semibold text-card-foreground">Frequently Asked Questions</h2>
-                <div className="h-1 w-12 sm:w-16 bg-gradient-to-r from-secondary-dark to-secondary"></div>
+                <div className="h-1 w-12 sm:w-16 bg-gradient-to-r from-secondary to-primary"></div>
               </div>
 
               <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
@@ -645,7 +638,7 @@ export default function ContactPage() {
                 ].map((faq, index) => (
                   <div
                     key={index}
-                    className="rounded-lg border border-neutral-200 p-4 sm:p-6 transition-all hover:border-secondary-dark/20 hover:shadow-sm"
+                    className="rounded-lg border border-border p-4 sm:p-6 transition-all hover:border-secondary/20 hover:shadow-sm"
                   >
                     <h3 className="mb-2 sm:mb-3 text-base sm:text-lg font-medium text-card-foreground">{faq.q}</h3>
                     <p className="text-sm sm:text-base text-muted-foreground">{faq.a}</p>
@@ -662,6 +655,17 @@ export default function ContactPage() {
 
 /**
  * Change Log:
+ * 06/15/25 - Version 1.2.0
+ * - Fixed Framer Motion type errors by adding "as const" to animation types
+ * - Replaced hardcoded colors with theme CSS variables
+ * - Updated background gradients to use theme colors
+ * - Updated border colors to use theme border variables
+ * - Updated text colors to use theme foreground variables
+ * - Updated accent colors to use theme accent variables
+ * - Updated button gradients to use theme primary/secondary colors
+ * - Fixed typo in "Chief Executive Officer"
+ * - Maintained all responsive design and functionality
+ * 
  * 06/15/25 - Version 1.1.2
  * - Removed duplicate Footer component (footer is now handled by PageLayout)
  * - Improved LinkedIn button styling with proper LinkedIn brand colors

@@ -90,7 +90,7 @@ export const MessageList = forwardRef<HTMLDivElement, MessageListProps>(({
   return (
     <div ref={ref} className={cn("flex flex-col h-full", className)}>
       {/* Toolbar */}
-      <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-100 bg-white/80 backdrop-blur-sm">
+      <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-border bg-card/80 backdrop-blur-sm">
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -173,7 +173,7 @@ export const MessageList = forwardRef<HTMLDivElement, MessageListProps>(({
       {showNewMessageButton && (
         <button
           onClick={scrollToBottom}
-          className="fixed bottom-24 right-8 flex items-center gap-2 px-4 py-2 bg-[#0e6537] text-white rounded-full shadow-lg hover:bg-[#0a5a2f] transition-colors z-10"
+          className="fixed bottom-24 right-8 flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/90 transition-colors z-10"
         >
           <ChevronDown className="w-4 h-4" />
           <span className="text-sm font-medium">New messages</span>

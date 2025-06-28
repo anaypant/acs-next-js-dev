@@ -95,7 +95,7 @@ const DemoPage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="bg-card rounded-2xl shadow-xl border border-secondary-dark/5 p-8 transition-all duration-300 hover:shadow-2xl"
+              className="bg-card rounded-2xl shadow-xl border border-border p-8 transition-all duration-300 hover:shadow-2xl"
             >
               {/* Page Header */}
               <div className="text-center mb-8">
@@ -104,10 +104,10 @@ const DemoPage = () => {
                     <Lock className="w-8 h-8 text-secondary-foreground" />
                   </div>
                 </div>
-                <h1 className="text-2xl font-semibold text-primary-dark mb-2">
+                <h1 className="text-2xl font-semibold text-foreground mb-2 font-sans">
                   Demo Access Required
                 </h1>
-                <p className="text-secondary-dark/70 text-sm leading-relaxed">
+                <p className="text-muted-foreground text-sm leading-relaxed font-sans">
                   ACS is currently in a closed demo phase. Enter your demo code to access the platform.
                 </p>
               </div>
@@ -170,17 +170,17 @@ const DemoPage = () => {
                   className="mb-6"
                 >
                   <div className="text-center mb-4">
-                    <h3 className="text-lg font-medium text-primary-dark mb-2">
+                    <h3 className="text-lg font-medium text-foreground mb-2 font-sans">
                       Choose Your Next Step
                     </h3>
-                    <p className="text-secondary-dark/70 text-sm">
+                    <p className="text-muted-foreground text-sm font-sans">
                       Create a new account or sign in to your existing account
                     </p>
                   </div>
                   
                   <div className="space-y-3">
                     {/* Sign Up Button */}
-                    <Button onClick={() => handleNavigation('/signup')} className="w-full">
+                    <Button onClick={() => handleNavigation('/signup')} className="w-full text-white">
                         <UserPlus className="w-5 h-5 mr-2" />
                         Create New Account
                         <ArrowRight className="w-4 h-4 ml-2" />
@@ -200,7 +200,7 @@ const DemoPage = () => {
               {!verificationCompleted && (
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
-                    <label htmlFor="demoCode" className="block text-sm font-medium text-primary-dark mb-2">
+                    <label htmlFor="demoCode" className="block text-sm font-medium text-foreground mb-2 font-sans">
                       Demo Code
                     </label>
                     <div className="relative">
@@ -232,7 +232,7 @@ const DemoPage = () => {
                   <Button
                     type="submit"
                     disabled={loading || !demoCode.trim()}
-                    className="w-full"
+                    className="w-full text-white"
                   >
                     {loading ? (
                         <>

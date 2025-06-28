@@ -483,7 +483,7 @@ const SignupPage: React.FC = () => {
               <div className="mt-8 text-center">
                 <p className="text-sm text-muted-foreground">
                   Already have an account?{' '}
-                  <Link href="/login" className="text-primary hover:text-secondary">
+                  <Link href="/login" className="text-muted hover:text-secondary">
                     Sign in
                   </Link>
                 </p>
