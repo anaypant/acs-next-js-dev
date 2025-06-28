@@ -1,8 +1,16 @@
 import React, { useState } from 'react';
-import { Mail, CheckCircle2, Shield, Zap, Globe, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Mail, CheckCircle2, Shield, Zap, Globe, ArrowRight, ArrowLeft, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { 
+  verifyDomainIdentity, 
+  verifyDomainDKIM, 
+  extractDomainFromEmail,
+  validateEmailFormat,
+  type DomainVerificationState 
+} from '@/lib/utils/new-user';
+import { useSession } from 'next-auth/react';
 
 interface EmailData {
     responseEmail: string;
@@ -26,11 +34,116 @@ const Step3EmailSetup: React.FC<Step3EmailSetupProps> = ({
   onBack,
   loading,
 }) => {
-  const [emailStatus, setEmailStatus] = useState<{ available: boolean; message: string } | null>(null);
+  const { data: session } = useSession();
+  const userId = (session as any)?.user?.id;
+  
+  const [verificationState, setVerificationState] = useState<DomainVerificationState>({
+    identityVerified: false,
+    dkimVerified: false,
+    identityLoading: false,
+    dkimLoading: false,
+    identityError: null,
+    dkimError: null
+  });
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setData({ ...data, [name]: value });
+    
+    // Reset verification state when email changes
+    if (name === 'customEmail') {
+      setVerificationState(prev => ({
+        ...prev,
+        identityVerified: false,
+        dkimVerified: false,
+        identityError: null,
+        dkimError: null
+      }));
+    }
+  };
+
+  const handleVerifyIdentity = async () => {
+    if (!data.customEmail || !validateEmailFormat(data.customEmail)) {
+      setVerificationState(prev => ({
+        ...prev,
+        identityError: 'Please enter a valid email address'
+      }));
+      return;
+    }
+
+    const domain = extractDomainFromEmail(data.customEmail);
+    if (!domain) {
+      setVerificationState(prev => ({
+        ...prev,
+        identityError: 'Invalid domain in email address'
+      }));
+      return;
+    }
+
+    setVerificationState(prev => ({
+      ...prev,
+      identityLoading: true,
+      identityError: null
+    }));
+
+    try {
+      const result = await verifyDomainIdentity(domain);
+      
+      setVerificationState(prev => ({
+        ...prev,
+        identityLoading: false,
+        identityVerified: result.success,
+        identityError: result.success ? null : result.error || null
+      }));
+    } catch (error) {
+      setVerificationState(prev => ({
+        ...prev,
+        identityLoading: false,
+        identityError: 'Failed to verify domain identity'
+      }));
+    }
+  };
+
+  const handleVerifyDKIM = async () => {
+    if (!data.customEmail || !validateEmailFormat(data.customEmail)) {
+      setVerificationState(prev => ({
+        ...prev,
+        dkimError: 'Please enter a valid email address'
+      }));
+      return;
+    }
+
+    const domain = extractDomainFromEmail(data.customEmail);
+    if (!domain) {
+      setVerificationState(prev => ({
+        ...prev,
+        dkimError: 'Invalid domain in email address'
+      }));
+      return;
+    }
+
+    setVerificationState(prev => ({
+      ...prev,
+      dkimLoading: true,
+      dkimError: null
+    }));
+
+    try {
+      const result = await verifyDomainDKIM(domain);
+      
+      setVerificationState(prev => ({
+        ...prev,
+        dkimLoading: false,
+        dkimVerified: result.success,
+        dkimError: result.success ? null : result.error || null
+      }));
+    } catch (error) {
+      setVerificationState(prev => ({
+        ...prev,
+        dkimLoading: false,
+        dkimError: 'Failed to verify domain DKIM'
+      }));
+    }
   };
 
   return (
@@ -72,7 +185,10 @@ const Step3EmailSetup: React.FC<Step3EmailSetupProps> = ({
                     ? "bg-primary text-muted-foreground border-primary-foreground" 
                     : "bg-card text-muted-foreground border-primary-foreground"
                 )}>
-                  <Zap className="w-5 h-5" />
+                  <Zap className={cn(
+                    "w-5 h-5",
+                    data.emailOption === 'default' ? "text-white" : "text-primary"
+                  )} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium text-foreground text-sm mb-1">
@@ -108,7 +224,10 @@ const Step3EmailSetup: React.FC<Step3EmailSetupProps> = ({
                     ? "bg-primary text-muted-foreground border-primary-foreground" 
                     : "bg-card text-muted-foreground border-primary-foreground"
                 )}>
-                  <Globe className="w-5 h-5" />
+                  <Globe className={cn(
+                    "w-5 h-5",
+                    data.emailOption === 'custom' ? "text-white" : "text-primary"
+                  )} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium text-foreground text-sm mb-1">
@@ -198,23 +317,72 @@ const Step3EmailSetup: React.FC<Step3EmailSetupProps> = ({
                 type="button" 
                 variant="outline" 
                 size="sm" 
+                onClick={handleVerifyIdentity}
+                disabled={loading || verificationState.identityLoading || !data.customEmail}
                 className="flex items-center gap-2 text-xs h-8 px-3" 
-                disabled={loading}
               >
-                <Shield className="w-3 h-3" />
-                Verify Identity
+                {verificationState.identityLoading ? (
+                  <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                ) : verificationState.identityVerified ? (
+                  <CheckCircle2 className="w-3 h-3 text-green-600" />
+                ) : (
+                  <Shield className="w-3 h-3" />
+                )}
+                {verificationState.identityLoading ? 'Verifying...' : 'Verify Identity'}
               </Button>
               <Button 
                 type="button" 
                 variant="outline" 
                 size="sm" 
+                onClick={handleVerifyDKIM}
+                disabled={loading || verificationState.dkimLoading || !data.customEmail}
                 className="flex items-center gap-2 text-xs h-8 px-3" 
-                disabled={loading}
               >
-                <CheckCircle2 className="w-3 h-3" />
-                Verify DKIM
+                {verificationState.dkimLoading ? (
+                  <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                ) : verificationState.dkimVerified ? (
+                  <CheckCircle2 className="w-3 h-3 text-green-600" />
+                ) : (
+                  <CheckCircle2 className="w-3 h-3" />
+                )}
+                {verificationState.dkimLoading ? 'Verifying...' : 'Verify DKIM'}
               </Button>
             </div>
+
+            {/* Verification Status Messages */}
+            {(verificationState.identityError || verificationState.dkimError) && (
+              <div className="space-y-2">
+                {verificationState.identityError && (
+                  <div className="flex items-center gap-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                    <AlertCircle className="w-4 h-4 text-red-600" />
+                    <span className="text-xs text-red-700">{verificationState.identityError}</span>
+                  </div>
+                )}
+                {verificationState.dkimError && (
+                  <div className="flex items-center gap-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                    <AlertCircle className="w-4 h-4 text-red-600" />
+                    <span className="text-xs text-red-700">{verificationState.dkimError}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {(verificationState.identityVerified || verificationState.dkimVerified) && (
+              <div className="space-y-2">
+                {verificationState.identityVerified && (
+                  <div className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                    <CheckCircle2 className="w-4 h-4 text-green-600" />
+                    <span className="text-xs text-green-700">Domain identity verified successfully</span>
+                  </div>
+                )}
+                {verificationState.dkimVerified && (
+                  <div className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                    <CheckCircle2 className="w-4 h-4 text-green-600" />
+                    <span className="text-xs text-green-700">Domain DKIM verified successfully</span>
+                  </div>
+                )}
+              </div>
+            )}
             
             <div className="bg-accent/30 border border-border/50 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-3">
@@ -262,14 +430,14 @@ const Step3EmailSetup: React.FC<Step3EmailSetupProps> = ({
             disabled={loading}
             className={cn(
               "group flex items-center gap-2 h-9 px-4 font-medium border border-primary bg-card text-primary transition-colors",
-              !loading && "hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+              !loading && "hover:bg-primary hover:text-white focus:bg-primary focus:text-white",
               loading && "opacity-60 cursor-not-allowed"
             )}
             tabIndex={0}
             aria-label="Continue"
           >
             {loading ? 'Saving...' : (
-              <span className="flex items-center gap-2 group-hover:text-primary-foreground group-focus:text-primary-foreground group-active:text-primary-foreground">
+              <span className="flex items-center gap-2 group-hover:text-white group-focus:text-white group-active:text-white">
                 <span className="transition-colors">Continue</span>
                 <ArrowRight className="w-3 h-3 transition-colors text-inherit" />
               </span>

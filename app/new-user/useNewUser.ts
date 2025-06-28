@@ -216,26 +216,8 @@ export function useNewUser() {
     };
     
     const handleCompleteSetup = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const { success, error } = await update({
-                table_name: 'Users',
-                index_name: 'id-index',
-                key_name: 'id',
-                key_value: userId,
-                update_data: { newUser: false }
-            });
-            if (success) {
-                router.push('/dashboard');
-            } else {
-                setError(error || 'Failed to complete setup');
-            }
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to complete setup');
-        } finally {
-            setLoading(false);
-        }
+        // Directly redirect to dashboard without unnecessary database update
+        router.push('/dashboard');
     };
 
     return {

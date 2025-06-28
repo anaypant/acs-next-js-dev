@@ -70,16 +70,16 @@ const Step4LCPSettings: React.FC<Step4LCPSettingsProps> = ({
           <div className="space-y-4">
             <div className="flex items-center gap-2 mb-3">
               <div className="w-2 h-2 bg-primary rounded-full"></div>
-              <label className="text-sm font-semibold text-foreground">Email Tone</label>
+              <label className="text-sm font-semibold text-primary-foreground">Email Tone</label>
             </div>
             <select
               value={data.tone}
               onChange={(e) => setData({ ...data, tone: e.target.value })}
               className={cn(
-                "w-full p-4 rounded-xl bg-card-light text-foreground border border-border",
-                "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
-                "transition-all duration-200 hover:border-primary/50",
-                "appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,<svg width=\"12\" height=\"8\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M1.41.59 6 5.17 10.59.59 12 2 6 8 0 2z\" fill=\"%236b7280\"/></svg>')] bg-no-repeat bg-right-4 bg-center"
+                "w-full p-4 rounded-xl bg-card-light text-foreground border-2 border-primary/20",
+                "focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary",
+                "transition-all duration-200 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10",
+                "appearance-none shadow-sm"
               )}
             >
               <option value="professional">Professional</option>
@@ -103,10 +103,10 @@ const Step4LCPSettings: React.FC<Step4LCPSettingsProps> = ({
               value={data.style}
               onChange={(e) => setData({ ...data, style: e.target.value })}
               className={cn(
-                "w-full p-4 rounded-xl bg-card-light text-foreground border border-border",
-                "focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent",
-                "transition-all duration-200 hover:border-secondary/50",
-                "appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,<svg width=\"12\" height=\"8\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M1.41.59 6 5.17 10.59.59 12 2 6 8 0 2z\" fill=\"%236b7280\"/></svg>')] bg-no-repeat bg-right-4 bg-center"
+                "w-full p-4 rounded-xl bg-card-light text-foreground border-2 border-secondary/20",
+                "focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary",
+                "transition-all duration-200 hover:border-secondary/40 hover:shadow-lg hover:shadow-secondary/10",
+                "appearance-none shadow-sm"
               )}
             >
               <option value="concise">Concise</option>
@@ -131,10 +131,10 @@ const Step4LCPSettings: React.FC<Step4LCPSettingsProps> = ({
             value={data.samplePrompt}
             onChange={(e) => setData({ ...data, samplePrompt: e.target.value })}
             className={cn(
-              "w-full h-40 p-4 rounded-xl bg-card-light text-foreground border border-border",
-              "focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent",
-              "transition-all duration-200 hover:border-accent/50 resize-none",
-              "placeholder:text-muted-foreground/60"
+              "w-full h-40 p-4 rounded-xl bg-card-light text-foreground border-2 border-accent/20",
+              "focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent",
+              "transition-all duration-200 hover:border-accent/40 hover:shadow-lg hover:shadow-accent/10 resize-none",
+              "placeholder:text-muted-foreground/60 shadow-sm"
             )}
             placeholder="Enter a sample email that represents your preferred writing style. This helps the AI understand your unique voice and communication patterns..."
           />
@@ -174,14 +174,14 @@ const Step4LCPSettings: React.FC<Step4LCPSettingsProps> = ({
         className={cn(
           "px-8 py-4 rounded-xl font-semibold transition-all duration-200",
           "bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90",
-          "text-primary-foreground shadow-lg hover:shadow-xl",
+          "text-text-inverse shadow-lg hover:shadow-xl",
           "disabled:opacity-50 disabled:cursor-not-allowed",
           "flex items-center gap-3"
         )}
       >
         {loading ? (
           <>
-            <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin"></div>
+            <div className=" text-text-inverse w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin"></div>
             Saving...
           </>
         ) : (

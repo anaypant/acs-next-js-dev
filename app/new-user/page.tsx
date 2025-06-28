@@ -239,21 +239,11 @@ export default function NewUserPage() {
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={handleCompleteSetup}
-                                disabled={loading}
-                                className="px-8 py-4 bg-gradient-to-r from-primary to-secondary text-white rounded-lg font-semibold flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed hover:from-primary/90 hover:to-secondary/90 transition-colors duration-200 shadow-sm"
-                                aria-label={loading ? 'Redirecting to dashboard...' : 'Go to dashboard'}
+                                className="px-8 py-4 bg-gradient-to-r from-primary to-secondary text-white rounded-lg font-semibold flex items-center gap-3 hover:from-primary/90 hover:to-secondary/90 transition-colors duration-200 shadow-sm"
+                                aria-label="Go to dashboard"
                             >
-                                {loading ? (
-                                    <>
-                                        <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin"></div>
-                                        Redirecting...
-                                    </>
-                                ) : (
-                                    <>
-                                        Go to Dashboard
-                                        <ArrowRight className="w-5 h-5" />
-                                    </>
-                                )}
+                                Go to Dashboard
+                                <ArrowRight className="w-5 h-5" />
                             </motion.button>
                         </motion.div>
                     </motion.div>

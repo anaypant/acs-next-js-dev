@@ -83,7 +83,7 @@ export const greenTheme: SimpleTheme = {
     'background-paper': '#FFFFFF',
     'background-accent': '#f0fdf4',
     card: '#f8fafc',
-    'card-light': '#fefefe',
+    'card-light': '#ffffff',
     
     // Text colors
     foreground: '#0f172a',
