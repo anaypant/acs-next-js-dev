@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Globe, CheckCircle2, ArrowRight, XCircle, AlertTriangle, Info } from 'lucide-react';
 import Step1Welcome from './steps/Step1Welcome';
 import Step2Profile from './steps/Step2Profile';
-import Step3EmailSetup from './steps/Step2EmailSetup';
+import Step3EmailSetup from './steps/Step3EmailSetup';
 import Step4LCPSettings from './steps/Step4LCPSettings';
 import Step5Settings from './steps/Step5Settings';
 import { useNewUser } from './useNewUser';
@@ -79,7 +79,7 @@ export default function NewUserPage() {
     if (status === 'loading' || loading) {
         return (
             <PageLayout showNavbar={false} showFooter={false}>
-                <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="min-h-screen flex items-center justify-center bg-background">
                     <LoadingSpinner size="lg" text="Loading..." />
                 </div>
             </PageLayout>
@@ -90,13 +90,16 @@ export default function NewUserPage() {
     if (error) {
         return (
             <PageLayout showNavbar={false} showFooter={false}>
-                <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                    <div className="text-center">
-                        <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
-                        <p className="text-gray-600 mb-4">{error}</p>
+                <div className="min-h-screen flex items-center justify-center bg-background">
+                    <div className="text-center space-y-4">
+                        <div className="mx-auto w-16 h-16 bg-status-error rounded-full flex items-center justify-center">
+                            <XCircle className="w-8 h-8 text-white" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-foreground">Error</h2>
+                        <p className="text-muted-foreground max-w-md">{error}</p>
                         <button 
                             onClick={() => window.location.reload()} 
-                            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                            className="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary-light transition-colors duration-200"
                         >
                             Retry
                         </button>
@@ -169,44 +172,90 @@ export default function NewUserPage() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5 }}
-                        className="space-y-8"
+                        className="max-w-4xl mx-auto space-y-8 p-6"
                     >
-                        <div className="text-center space-y-4">
-                            <h1 className="text-4xl font-bold bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">
-                                Setup Complete!
-                            </h1>
-                            <p className="text-lg text-gray-300 max-w-2xl mx-auto">
-                                Congratulations! Your ACS account has been successfully configured. 
-                                You're now ready to start using our automated consultancy services.
-                            </p>
-                        </div>
-                        <div className="bg-white/5 rounded-xl p-6 backdrop-blur-sm border border-white/10">
-                            <h2 className="text-2xl font-semibold mb-4 text-white">
-                                What's Next?
-                            </h2>
-                            <div className="space-y-4 text-gray-300">
-                                <p>
-                                    You can now access your dashboard and start:
+                        <div className="text-center space-y-6">
+                            <motion.div
+                                initial={{ scale: 0.8 }}
+                                animate={{ scale: 1 }}
+                                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                                className="mx-auto w-20 h-20 bg-status-success rounded-full flex items-center justify-center"
+                            >
+                                <CheckCircle2 className="w-12 h-12 text-white" />
+                            </motion.div>
+                            <div className="space-y-4">
+                                <h1 className="text-4xl font-bold text-foreground">
+                                    Setup Complete!
+                                </h1>
+                                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                                    Congratulations! Your ACS account has been successfully configured. 
+                                    You're now ready to start using our automated consultancy services.
                                 </p>
-                                <ul className="space-y-2">
-                                    <li>• Managing your conversations</li>
-                                    <li>• Setting up automated responses</li>
-                                    <li>• Tracking your leads and conversions</li>
-                                    <li>• Customizing your communication preferences</li>
-                                </ul>
                             </div>
                         </div>
-                        <div className="flex justify-center">
+                        
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3, duration: 0.5 }}
+                            className="bg-card rounded-xl p-8 border border-border shadow-sm"
+                        >
+                            <h2 className="text-2xl font-semibold mb-6 text-card-foreground flex items-center gap-3">
+                                <Info className="w-6 h-6 text-primary" />
+                                What's Next?
+                            </h2>
+                            <div className="space-y-4 text-muted-foreground">
+                                <p className="text-base">
+                                    You can now access your dashboard and start:
+                                </p>
+                                <ul className="space-y-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <li className="flex items-center gap-3">
+                                        <div className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></div>
+                                        <span>Managing your conversations</span>
+                                    </li>
+                                    <li className="flex items-center gap-3">
+                                        <div className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></div>
+                                        <span>Setting up automated responses</span>
+                                    </li>
+                                    <li className="flex items-center gap-3">
+                                        <div className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></div>
+                                        <span>Tracking your leads and conversions</span>
+                                    </li>
+                                    <li className="flex items-center gap-3">
+                                        <div className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></div>
+                                        <span>Customizing your communication preferences</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </motion.div>
+                        
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.4, duration: 0.5 }}
+                            className="flex justify-center"
+                        >
                             <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
                                 onClick={handleCompleteSetup}
                                 disabled={loading}
-                                className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg font-semibold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-8 py-4 bg-gradient-to-r from-primary to-secondary text-white rounded-lg font-semibold flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed hover:from-primary/90 hover:to-secondary/90 transition-colors duration-200 shadow-sm"
+                                aria-label={loading ? 'Redirecting to dashboard...' : 'Go to dashboard'}
                             >
-                                {loading ? 'Redirecting...' : 'Go to Dashboard'}
+                                {loading ? (
+                                    <>
+                                        <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin"></div>
+                                        Redirecting...
+                                    </>
+                                ) : (
+                                    <>
+                                        Go to Dashboard
+                                        <ArrowRight className="w-5 h-5" />
+                                    </>
+                                )}
                             </motion.button>
-                        </div>
+                        </motion.div>
                     </motion.div>
                 );
             default:
@@ -215,9 +264,9 @@ export default function NewUserPage() {
     };
 
     return (
-        <PageLayout showNavbar={false} showFooter={false}>
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-                <div className="w-full max-w-2xl">
+        <PageLayout showNavbar={false} showFooter={false} maxWidth="full">
+            <div className="min-h-screen flex items-center justify-center bg-background p-4">
+                <div className="w-full h-full">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={step}
@@ -226,6 +275,7 @@ export default function NewUserPage() {
                             animate="visible"
                             exit="exit"
                             transition={{ duration: 0.3 }}
+                            className="w-full h-full"
                         >
                             {renderStep()}
                         </motion.div>
