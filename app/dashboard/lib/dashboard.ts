@@ -85,7 +85,15 @@ class DashboardServerApi {
     }
 
     async updateThread(conversationId: string, updates: Partial<Thread>) {
-        return this.request<ThreadOperationResult>('lcp/update_thread', 'POST', { conversationId, updates }, ['threads']);
+        // Use db/update instead of the non-existent lcp/update_thread endpoint
+        const dbUpdateParams = {
+            table_name: 'Threads',
+            index_name: 'conversation_id-index',
+            key_name: 'conversation_id',
+            key_value: conversationId,
+            update_data: updates
+        };
+        return this.request<ThreadOperationResult>('db/update', 'POST', dbUpdateParams, ['threads']);
     }
 
     async deleteThread(conversationId: string) {

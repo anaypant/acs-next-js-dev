@@ -208,6 +208,12 @@ export async function POST(request: Request) {
           phone: thread.phone,
           location: thread.location,
           source_name: thread.source_name,
+          createdAt: thread.createdAt,
+          created_at: thread.created_at,
+          updatedAt: thread.updatedAt,
+          updated_at: thread.updated_at,
+          lastMessageAt: thread.lastMessageAt,
+          last_updated: thread.last_updated,
           allKeys: Object.keys(thread)
         }))
       });
@@ -343,9 +349,19 @@ export async function POST(request: Request) {
           conversation_id: threadsWithMessages[0].thread.conversation_id,
           source_name: threadsWithMessages[0].thread.source_name,
           source: threadsWithMessages[0].thread.source,
+          createdAt: threadsWithMessages[0].thread.createdAt,
+          created_at: threadsWithMessages[0].thread.created_at,
+          updatedAt: threadsWithMessages[0].thread.updatedAt,
+          updated_at: threadsWithMessages[0].thread.updated_at,
+          lastMessageAt: threadsWithMessages[0].thread.lastMessageAt,
+          last_updated: threadsWithMessages[0].thread.last_updated,
           allKeys: Object.keys(threadsWithMessages[0].thread)
         },
-        messagesCount: threadsWithMessages[0].messages.length
+        messagesCount: threadsWithMessages[0].messages.length,
+        sampleMessage: threadsWithMessages[0].messages[0] ? {
+          timestamp: threadsWithMessages[0].messages[0].timestamp,
+          allKeys: Object.keys(threadsWithMessages[0].messages[0])
+        } : null
       } : null
     });
 

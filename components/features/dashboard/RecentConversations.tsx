@@ -3,13 +3,14 @@
  * Purpose: Displays the 5 most recent conversations using processed Conversation data
  * Author: AI Assistant
  * Date: 2024-12-19
- * Version: 1.2.0
+ * Version: 1.3.0
  */
 
 import React from 'react';
 import { ConversationCard } from '../conversations/ConversationCard';
 import { LoadingSpinner } from '@/components/common/Feedback/LoadingSpinner';
 import { MessageSquare, ArrowRight } from 'lucide-react';
+import { useOptimisticConversations } from '@/hooks/useOptimisticConversations';
 import type { Conversation } from '@/types/conversation';
 
 interface RecentConversationsProps {
@@ -17,6 +18,13 @@ interface RecentConversationsProps {
 }
 
 export function RecentConversations({ conversations = [] }: RecentConversationsProps) {
+  // Use the optimistic conversations hook for actions
+  const { 
+    markAsRead, 
+    toggleLcp, 
+    deleteConversation 
+  } = useOptimisticConversations();
+
   // Data is now pre-sorted by lastMessageAt in descending order from processThreadsResponse
   // Just take the first 5 conversations (most recent first)
   const recentConversations = conversations.slice(0, 5);
@@ -37,6 +45,9 @@ export function RecentConversations({ conversations = [] }: RecentConversationsP
               key={conversation.thread.conversation_id}
               conversation={conversation}
               variant="simple"
+              onMarkAsRead={markAsRead}
+              onToggleLcp={toggleLcp}
+              onDelete={deleteConversation}
             />
           ))
         ) : (

@@ -247,14 +247,29 @@ export class ApiClient {
       });
     }
 
-    const response = await this.request<Thread>('lcp/update_thread', { method: 'POST', body: { conversationId, updates } });
+    // Use dbUpdate instead of the non-existent lcp/update_thread endpoint
+    const dbUpdateParams: DbUpdateParams = {
+      table_name: 'Threads',
+      index_name: 'conversation_id-index',
+      key_name: 'conversation_id',
+      key_value: conversationId,
+      update_data: updates
+    };
+
+    const response = await this.dbUpdate(dbUpdateParams);
     
     // If update failed, we could implement rollback here
     if (!response.success && this.currentUserId) {
       console.warn('[ApiClient] Thread update failed, optimistic update may be stale');
     }
     
-    return response;
+    // Return a Thread response to maintain compatibility
+    return {
+      success: response.success,
+      data: response.success ? { conversation_id: conversationId, ...updates } as Thread : undefined,
+      error: response.error,
+      status: response.status
+    };
   }
 
   async deleteThread(conversationId: string): Promise<ApiResponse<void>> {
@@ -500,4 +515,4 @@ export class ServerApiClient {
 }
 
 // Server-side singleton instance
-export const serverApiClient = new ServerApiClient(); 
+export const serverApiClient = new ServerApiClient();

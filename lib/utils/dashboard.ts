@@ -6,9 +6,49 @@
  * Version: 2.0.0
  */
 
-import { subDays, format, differenceInDays, startOfMonth, endOfMonth, parseISO } from 'date-fns';
+import { subDays, format, differenceInDays, startOfMonth, endOfMonth, parseISO, isValid } from 'date-fns';
 import type { Conversation, Message } from '@/types/conversation';
 import type { DashboardMetrics, DashboardAnalytics, DashboardUsage } from '@/types/dashboard';
+
+/**
+ * Validates and safely formats a date
+ */
+function safeFormatDate(date: Date, formatString: string): string {
+  if (!isValid(date)) {
+    console.warn('[dashboard.ts] Invalid date detected:', date);
+    return 'Invalid Date';
+  }
+  try {
+    return format(date, formatString);
+  } catch (error) {
+    console.error('[dashboard.ts] Error formatting date:', { date, formatString, error });
+    return 'Invalid Date';
+  }
+}
+
+/**
+ * Safely creates a Date object with validation
+ */
+function safeCreateDate(dateValue: any): Date | null {
+  
+  if (!dateValue) {
+    console.warn('[dashboard.ts] No date value provided:', dateValue);
+    return null;
+  }
+  
+  try {
+    const date = new Date(dateValue);
+    
+    if (!isValid(date)) {
+      console.warn('[dashboard.ts] Invalid date value:', dateValue, 'resulting in:', date);
+      return null;
+    }
+    return date;
+  } catch (error) {
+    console.error('[dashboard.ts] Error creating date from value:', dateValue, error);
+    return null;
+  }
+}
 
 /**
  * Calculates average response time from conversations
@@ -17,9 +57,20 @@ export function calculateAverageResponseTime(conversations: Conversation[]): num
   const responseTimes: number[] = [];
   
   conversations.forEach(conversation => {
-    const messages = conversation.messages.sort((a, b) => 
-      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-    );
+    const messages = conversation.messages.sort((a, b) => {
+      const dateA = safeCreateDate(a.timestamp);
+      const dateB = safeCreateDate(b.timestamp);
+      
+      if (!dateA || !dateB) {
+        console.warn('[dashboard.ts] Skipping message comparison due to invalid dates:', {
+          messageA: a.timestamp,
+          messageB: b.timestamp
+        });
+        return 0;
+      }
+      
+      return dateA.getTime() - dateB.getTime();
+    });
     
     for (let i = 0; i < messages.length - 1; i++) {
       const currentMessage = messages[i];
@@ -27,8 +78,18 @@ export function calculateAverageResponseTime(conversations: Conversation[]): num
       
       // Only calculate if current is inbound and next is outbound
       if (currentMessage.type === 'inbound-email' && nextMessage.type === 'outbound-email') {
-        const responseTime = new Date(nextMessage.timestamp).getTime() - new Date(currentMessage.timestamp).getTime();
-        responseTimes.push(responseTime);
+        const currentDate = safeCreateDate(currentMessage.timestamp);
+        const nextDate = safeCreateDate(nextMessage.timestamp);
+        
+        if (currentDate && nextDate) {
+          const responseTime = nextDate.getTime() - currentDate.getTime();
+          responseTimes.push(responseTime);
+        } else {
+          console.warn('[dashboard.ts] Skipping response time calculation due to invalid dates:', {
+            currentMessage: currentMessage.timestamp,
+            nextMessage: nextMessage.timestamp
+          });
+        }
       }
     }
   });
@@ -47,53 +108,80 @@ export function calculateMonthlyGrowth(conversations: Conversation[]): number {
   const currentMonthStart = startOfMonth(now);
   const lastMonthStart = startOfMonth(subDays(currentMonthStart, 1));
   const lastMonthEnd = endOfMonth(lastMonthStart);
-  
-  const currentMonthCount = conversations.filter(conv => 
-    new Date(conv.thread.createdAt) >= currentMonthStart
-  ).length;
-  
-  const lastMonthCount = conversations.filter(conv => 
-    new Date(conv.thread.createdAt) >= lastMonthStart && 
-    new Date(conv.thread.createdAt) <= lastMonthEnd
-  ).length;
-  
-  if (lastMonthCount === 0) return currentMonthCount > 0 ? 100 : 0;
-  
-  return Math.round(((currentMonthCount - lastMonthCount) / lastMonthCount) * 100);
+
+  const currentMonthConversations = conversations.filter(conv => {
+    const convDate = safeCreateDate(conv.thread.createdAt);
+    return convDate && convDate >= currentMonthStart;
+  });
+
+  const lastMonthConversations = conversations.filter(conv => {
+    const convDate = safeCreateDate(conv.thread.createdAt);
+    return convDate && convDate >= lastMonthStart && convDate <= lastMonthEnd;
+  });
+
+  const currentCount = currentMonthConversations.length;
+  const lastCount = lastMonthConversations.length;
+
+  if (lastCount === 0) return currentCount > 0 ? 100 : 0;
+  return Math.round(((currentCount - lastCount) / lastCount) * 100);
 }
 
 /**
- * Generates comprehensive analytics data from conversations
+ * Generates analytics data from conversations
  */
 export function generateAnalytics(conversations: Conversation[]): DashboardAnalytics {
-  // Conversation Trend (Last 7 Days)
-  const conversationTrendData = Array(7).fill(0);
-  const labels = Array(7).fill(0).map((_, i) => {
-    const date = subDays(new Date(), 6 - i);
-    return format(date, 'MMM d');
+  
+  // Log sample conversation dates for debugging
+  if (conversations.length > 0) {
+    console.log('[dashboard.ts] Sample conversation dates:', conversations.slice(0, 3).map(conv => ({
+      conversation_id: conv.thread.conversation_id,
+      createdAt: conv.thread.createdAt,
+      createdAtType: typeof conv.thread.createdAt,
+      parsedDate: safeCreateDate(conv.thread.createdAt),
+      messages: conv.messages.slice(0, 2).map(msg => ({
+        timestamp: msg.timestamp,
+        timestampType: typeof msg.timestamp,
+        localDate: msg.localDate,
+        localDateType: typeof msg.localDate
+      }))
+    })));
+  }
+
+  // Conversation Trend (Last 30 Days)
+  const conversationTrendData = Array(30).fill(0);
+  const labels = Array(30).fill(0).map((_, i) => {
+    const date = subDays(new Date(), 29 - i);
+    return safeFormatDate(date, 'MMM d');
   });
 
-  conversations.forEach(conv => {
-    const date = new Date(conv.thread.createdAt);
-    const diff = differenceInDays(new Date(), date);
-    if (diff >= 0 && diff < 7) {
-      const index = 6 - diff;
-      conversationTrendData[index]++;
-    }
-  });
+  // Calculate daily conversation counts
+  for (let i = 0; i < 30; i++) {
+    const targetDate = subDays(new Date(), 29 - i);
+    const dayConversations = conversations.filter(conv => {
+      
+      const convDate = safeCreateDate(conv.thread.createdAt);
+      if (!convDate) {
+        console.warn('[dashboard.ts] Skipping conversation with invalid date:', conv.thread.createdAt);
+        return false;
+      }
+      return safeFormatDate(convDate, 'yyyy-MM-dd') === safeFormatDate(targetDate, 'yyyy-MM-dd');
+    });
+    
+    conversationTrendData[i] = dayConversations.length;
+  }
 
   // Lead Source Breakdown
-  const sourceCounts = conversations.reduce((acc, conv) => {
+  const sourceCounts: Record<string, number> = {};
+  conversations.forEach(conv => {
     const source = conv.thread.source_name || 'Unknown';
-    acc[source] = (acc[source] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+    sourceCounts[source] = (sourceCounts[source] || 0) + 1;
+  });
 
   // Conversion Funnel
   const totalLeads = conversations.length;
   const activeConversations = conversations.filter(conv => !conv.thread.completed).length;
   const completedConversations = conversations.filter(conv => conv.thread.completed).length;
-  
+
   const conversionFunnelData = [
     { stage: 'Total Leads', count: totalLeads, percentage: 100 },
     { stage: 'Active', count: activeConversations, percentage: totalLeads > 0 ? Math.round((activeConversations / totalLeads) * 100) : 0 },
@@ -104,15 +192,19 @@ export function generateAnalytics(conversations: Conversation[]): DashboardAnaly
   const responseTimeData = Array(30).fill(0);
   const responseTimeLabels = Array(30).fill(0).map((_, i) => {
     const date = subDays(new Date(), 29 - i);
-    return format(date, 'MMM d');
+    return safeFormatDate(date, 'MMM d');
   });
 
   // Calculate daily average response times
   for (let i = 0; i < 30; i++) {
     const targetDate = subDays(new Date(), 29 - i);
     const dayConversations = conversations.filter(conv => {
-      const convDate = new Date(conv.thread.createdAt);
-      return format(convDate, 'yyyy-MM-dd') === format(targetDate, 'yyyy-MM-dd');
+      const convDate = safeCreateDate(conv.thread.createdAt);
+      if (!convDate) {
+        console.warn('[dashboard.ts] Skipping conversation with invalid date for response time calculation:', conv.thread.createdAt);
+        return false;
+      }
+      return safeFormatDate(convDate, 'yyyy-MM-dd') === safeFormatDate(targetDate, 'yyyy-MM-dd');
     });
     
     if (dayConversations.length > 0) {
@@ -194,7 +286,11 @@ export function filterConversationsByDateRange(
   endDate: Date
 ): Conversation[] {
   return conversations.filter(conv => {
-    const convDate = new Date(conv.thread.createdAt);
+    const convDate = safeCreateDate(conv.thread.createdAt);
+    if (!convDate) {
+      console.warn('[dashboard.ts] Skipping conversation with invalid date in filter:', conv.thread.createdAt);
+      return false;
+    }
     return convDate >= startDate && convDate <= endDate;
   });
 }
@@ -212,9 +308,18 @@ export function sortConversations(
   switch (sortBy) {
     case 'date':
       sorted.sort((a, b) => {
-        const timeA = new Date(a.thread.lastMessageAt).getTime();
-        const timeB = new Date(b.thread.lastMessageAt).getTime();
-        return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+        const timeA = safeCreateDate(a.thread.lastMessageAt);
+        const timeB = safeCreateDate(b.thread.lastMessageAt);
+        
+        if (!timeA || !timeB) {
+          console.warn('[dashboard.ts] Skipping date comparison due to invalid dates:', {
+            lastMessageAtA: a.thread.lastMessageAt,
+            lastMessageAtB: b.thread.lastMessageAt
+          });
+          return 0;
+        }
+        
+        return sortOrder === 'desc' ? timeB.getTime() - timeA.getTime() : timeA.getTime() - timeB.getTime();
       });
       break;
     case 'name':
@@ -352,7 +457,11 @@ export function calculateTrends(
   endDate: Date
 ): Record<string, TrendData> {
   const currentPeriod = conversations.filter(conv => {
-    const convDate = new Date(conv.thread.createdAt);
+    const convDate = safeCreateDate(conv.thread.createdAt);
+    if (!convDate) {
+      console.warn('[dashboard.ts] Skipping conversation with invalid date in trend calculation:', conv.thread.createdAt);
+      return false;
+    }
     return convDate >= startDate && convDate <= endDate;
   });
 
@@ -362,7 +471,11 @@ export function calculateTrends(
   previousEndDate.setDate(previousEndDate.getDate() - 1);
 
   const previousPeriod = conversations.filter(conv => {
-    const convDate = new Date(conv.thread.createdAt);
+    const convDate = safeCreateDate(conv.thread.createdAt);
+    if (!convDate) {
+      console.warn('[dashboard.ts] Skipping conversation with invalid date in previous period trend calculation:', conv.thread.createdAt);
+      return false;
+    }
     return convDate >= previousStartDate && convDate <= previousEndDate;
   });
 

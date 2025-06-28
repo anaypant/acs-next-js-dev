@@ -7,34 +7,25 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   Bell, 
-  CheckCircle, 
-  ChevronRight, 
   Clock, 
+  CheckCircle, 
   Flag, 
-  Trash2, 
-  Shield, 
-  ShieldOff,
-  MessageSquare
+  ChevronRight,
+  MoreVertical,
+  Trash2,
+  Settings
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { formatLocalTime } from '@/app/utils/timezone';
+import { cn } from '@/lib/utils';
 import { 
   getMostRecentMessage, 
   getConversationTitle, 
-  getLatestEvaluableMessage 
+  getLatestEvaluableMessage
 } from '@/lib/utils/conversation';
-import { useOptimisticConversations } from '@/hooks/useOptimisticConversations';
+import { formatLocalTime } from '@/app/utils/timezone';
 import type { Conversation } from '@/types/conversation';
-
-// Props interface for the consolidated component
-interface ConversationCardProps {
-  conversation: Conversation;
-  variant?: 'simple' | 'detailed';
-  showActions?: boolean;
-  // Remove the old callback props since we'll use the optimistic hook
-}
 
 // Color palette for conversation avatars
 const CONVERSATION_COLORS = [
@@ -61,48 +52,51 @@ const getInitials = (name: string) => {
     .slice(0, 2);
 };
 
-// Get EV score color
-const getEvScoreColor = (score: number) => {
-  const s = Math.max(0, Math.min(100, score));
-  let h = 0;
-  if (s <= 50) {
-    h = 0 + (48 - 0) * (s / 50);
-  } else {
-    h = 48 + (142 - 48) * ((s - 50) / 50);
-  }
-  return {
-    backgroundColor: `hsl(${h}, 95%, 90%)`,
-    color: `hsl(${h}, 60%, 30%)`,
-  };
-};
+interface ConversationCardProps {
+  conversation: Conversation;
+  variant?: 'simple' | 'detailed';
+  showActions?: boolean;
+  // Add props for conversation actions
+  onMarkAsRead?: (conversationId: string) => Promise<boolean>;
+  onToggleLcp?: (conversationId: string) => Promise<boolean>;
+  onDelete?: (conversationId: string) => Promise<boolean>;
+  // Add loading states
+  isUpdatingRead?: boolean;
+  isUpdatingLcp?: boolean;
+  isDeleting?: boolean;
+}
 
 export function ConversationCard({ 
   conversation, 
   variant = 'detailed',
-  showActions = true
+  showActions = true,
+  onMarkAsRead,
+  onToggleLcp,
+  onDelete,
+  isUpdatingRead = false,
+  isUpdatingLcp = false,
+  isDeleting = false
 }: ConversationCardProps) {
   const router = useRouter();
   const { thread, messages } = conversation;
 
-  // Use the optimistic conversations hook for actions
-  const { 
-    markAsRead, 
-    toggleLcp, 
-    deleteConversation 
-  } = useOptimisticConversations();
-
   // Local state for optimistic updates
   const [localLcpEnabled, setLocalLcpEnabled] = useState(thread.lcp_enabled || false);
   const [localRead, setLocalRead] = useState(thread.read || false);
-  const [isUpdatingLcp, setIsUpdatingLcp] = useState(false);
-  const [isUpdatingRead, setIsUpdatingRead] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [localIsUpdatingLcp, setLocalIsUpdatingLcp] = useState(false);
+  const [localIsUpdatingRead, setLocalIsUpdatingRead] = useState(false);
+  const [localIsDeleting, setLocalIsDeleting] = useState(false);
 
   // Update local state when prop changes
   useEffect(() => {
     setLocalLcpEnabled(thread.lcp_enabled || false);
     setLocalRead(thread.read || false);
   }, [thread.lcp_enabled, thread.read]);
+
+  // Use prop loading states or local ones
+  const updatingRead = isUpdatingRead || localIsUpdatingRead;
+  const updatingLcp = isUpdatingLcp || localIsUpdatingLcp;
+  const deleting = isDeleting || localIsDeleting;
 
   // Get the most recent message using centralized utility
   const mostRecentMessage = getMostRecentMessage(conversation);
@@ -128,17 +122,17 @@ export function ConversationCard({
   const evColorStyle = score >= 0 ? getEvScoreColor(score) : { backgroundColor: '#e5e7eb', color: '#374151' };
 
   const handleClick = async () => {
-    if (isUnread) {
-      setIsUpdatingRead(true);
+    if (isUnread && onMarkAsRead) {
+      setLocalIsUpdatingRead(true);
       try {
-        const success = await markAsRead(thread.conversation_id);
+        const success = await onMarkAsRead(thread.conversation_id);
         if (success) {
           setLocalRead(true);
         }
       } catch (error) {
         console.error('Error marking as read:', error);
       } finally {
-        setIsUpdatingRead(false);
+        setLocalIsUpdatingRead(false);
       }
     } else {
       router.push(`/dashboard/conversations/${thread.conversation_id}`);
@@ -147,14 +141,14 @@ export function ConversationCard({
 
   const handleLcpToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isUpdatingLcp) return;
+    if (updatingLcp || !onToggleLcp) return;
 
-    setIsUpdatingLcp(true);
+    setLocalIsUpdatingLcp(true);
     try {
       // Optimistically update local state
       setLocalLcpEnabled(!localLcpEnabled);
       
-      const success = await toggleLcp(thread.conversation_id);
+      const success = await onToggleLcp(thread.conversation_id);
       if (!success) {
         // Rollback on failure
         setLocalLcpEnabled(localLcpEnabled);
@@ -164,48 +158,54 @@ export function ConversationCard({
       setLocalLcpEnabled(localLcpEnabled);
       console.error('Error toggling LCP:', error);
     } finally {
-      setIsUpdatingLcp(false);
+      setLocalIsUpdatingLcp(false);
     }
   };
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isDeleting) return;
+    if (deleting || !onDelete) return;
 
-    if (confirm(`Are you sure you want to delete the conversation "${conversationName}"?`)) {
-      setIsDeleting(true);
+    if (window.confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
+      setLocalIsDeleting(true);
       try {
-        const success = await deleteConversation(thread.conversation_id);
-        if (!success) {
-          console.error('Failed to delete conversation');
-        }
+        await onDelete(thread.conversation_id);
       } catch (error) {
         console.error('Error deleting conversation:', error);
       } finally {
-        setIsDeleting(false);
+        setLocalIsDeleting(false);
       }
     }
   };
 
+  // Simple variant
   if (variant === 'simple') {
     return (
       <div
-        className={`relative p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors ${
-          isUpdatingRead || isUpdatingLcp || isDeleting ? 'opacity-50 pointer-events-none' : ''
-        } ${isFlagged ? 'border-status-success/20 bg-status-success/5' : isFlaggedForReview ? 'border-status-warning/20 bg-status-warning/5' : 'border-border'}`}
+        className={`flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors relative ${
+          updatingRead || updatingLcp || deleting ? 'opacity-50 pointer-events-none' : ''
+        } ${
+          isFlagged
+            ? 'border-status-success/20 bg-status-success/5'
+            : isFlaggedForReview
+            ? 'border-status-warning/20 bg-status-warning/5'
+            : 'border-border'
+        }`}
         onClick={handleClick}
       >
         {/* Status badges */}
-        {isFlagged && (
-          <div className="absolute -top-2 -right-2 bg-status-success text-status-success-foreground px-2 py-0.5 rounded-full text-xs font-semibold shadow-sm flex items-center gap-1">
-            <CheckCircle className="w-3 h-3" />
-            <span className="hidden sm:inline">Complete</span>
-          </div>
-        )}
         {!isFlagged && isFlaggedForReview && (
           <div className="absolute -top-2 -right-2 bg-status-warning text-status-warning-foreground px-2 py-0.5 rounded-full text-xs font-semibold shadow-sm flex items-center gap-1">
             <Flag className="w-3 h-3" />
-            <span className="hidden sm:inline">Review</span>
+            <span className="hidden xs:inline">Flagged for Review</span>
+            <span className="xs:hidden">Review</span>
+          </div>
+        )}
+        {isFlagged && (
+          <div className="absolute -top-2 -right-2 bg-status-success text-status-success-foreground px-2 py-0.5 rounded-full text-xs font-semibold shadow-sm flex items-center gap-1">
+            <CheckCircle className="w-3 h-3" />
+            <span className="hidden xs:inline">Flagged for Completion</span>
+            <span className="xs:hidden">Complete</span>
           </div>
         )}
 
@@ -240,6 +240,14 @@ export function ConversationCard({
                     <Clock className="w-3 h-3" />
                   </div>
                 )}
+                {score >= 0 && (
+                  <div 
+                    className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                    style={evColorStyle}
+                  >
+                    EV {score}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -253,7 +261,7 @@ export function ConversationCard({
               </p>
             )}
 
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <span>{messageCount} message{messageCount !== 1 ? 's' : ''}</span>
                 {lastMessageTime && (
@@ -272,7 +280,7 @@ export function ConversationCard({
   return (
     <div
       className={`flex flex-col sm:flex-row items-stretch gap-2 sm:gap-3 md:gap-4 p-2 sm:p-3 md:p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors relative ${
-        isUpdatingRead || isUpdatingLcp || isDeleting ? 'opacity-50 pointer-events-none' : ''
+        updatingRead || updatingLcp || deleting ? 'opacity-50 pointer-events-none' : ''
       } ${
         isFlagged
           ? 'border-status-success/20 bg-status-success/5'
@@ -298,23 +306,23 @@ export function ConversationCard({
         </div>
       )}
 
-      {/* Avatar and Status Column */}
+      {/* Action Buttons */}
       <div className="flex flex-row sm:flex-col items-center justify-start gap-2 sm:gap-0 sm:w-10 md:w-12 pt-1">
-        {isUnread && !isUpdatingRead && (
+        {isUnread && !updatingRead && (
           <button
             className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 bg-status-error/10 text-status-error text-xs rounded-full font-semibold shadow-md z-10 hover:bg-status-error/20 transition-colors cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
               handleClick();
             }}
-            disabled={isUpdatingRead}
+            disabled={updatingRead}
           >
             <Bell className="w-3 h-3" />
             <span className="hidden sm:inline">Mark as Read</span>
             <span className="sm:hidden">Read</span>
           </button>
         )}
-        {isUpdatingRead && (
+        {updatingRead && (
           <div className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 bg-muted text-muted-foreground text-xs rounded-full font-semibold">
             <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
             <span className="hidden sm:inline">Updating...</span>
@@ -324,7 +332,7 @@ export function ConversationCard({
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col sm:flex-row items-start gap-3 sm:gap-4 min-w-0">
+      <div className="flex items-start gap-3 flex-1">
         {/* Avatar */}
         <div className="flex-shrink-0">
           <div 
@@ -370,8 +378,8 @@ export function ConversationCard({
             </p>
           )}
 
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span>{messageCount} message{messageCount !== 1 ? 's' : ''}</span>
               {lastMessageTime && (
                 <span>{lastMessageTime.toLocaleString()}</span>
@@ -382,44 +390,68 @@ export function ConversationCard({
         </div>
       </div>
 
-      {/* Actions Column */}
+      {/* Action Menu */}
       {showActions && (
-        <div className="flex flex-row sm:flex-col items-center justify-end gap-2 sm:gap-1">
-          {/* LCP Toggle */}
-          <button
-            className={`p-2 rounded-lg transition-colors ${
-              localLcpEnabled 
-                ? 'bg-status-success/10 text-status-success hover:bg-status-success/20' 
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            }`}
-            onClick={handleLcpToggle}
-            disabled={isUpdatingLcp}
-            title={localLcpEnabled ? 'Disable LCP' : 'Enable LCP'}
-          >
-            {isUpdatingLcp ? (
-              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-            ) : localLcpEnabled ? (
-              <Shield className="w-4 h-4" />
-            ) : (
-              <ShieldOff className="w-4 h-4" />
-            )}
-          </button>
-
-          {/* Delete Button */}
-          <button
-            className="p-2 rounded-lg bg-status-error/10 text-status-error hover:bg-status-error/20 transition-colors"
-            onClick={handleDelete}
-            disabled={isDeleting}
-            title="Delete conversation"
-          >
-            {isDeleting ? (
-              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Trash2 className="w-4 h-4" />
-            )}
-          </button>
+        <div className="flex flex-row sm:flex-col items-center justify-end gap-2 sm:gap-0 sm:w-10 md:w-12 pt-1">
+          {onToggleLcp && (
+            <button
+              className={cn(
+                "flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs rounded-full font-semibold shadow-md z-10 transition-colors cursor-pointer",
+                localLcpEnabled
+                  ? "bg-status-success/10 text-status-success hover:bg-status-success/20"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+              onClick={handleLcpToggle}
+              disabled={updatingLcp}
+              title={localLcpEnabled ? "Disable LCP" : "Enable LCP"}
+            >
+              {updatingLcp ? (
+                <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Settings className="w-3 h-3" />
+              )}
+              <span className="hidden sm:inline">
+                {localLcpEnabled ? "LCP On" : "LCP Off"}
+              </span>
+              <span className="sm:hidden">
+                {localLcpEnabled ? "On" : "Off"}
+              </span>
+            </button>
+          )}
+          
+          {onDelete && (
+            <button
+              className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 bg-status-error/10 text-status-error text-xs rounded-full font-semibold shadow-md z-10 hover:bg-status-error/20 transition-colors cursor-pointer"
+              onClick={handleDelete}
+              disabled={deleting}
+              title="Delete conversation"
+            >
+              {deleting ? (
+                <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Trash2 className="w-3 h-3" />
+              )}
+              <span className="hidden sm:inline">Delete</span>
+              <span className="sm:hidden">Del</span>
+            </button>
+          )}
         </div>
       )}
     </div>
   );
-} 
+}
+
+// Get EV score color
+const getEvScoreColor = (score: number) => {
+  const s = Math.max(0, Math.min(100, score));
+  let h = 0;
+  if (s <= 50) {
+    h = 0 + (48 - 0) * (s / 50);
+  } else {
+    h = 48 + (142 - 48) * ((s - 50) / 50);
+  }
+  return {
+    backgroundColor: `hsl(${h}, 95%, 90%)`,
+    color: `hsl(${h}, 60%, 30%)`,
+  };
+}; 

@@ -34,6 +34,13 @@ function getAiScore(messages: Message[]): number | null {
  * - Additional fallbacks for various field name variations
  */
 export function processThreadsResponse(responseData: any[]): Conversation[] {
+  console.log('[api.ts] processThreadsResponse called with:', {
+    dataType: typeof responseData,
+    isArray: Array.isArray(responseData),
+    length: responseData?.length,
+    sampleItem: responseData?.[0]
+  });
+
   if (!Array.isArray(responseData)) {
     console.warn('processThreadsResponse received non-array data:', responseData);
     return [];
@@ -54,6 +61,15 @@ export function processThreadsResponse(responseData: any[]): Conversation[] {
       
       const conversationId = rawThread.conversation_id || rawThread.id || '';
 
+      console.log('[api.ts] Processing thread:', {
+        conversation_id: conversationId,
+        rawThreadKeys: Object.keys(rawThread),
+        createdAt: rawThread.createdAt,
+        created_at: rawThread.created_at,
+        last_updated: rawThread.last_updated,
+        messagesCount: item.messages?.length || 0
+      });
+
       // Process all messages with proper date handling
       const messages: Message[] = (item.messages || []).map((msg: any) => 
         processMessage(msg, conversationId)
@@ -68,8 +84,8 @@ export function processThreadsResponse(responseData: any[]): Conversation[] {
         id: conversationId,
         conversation_id: conversationId,
         associated_account: rawThread.associated_account || '',
-        createdAt: rawThread.createdAt || rawThread.created_at || new Date().toISOString(),
-        updatedAt: rawThread.updatedAt || rawThread.updated_at || new Date().toISOString(),
+        createdAt: rawThread.createdAt || rawThread.created_at || rawThread.last_updated || new Date().toISOString(),
+        updatedAt: rawThread.updatedAt || rawThread.updated_at || rawThread.last_updated || new Date().toISOString(),
         lastMessageAt: actualLastMessageAt, // Use calculated timestamp from most recent message
         // Centralized field mapping: Map database field names to expected frontend field names
         // Database uses 'source_name' for contact name and 'source' for email
@@ -95,6 +111,13 @@ export function processThreadsResponse(responseData: any[]): Conversation[] {
         subject: rawThread.subject || '',
         aiScore: getAiScore(messages),
       };
+
+      console.log('[api.ts] Processed thread:', {
+        conversation_id: thread.conversation_id,
+        createdAt: thread.createdAt,
+        createdAtType: typeof thread.createdAt,
+        messagesCount: messages.length
+      });
 
       const conversation = { thread, messages };
       
