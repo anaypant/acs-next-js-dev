@@ -6,12 +6,12 @@
  * Version: 1.0.0
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { Session } from 'next-auth';
 import { apiClient } from '@/lib/api/client';
 import { conversationStorage } from '@/lib/storage/ConversationStorage';
-import { processThreadsResponse } from '@/lib/utils/api';
+import { checkForNewEmailsShared, processThreadsResponse } from '@/lib/utils/api';
 import type { Conversation } from '@/types/conversation';
 import type { ThreadUpdate } from '@/types/api';
 
@@ -117,31 +117,10 @@ export function useOptimisticConversations(options: UseOptimisticConversationsOp
   // Check for new emails
   const checkForNewEmails = useCallback(async () => {
     if (!session?.user?.id) return;
-
-    try {
-      const response = await apiClient.dbSelect({
-        table_name: 'Users',
-        index_name: 'id-index',
-        key_name: 'id',
-        key_value: session.user.id
-      });
-
-      if (response.success && response.data?.items?.[0]?.new_email === true) {
-        console.log('[useOptimisticConversations] New email detected, refreshing conversations...');
-        await loadConversations(true);
-        
-        // Reset new_email flag
-        await apiClient.dbUpdate({
-          table_name: 'Users',
-          index_name: 'id-index',
-          key_name: 'id',
-          key_value: session.user.id,
-          update_data: { new_email: false }
-        });
-      }
-    } catch (err) {
-      console.error('[useOptimisticConversations] Error checking for new emails:', err);
-    }
+    
+    await checkForNewEmailsShared(session.user.id, async () => {
+      await loadConversations(true);
+    });
   }, [session?.user?.id, loadConversations]);
 
   // Initial load

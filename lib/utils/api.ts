@@ -111,12 +111,86 @@ export function processThreadsResponse(responseData: any[]): Conversation[] {
   });
 }
 
+// Global state to prevent multiple simultaneous email checks
+let globalEmailCheckInProgress = false;
+let globalLastEmailCheckTime = 0;
+const GLOBAL_DEBOUNCE_TIME = 2000; // 2 seconds debounce
+
+/**
+ * Shared email checking utility to prevent duplicate database calls
+ */
+export async function checkForNewEmailsShared(userId: string, onNewEmail?: () => Promise<void>) {
+  // Global check to prevent multiple simultaneous checks across hooks
+  if (globalEmailCheckInProgress) {
+    console.log('Global email check already in progress, skipping...');
+    return;
+  }
+
+  // Global debounce check
+  const now = Date.now();
+  if (now - globalLastEmailCheckTime < GLOBAL_DEBOUNCE_TIME) {
+    console.log('Global debouncing email check, too soon since last check...');
+    return;
+  }
+
+  globalEmailCheckInProgress = true;
+  globalLastEmailCheckTime = now;
+
+  try {
+    console.log('Checking for new emails...');
+    const response = await fetch('/api/db/select', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        table_name: 'Users',
+        index_name: 'id-index',
+        key_name: 'id',
+        key_value: userId,
+        account_id: userId
+      }),
+      credentials: 'include',
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success && data.items?.[0]?.new_email === true) {
+        console.log('New email detected, refreshing conversations...');
+        
+        // Call the callback if provided
+        if (onNewEmail) {
+          await onNewEmail();
+        }
+        
+        // Reset new_email flag
+        await fetch('/api/db/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            table_name: 'Users',
+            index_name: 'id-index',
+            key_name: 'id',
+            key_value: userId,
+            update_data: { new_email: false },
+            account_id: userId
+          }),
+          credentials: 'include',
+        });
+      } else {
+        console.log('No new emails found');
+      }
+    }
+  } catch (err) {
+    console.error('Error checking for new emails:', err);
+  } finally {
+    globalEmailCheckInProgress = false;
+  }
+}
+
 /**
  * Enhanced hook for fetching and processing all conversation threads.
  */
 export function useThreadsApi(options: any = {}) {
   const { data: session } = useSession() as { data: (Session & { user: { id: string } }) | null };
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
   
   const { data: rawData, loading, error, refetch, mutate } = useApi<any>('lcp/get_all_threads', {
     method: 'POST',
@@ -134,53 +208,11 @@ export function useThreadsApi(options: any = {}) {
   useEffect(() => {
     if (!options.polling || !session?.user?.id) return;
 
-    const checkForNewEmails = async () => {
-      try {
-        const response = await fetch('/api/db/select', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            table_name: 'Users',
-            index_name: 'id-index',
-            key_name: 'id',
-            key_value: session.user.id,
-            account_id: session.user.id
-          }),
-          credentials: 'include',
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.items?.[0]?.new_email === true) {
-            console.log('New email detected, refreshing conversations...');
-            await refetch();
-            
-            // Reset new_email flag
-            await fetch('/api/db/update', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                table_name: 'Users',
-                index_name: 'id-index',
-                key_name: 'id',
-                key_value: session.user.id,
-                update_data: { new_email: false },
-                account_id: session.user.id
-              }),
-              credentials: 'include',
-            });
-          }
-        }
-      } catch (err) {
-        console.error('Error checking for new emails:', err);
-      }
-    };
-
     // Check for new emails when page becomes visible
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         console.log('Page became visible, checking for new emails...');
-        checkForNewEmails();
+        checkForNewEmailsShared(session.user.id, refetch);
       }
     };
 
