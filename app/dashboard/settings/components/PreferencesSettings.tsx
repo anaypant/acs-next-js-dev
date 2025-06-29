@@ -79,27 +79,27 @@ export function PreferencesSettings({ userData, onSave }: PreferencesSettingsPro
     };
 
     return (
-        <section id="preferences" className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-[#0a5a2f] to-[#157a42]">
-                <h2 className="text-xl font-semibold text-white flex items-center gap-3">
-                    <Settings className="w-5 h-5" />
+        <div className="bg-card rounded-lg shadow-sm border border-border">
+            <div className="px-6 py-4 border-b border-border">
+                <h2 className="text-xl font-semibold text-card-foreground flex items-center gap-2">
+                    <Settings className="w-5 h-5 text-primary" />
                     Preferences & Display
                 </h2>
-                <p className="text-sm text-green-100 mt-1">Customize your interface and notification preferences</p>
+                <p className="text-sm text-muted-foreground mt-1">Customize your interface and notification preferences</p>
             </div>
             
             <div className="p-6">
                 <form onSubmit={handleSubmit} className="space-y-8">
                     {/* Appearance Settings */}
                     <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                            <Palette className="w-5 h-5 text-[#0e6537]" />
+                        <h3 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
+                            <Palette className="w-5 h-5 text-primary" />
                             Appearance
                         </h3>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label htmlFor="theme" className="block text-sm font-medium text-gray-700 mb-2">
+                                <label htmlFor="theme" className="block text-sm font-medium text-card-foreground mb-2">
                                     Theme
                                 </label>
                                 <select 
@@ -109,9 +109,9 @@ export function PreferencesSettings({ userData, onSave }: PreferencesSettingsPro
                                     onChange={handleChange}
                                     className={cn(
                                         "block w-full px-4 py-3 rounded-lg border shadow-sm transition-all duration-200",
-                                        "focus:ring-2 focus:ring-[#0e6537]/50 focus:border-[#0e6537]",
-                                        "text-gray-900",
-                                        error ? "border-red-300 focus:border-red-500 focus:ring-red-500/50" : "border-gray-300"
+                                        "focus:ring-2 focus:ring-primary/50 focus:border-primary",
+                                        "text-card-foreground bg-background",
+                                        error ? "border-status-error focus:border-status-error focus:ring-status-error/50" : "border-border"
                                     )}
                                 >
                                     <option value="light">Light Theme</option>
@@ -127,25 +127,25 @@ export function PreferencesSettings({ userData, onSave }: PreferencesSettingsPro
                                         name="compactMode" 
                                         checked={form.compactMode} 
                                         onChange={handleChange}
-                                        className="w-4 h-4 text-[#0e6537] border-gray-300 rounded focus:ring-[#0e6537] focus:ring-2"
+                                        className="w-4 h-4 text-primary border-border rounded focus:ring-primary focus:ring-2 bg-background"
                                     />
-                                    <span className="text-sm font-medium text-gray-700">Compact Mode</span>
+                                    <span className="text-sm font-medium text-card-foreground">Compact Mode</span>
                                 </label>
-                                <p className="text-xs text-gray-500 mt-1 ml-7">Reduce spacing for more content</p>
+                                <p className="text-xs text-muted-foreground mt-1 ml-7">Reduce spacing for more content</p>
                             </div>
                         </div>
                     </div>
 
                     {/* Localization Settings */}
                     <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                            <Globe className="w-5 h-5 text-[#0e6537]" />
+                        <h3 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
+                            <Globe className="w-5 h-5 text-primary" />
                             Localization
                         </h3>
                         
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div>
-                                <label htmlFor="language" className="block text-sm font-medium text-gray-700 mb-2">
+                                <label htmlFor="language" className="block text-sm font-medium text-card-foreground mb-2">
                                     Language
                                 </label>
                                 <select 
@@ -155,9 +155,9 @@ export function PreferencesSettings({ userData, onSave }: PreferencesSettingsPro
                                     onChange={handleChange}
                                     className={cn(
                                         "block w-full px-4 py-3 rounded-lg border shadow-sm transition-all duration-200",
-                                        "focus:ring-2 focus:ring-[#0e6537]/50 focus:border-[#0e6537]",
-                                        "text-gray-900",
-                                        error ? "border-red-300 focus:border-red-500 focus:ring-red-500/50" : "border-gray-300"
+                                        "focus:ring-2 focus:ring-primary/50 focus:border-primary",
+                                        "text-card-foreground bg-background",
+                                        error ? "border-status-error focus:border-status-error focus:ring-status-error/50" : "border-border"
                                     )}
                                 >
                                     <option value="en">English</option>
@@ -170,7 +170,7 @@ export function PreferencesSettings({ userData, onSave }: PreferencesSettingsPro
                             </div>
                             
                             <div>
-                                <label htmlFor="timezone" className="block text-sm font-medium text-gray-700 mb-2">
+                                <label htmlFor="timezone" className="block text-sm font-medium text-card-foreground mb-2">
                                     Timezone
                                 </label>
                                 <select 
@@ -180,9 +180,9 @@ export function PreferencesSettings({ userData, onSave }: PreferencesSettingsPro
                                     onChange={handleChange}
                                     className={cn(
                                         "block w-full px-4 py-3 rounded-lg border shadow-sm transition-all duration-200",
-                                        "focus:ring-2 focus:ring-[#0e6537]/50 focus:border-[#0e6537]",
-                                        "text-gray-900",
-                                        error ? "border-red-300 focus:border-red-500 focus:ring-red-500/50" : "border-gray-300"
+                                        "focus:ring-2 focus:ring-primary/50 focus:border-primary",
+                                        "text-card-foreground bg-background",
+                                        error ? "border-status-error focus:border-status-error focus:ring-status-error/50" : "border-border"
                                     )}
                                 >
                                     <option value="UTC">UTC</option>
@@ -197,7 +197,7 @@ export function PreferencesSettings({ userData, onSave }: PreferencesSettingsPro
                             </div>
                             
                             <div>
-                                <label htmlFor="dateFormat" className="block text-sm font-medium text-gray-700 mb-2">
+                                <label htmlFor="dateFormat" className="block text-sm font-medium text-card-foreground mb-2">
                                     Date Format
                                 </label>
                                 <select 
@@ -207,9 +207,9 @@ export function PreferencesSettings({ userData, onSave }: PreferencesSettingsPro
                                     onChange={handleChange}
                                     className={cn(
                                         "block w-full px-4 py-3 rounded-lg border shadow-sm transition-all duration-200",
-                                        "focus:ring-2 focus:ring-[#0e6537]/50 focus:border-[#0e6537]",
-                                        "text-gray-900",
-                                        error ? "border-red-300 focus:border-red-500 focus:ring-red-500/50" : "border-gray-300"
+                                        "focus:ring-2 focus:ring-primary/50 focus:border-primary",
+                                        "text-card-foreground bg-background",
+                                        error ? "border-status-error focus:border-status-error focus:ring-status-error/50" : "border-border"
                                     )}
                                 >
                                     <option value="MM/DD/YYYY">MM/DD/YYYY</option>
@@ -223,8 +223,8 @@ export function PreferencesSettings({ userData, onSave }: PreferencesSettingsPro
 
                     {/* Notification Settings */}
                     <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                            <Bell className="w-5 h-5 text-[#0e6537]" />
+                        <h3 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
+                            <Bell className="w-5 h-5 text-primary" />
                             Notifications
                         </h3>
                         
@@ -236,9 +236,9 @@ export function PreferencesSettings({ userData, onSave }: PreferencesSettingsPro
                                         name="emailNotifications" 
                                         checked={form.emailNotifications} 
                                         onChange={handleChange}
-                                        className="w-4 h-4 text-[#0e6537] border-gray-300 rounded focus:ring-[#0e6537] focus:ring-2"
+                                        className="w-4 h-4 text-primary border-border rounded focus:ring-primary focus:ring-2 bg-background"
                                     />
-                                    <span className="text-sm font-medium text-gray-700">Email Notifications</span>
+                                    <span className="text-sm font-medium text-card-foreground">Email Notifications</span>
                                 </label>
                                 
                                 <label className="flex items-center gap-3 cursor-pointer">
@@ -247,9 +247,9 @@ export function PreferencesSettings({ userData, onSave }: PreferencesSettingsPro
                                         name="pushNotifications" 
                                         checked={form.pushNotifications} 
                                         onChange={handleChange}
-                                        className="w-4 h-4 text-[#0e6537] border-gray-300 rounded focus:ring-[#0e6537] focus:ring-2"
+                                        className="w-4 h-4 text-primary border-border rounded focus:ring-primary focus:ring-2 bg-background"
                                     />
-                                    <span className="text-sm font-medium text-gray-700">Push Notifications</span>
+                                    <span className="text-sm font-medium text-card-foreground">Push Notifications</span>
                                 </label>
                                 
                                 <label className="flex items-center gap-3 cursor-pointer">
@@ -258,9 +258,9 @@ export function PreferencesSettings({ userData, onSave }: PreferencesSettingsPro
                                         name="smsNotifications" 
                                         checked={form.smsNotifications} 
                                         onChange={handleChange}
-                                        className="w-4 h-4 text-[#0e6537] border-gray-300 rounded focus:ring-[#0e6537] focus:ring-2"
+                                        className="w-4 h-4 text-primary border-border rounded focus:ring-primary focus:ring-2 bg-background"
                                     />
-                                    <span className="text-sm font-medium text-gray-700">SMS Notifications</span>
+                                    <span className="text-sm font-medium text-card-foreground">SMS Notifications</span>
                                 </label>
                             </div>
                             
@@ -271,9 +271,9 @@ export function PreferencesSettings({ userData, onSave }: PreferencesSettingsPro
                                         name="autoSave" 
                                         checked={form.autoSave} 
                                         onChange={handleChange}
-                                        className="w-4 h-4 text-[#0e6537] border-gray-300 rounded focus:ring-[#0e6537] focus:ring-2"
+                                        className="w-4 h-4 text-primary border-border rounded focus:ring-primary focus:ring-2 bg-background"
                                     />
-                                    <span className="text-sm font-medium text-gray-700">Auto Save</span>
+                                    <span className="text-sm font-medium text-card-foreground">Auto Save</span>
                                 </label>
                                 
                                 <label className="flex items-center gap-3 cursor-pointer">
@@ -282,9 +282,9 @@ export function PreferencesSettings({ userData, onSave }: PreferencesSettingsPro
                                         name="showTutorials" 
                                         checked={form.showTutorials} 
                                         onChange={handleChange}
-                                        className="w-4 h-4 text-[#0e6537] border-gray-300 rounded focus:ring-[#0e6537] focus:ring-2"
+                                        className="w-4 h-4 text-primary border-border rounded focus:ring-primary focus:ring-2 bg-background"
                                     />
-                                    <span className="text-sm font-medium text-gray-700">Show Tutorials</span>
+                                    <span className="text-sm font-medium text-card-foreground">Show Tutorials</span>
                                 </label>
                             </div>
                         </div>
@@ -292,16 +292,16 @@ export function PreferencesSettings({ userData, onSave }: PreferencesSettingsPro
                     
                     {/* Status Messages */}
                     {error && (
-                        <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
-                            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                            <p className="text-sm text-red-700">{error}</p>
+                        <div className="flex items-center gap-3 p-4 bg-status-error/10 border border-status-error/20 rounded-lg">
+                            <AlertCircle className="w-5 h-5 text-status-error flex-shrink-0" />
+                            <p className="text-sm text-status-error">{error}</p>
                         </div>
                     )}
                     
                     {success && (
-                        <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
-                            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                            <p className="text-sm text-green-700">Preferences updated successfully!</p>
+                        <div className="flex items-center gap-3 p-4 bg-status-success/10 border border-status-success/20 rounded-lg">
+                            <CheckCircle className="w-5 h-5 text-status-success flex-shrink-0" />
+                            <p className="text-sm text-status-success">Preferences updated successfully!</p>
                         </div>
                     )}
                     
@@ -311,15 +311,13 @@ export function PreferencesSettings({ userData, onSave }: PreferencesSettingsPro
                             disabled={loading}
                             className={cn(
                                 "inline-flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200",
-                                "focus:outline-none focus:ring-2 focus:ring-offset-2",
-                                loading 
-                                    ? "bg-gray-300 text-gray-500 cursor-not-allowed" 
-                                    : "bg-gradient-to-r from-[#0a5a2f] to-[#157a42] text-white hover:from-[#0e6537] hover:to-[#157a42] focus:ring-[#0e6537]/50 shadow-lg hover:shadow-xl"
+                                "bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-2 focus:ring-primary/50",
+                                "disabled:opacity-50 disabled:cursor-not-allowed"
                             )}
                         >
                             {loading ? (
                                 <>
-                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                                     Saving...
                                 </>
                             ) : (
@@ -332,6 +330,6 @@ export function PreferencesSettings({ userData, onSave }: PreferencesSettingsPro
                     </div>
                 </form>
             </div>
-        </section>
+        </div>
     );
 } 
