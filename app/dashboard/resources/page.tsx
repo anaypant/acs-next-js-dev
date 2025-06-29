@@ -1,13 +1,23 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { resourcesData, ResourceSection, ResourceItem } from "./resources-data";
+import { gettingStartedSection } from "./getting-started";
+import { coreFeaturesSection } from "./core-features";
+import { aiFeaturesSection } from "./ai-features";
+import { advancedFeaturesSection } from "./adv-features";
+import { bestPracticesSection } from "./best-practices";
+import { securitySection } from "./security";
+import { troubleshootingSection } from "./troubleshooting";
+import { usageAnalyticsSection } from "./usage-analysis";
+import { faqSection } from "./faq";
+import { ResourceSection, ResourceItem } from '../../../types/resources';
 import { Search, BookOpen, Shield, Zap, BarChart3, Users, Mail, Calendar, Settings, HelpCircle, Star, TrendingUp, Lock, Eye, Clock, Target, MessageSquare, Phone, MapPin, FileText, CheckCircle, AlertCircle, Info, ArrowLeft, Home, Sparkles, Lightbulb, Award, Bookmark, ExternalLink, ChevronRight, Play, Pause, RotateCcw, Maximize2, Minimize2, ChevronDown, ChevronUp, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ErrorBoundary } from '@/components/common/Feedback/ErrorBoundary';
 import { Suspense } from 'react';
 import { LoadingSpinner } from '@/components/common/Feedback/LoadingSpinner';
 import { cn } from '@/lib/utils';
+import { applyTheme, greenTheme } from "../../../lib/theme/simple-theme";
 
 function ResourcesContent() {
   const router = useRouter();
@@ -26,6 +36,19 @@ function ResourcesContent() {
     { id: 'usage-analytics', label: 'Usage Analytics', icon: BarChart3 }
   ];
 
+  // Combine modular sections with the rest of the resourcesData
+  const allSections = useMemo<ResourceSection[]>(() => [
+    gettingStartedSection,
+    coreFeaturesSection,
+    aiFeaturesSection,
+    advancedFeaturesSection,
+    bestPracticesSection,
+    securitySection,
+    troubleshootingSection,
+    usageAnalyticsSection,
+    faqSection
+  ], []);
+
   // Search functionality using centralized processing
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -37,7 +60,7 @@ function ResourcesContent() {
     const matchingItems: Array<{ tabId: string; tabLabel: string; item: ResourceItem; itemIndex: number }> = [];
 
     tabs.forEach(tab => {
-      const section = resourcesData.find(s => s.id === tab.id);
+      const section = allSections.find(s => s.id === tab.id);
       if (!section) return;
 
       let tabHasMatches = false;
@@ -132,10 +155,10 @@ function ResourcesContent() {
     });
 
     return { tabs: matchingTabs, items: matchingItems };
-  }, [searchQuery]);
+  }, [searchQuery, allSections]);
 
   const getSectionContent = (sectionId: string) => {
-    const section = resourcesData.find(s => s.id === sectionId);
+    const section = allSections.find(s => s.id === sectionId);
     return section?.content || [];
   };
 
@@ -155,6 +178,10 @@ function ResourcesContent() {
 
   const isSearching = searchQuery.trim().length > 0;
   const displayTabs = isSearching ? searchResults.tabs : tabs;
+
+  React.useEffect(() => {
+    applyTheme(greenTheme);
+  }, []);
 
   return (
     <div className="w-full bg-white overflow-auto" style={{ minHeight: '100vh' }}>
@@ -327,12 +354,12 @@ function ResourcesContent() {
                       </div>
                       <button
                         onClick={() => toggleItem(index)}
-                        className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors self-start sm:self-auto"
+                        className="p-2 rounded-lg bg-[#0a5a2f] hover:bg-[#0e6537] transition-colors self-start sm:self-auto"
                       >
                         {expandedItems.has(index) ? (
-                          <ChevronUp className="w-5 h-5 text-gray-600" />
+                          <ChevronUp className="w-5 h-5 text-white" />
                         ) : (
-                          <ChevronDown className="w-5 h-5 text-gray-600" />
+                          <ChevronDown className="w-5 h-5 text-white" />
                         )}
                       </button>
                     </div>
@@ -562,4 +589,4 @@ export default function ResourcesPage() {
       </Suspense>
     </ErrorBoundary>
   );
-} 
+}
