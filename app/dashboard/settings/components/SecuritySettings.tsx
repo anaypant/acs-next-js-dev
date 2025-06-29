@@ -49,7 +49,9 @@ export function SecuritySettings({ userData, onSave }: SecuritySettingsProps) {
     }, [userData]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value, type, checked } = e.target;
+        const { name, value, type } = e.target;
+        const checked = e.target instanceof HTMLInputElement ? e.target.checked : undefined;
+        
         setForm({ 
             ...form, 
             [name]: type === 'checkbox' ? checked : 
@@ -136,27 +138,27 @@ export function SecuritySettings({ userData, onSave }: SecuritySettingsProps) {
     const passwordValidation = form.newPassword ? validatePassword(form.newPassword) : null;
 
     return (
-        <section id="security" className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-[#0a5a2f] to-[#157a42]">
-                <h2 className="text-xl font-semibold text-white flex items-center gap-3">
-                    <Shield className="w-5 h-5" />
+        <div className="bg-card rounded-lg shadow-sm border border-border">
+            <div className="px-6 py-4 border-b border-border">
+                <h2 className="text-xl font-semibold text-card-foreground flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-primary" />
                     Security Settings
                 </h2>
-                <p className="text-sm text-green-100 mt-1">Manage your account security and authentication</p>
+                <p className="text-sm text-muted-foreground mt-1">Manage your account security and authentication</p>
             </div>
             
             <div className="p-6">
                 <form onSubmit={handleSubmit} className="space-y-8">
                     {/* Password Change */}
                     <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                            <Lock className="w-5 h-5 text-[#0e6537]" />
+                        <h3 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
+                            <Lock className="w-5 h-5 text-primary" />
                             Change Password
                         </h3>
                         
                         <div className="space-y-4">
                             <div>
-                                <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                                <label htmlFor="currentPassword" className="block text-sm font-medium text-card-foreground mb-2">
                                     Current Password
                                 </label>
                                 <div className="relative">
@@ -168,9 +170,9 @@ export function SecuritySettings({ userData, onSave }: SecuritySettingsProps) {
                                         onChange={handleChange}
                                         className={cn(
                                             "block w-full px-4 py-3 pr-12 rounded-lg border shadow-sm transition-all duration-200",
-                                            "focus:ring-2 focus:ring-[#0e6537]/50 focus:border-[#0e6537]",
-                                            "text-gray-900 placeholder-gray-500",
-                                            error ? "border-red-300 focus:border-red-500 focus:ring-red-500/50" : "border-gray-300"
+                                            "focus:ring-2 focus:ring-primary/50 focus:border-primary",
+                                            "text-card-foreground placeholder-muted-foreground bg-background",
+                                            error ? "border-status-error focus:border-status-error focus:ring-status-error/50" : "border-border"
                                         )}
                                         placeholder="Enter current password"
                                     />
@@ -180,16 +182,16 @@ export function SecuritySettings({ userData, onSave }: SecuritySettingsProps) {
                                         className="absolute inset-y-0 right-0 pr-3 flex items-center"
                                     >
                                         {showPasswords.current ? (
-                                            <EyeOff className="h-5 w-5 text-gray-400" />
+                                            <EyeOff className="h-5 w-5 text-muted-foreground" />
                                         ) : (
-                                            <Eye className="h-5 w-5 text-gray-400" />
+                                            <Eye className="h-5 w-5 text-muted-foreground" />
                                         )}
                                     </button>
                                 </div>
                             </div>
                             
                             <div>
-                                <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                                <label htmlFor="newPassword" className="block text-sm font-medium text-card-foreground mb-2">
                                     New Password
                                 </label>
                                 <div className="relative">
@@ -201,9 +203,9 @@ export function SecuritySettings({ userData, onSave }: SecuritySettingsProps) {
                                         onChange={handleChange}
                                         className={cn(
                                             "block w-full px-4 py-3 pr-12 rounded-lg border shadow-sm transition-all duration-200",
-                                            "focus:ring-2 focus:ring-[#0e6537]/50 focus:border-[#0e6537]",
-                                            "text-gray-900 placeholder-gray-500",
-                                            error ? "border-red-300 focus:border-red-500 focus:ring-red-500/50" : "border-gray-300"
+                                            "focus:ring-2 focus:ring-primary/50 focus:border-primary",
+                                            "text-card-foreground placeholder-muted-foreground bg-background",
+                                            error ? "border-status-error focus:border-status-error focus:ring-status-error/50" : "border-border"
                                         )}
                                         placeholder="Enter new password"
                                     />
@@ -213,9 +215,9 @@ export function SecuritySettings({ userData, onSave }: SecuritySettingsProps) {
                                         className="absolute inset-y-0 right-0 pr-3 flex items-center"
                                     >
                                         {showPasswords.new ? (
-                                            <EyeOff className="h-5 w-5 text-gray-400" />
+                                            <EyeOff className="h-5 w-5 text-muted-foreground" />
                                         ) : (
-                                            <Eye className="h-5 w-5 text-gray-400" />
+                                            <Eye className="h-5 w-5 text-muted-foreground" />
                                         )}
                                     </button>
                                 </div>
@@ -227,15 +229,15 @@ export function SecuritySettings({ userData, onSave }: SecuritySettingsProps) {
                                             <div className={cn(
                                                 "h-2 flex-1 rounded-full",
                                                 passwordValidation?.isValid 
-                                                    ? "bg-green-500" 
-                                                    : "bg-gray-200"
+                                                    ? "bg-status-success" 
+                                                    : "bg-muted"
                                             )} />
-                                            <span className="text-xs text-gray-500">
+                                            <span className="text-xs text-muted-foreground">
                                                 {passwordValidation?.isValid ? "Strong" : "Weak"}
                                             </span>
                                         </div>
                                         {passwordValidation && !passwordValidation.isValid && (
-                                            <ul className="text-xs text-red-600 space-y-1">
+                                            <ul className="text-xs text-status-error space-y-1">
                                                 {passwordValidation.errors.map((error, index) => (
                                                     <li key={index}>• {error}</li>
                                                 ))}
@@ -246,7 +248,7 @@ export function SecuritySettings({ userData, onSave }: SecuritySettingsProps) {
                             </div>
                             
                             <div>
-                                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                                <label htmlFor="confirmPassword" className="block text-sm font-medium text-card-foreground mb-2">
                                     Confirm New Password
                                 </label>
                                 <div className="relative">
@@ -258,9 +260,9 @@ export function SecuritySettings({ userData, onSave }: SecuritySettingsProps) {
                                         onChange={handleChange}
                                         className={cn(
                                             "block w-full px-4 py-3 pr-12 rounded-lg border shadow-sm transition-all duration-200",
-                                            "focus:ring-2 focus:ring-[#0e6537]/50 focus:border-[#0e6537]",
-                                            "text-gray-900 placeholder-gray-500",
-                                            error ? "border-red-300 focus:border-red-500 focus:ring-red-500/50" : "border-gray-300"
+                                            "focus:ring-2 focus:ring-primary/50 focus:border-primary",
+                                            "text-card-foreground placeholder-muted-foreground bg-background",
+                                            error ? "border-status-error focus:border-status-error focus:ring-status-error/50" : "border-border"
                                         )}
                                         placeholder="Confirm new password"
                                     />
@@ -270,15 +272,15 @@ export function SecuritySettings({ userData, onSave }: SecuritySettingsProps) {
                                         className="absolute inset-y-0 right-0 pr-3 flex items-center"
                                     >
                                         {showPasswords.confirm ? (
-                                            <EyeOff className="h-5 w-5 text-gray-400" />
+                                            <EyeOff className="h-5 w-5 text-muted-foreground" />
                                         ) : (
-                                            <Eye className="h-5 w-5 text-gray-400" />
+                                            <Eye className="h-5 w-5 text-muted-foreground" />
                                         )}
                                     </button>
                                 </div>
                                 
                                 {form.confirmPassword && form.newPassword !== form.confirmPassword && (
-                                    <p className="text-xs text-red-600 mt-1">Passwords do not match</p>
+                                    <p className="text-xs text-status-error mt-1">Passwords do not match</p>
                                 )}
                             </div>
                         </div>
@@ -286,8 +288,8 @@ export function SecuritySettings({ userData, onSave }: SecuritySettingsProps) {
 
                     {/* Two-Factor Authentication */}
                     <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                            <Smartphone className="w-5 h-5 text-[#0e6537]" />
+                        <h3 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
+                            <Smartphone className="w-5 h-5 text-primary" />
                             Two-Factor Authentication
                         </h3>
                         
@@ -299,15 +301,15 @@ export function SecuritySettings({ userData, onSave }: SecuritySettingsProps) {
                                         name="enableTwoFactor" 
                                         checked={form.enableTwoFactor} 
                                         onChange={handleChange}
-                                        className="w-4 h-4 text-[#0e6537] border-gray-300 rounded focus:ring-[#0e6537] focus:ring-2"
+                                        className="w-4 h-4 text-primary border-border rounded focus:ring-primary focus:ring-2 bg-background"
                                     />
-                                    <span className="text-sm font-medium text-gray-700">Enable 2FA</span>
+                                    <span className="text-sm font-medium text-card-foreground">Enable 2FA</span>
                                 </label>
-                                <p className="text-xs text-gray-500 mt-1 ml-7">Add an extra layer of security</p>
+                                <p className="text-xs text-muted-foreground mt-1 ml-7">Add an extra layer of security</p>
                             </div>
                             
                             <div>
-                                <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-2">
+                                <label htmlFor="phoneNumber" className="block text-sm font-medium text-card-foreground mb-2">
                                     Phone Number for 2FA
                                 </label>
                                 <input 
@@ -318,9 +320,9 @@ export function SecuritySettings({ userData, onSave }: SecuritySettingsProps) {
                                     onChange={handleChange}
                                     className={cn(
                                         "block w-full px-4 py-3 rounded-lg border shadow-sm transition-all duration-200",
-                                        "focus:ring-2 focus:ring-[#0e6537]/50 focus:border-[#0e6537]",
-                                        "text-gray-900 placeholder-gray-500",
-                                        error ? "border-red-300 focus:border-red-500 focus:ring-red-500/50" : "border-gray-300"
+                                        "focus:ring-2 focus:ring-primary/50 focus:border-primary",
+                                        "text-card-foreground placeholder-muted-foreground bg-background",
+                                        error ? "border-status-error focus:border-status-error focus:ring-status-error/50" : "border-border"
                                     )}
                                     placeholder="+1 (555) 123-4567"
                                 />
@@ -330,8 +332,8 @@ export function SecuritySettings({ userData, onSave }: SecuritySettingsProps) {
 
                     {/* Security Preferences */}
                     <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                            <Key className="w-5 h-5 text-[#0e6537]" />
+                        <h3 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
+                            <Key className="w-5 h-5 text-primary" />
                             Security Preferences
                         </h3>
                         
@@ -343,9 +345,9 @@ export function SecuritySettings({ userData, onSave }: SecuritySettingsProps) {
                                         name="enableLoginAlerts" 
                                         checked={form.enableLoginAlerts} 
                                         onChange={handleChange}
-                                        className="w-4 h-4 text-[#0e6537] border-gray-300 rounded focus:ring-[#0e6537] focus:ring-2"
+                                        className="w-4 h-4 text-primary border-border rounded focus:ring-primary focus:ring-2 bg-background"
                                     />
-                                    <span className="text-sm font-medium text-gray-700">Login Alerts</span>
+                                    <span className="text-sm font-medium text-card-foreground">Login Alerts</span>
                                 </label>
                                 
                                 <label className="flex items-center gap-3 cursor-pointer">
@@ -354,9 +356,9 @@ export function SecuritySettings({ userData, onSave }: SecuritySettingsProps) {
                                         name="enableSessionTimeout" 
                                         checked={form.enableSessionTimeout} 
                                         onChange={handleChange}
-                                        className="w-4 h-4 text-[#0e6537] border-gray-300 rounded focus:ring-[#0e6537] focus:ring-2"
+                                        className="w-4 h-4 text-primary border-border rounded focus:ring-primary focus:ring-2 bg-background"
                                     />
-                                    <span className="text-sm font-medium text-gray-700">Session Timeout</span>
+                                    <span className="text-sm font-medium text-card-foreground">Session Timeout</span>
                                 </label>
                                 
                                 <label className="flex items-center gap-3 cursor-pointer">
@@ -365,14 +367,14 @@ export function SecuritySettings({ userData, onSave }: SecuritySettingsProps) {
                                         name="requireStrongPassword" 
                                         checked={form.requireStrongPassword} 
                                         onChange={handleChange}
-                                        className="w-4 h-4 text-[#0e6537] border-gray-300 rounded focus:ring-[#0e6537] focus:ring-2"
+                                        className="w-4 h-4 text-primary border-border rounded focus:ring-primary focus:ring-2 bg-background"
                                     />
-                                    <span className="text-sm font-medium text-gray-700">Require Strong Password</span>
+                                    <span className="text-sm font-medium text-card-foreground">Require Strong Password</span>
                                 </label>
                             </div>
                             
                             <div>
-                                <label htmlFor="sessionTimeoutMinutes" className="block text-sm font-medium text-gray-700 mb-2">
+                                <label htmlFor="sessionTimeoutMinutes" className="block text-sm font-medium text-card-foreground mb-2">
                                     Session Timeout (minutes)
                                 </label>
                                 <input 
@@ -386,10 +388,10 @@ export function SecuritySettings({ userData, onSave }: SecuritySettingsProps) {
                                     disabled={!form.enableSessionTimeout}
                                     className={cn(
                                         "block w-full px-4 py-3 rounded-lg border shadow-sm transition-all duration-200",
-                                        "focus:ring-2 focus:ring-[#0e6537]/50 focus:border-[#0e6537]",
-                                        "text-gray-900 placeholder-gray-500",
-                                        !form.enableSessionTimeout && "bg-gray-100 cursor-not-allowed",
-                                        error ? "border-red-300 focus:border-red-500 focus:ring-red-500/50" : "border-gray-300"
+                                        "focus:ring-2 focus:ring-primary/50 focus:border-primary",
+                                        "text-card-foreground placeholder-muted-foreground bg-background",
+                                        !form.enableSessionTimeout && "bg-muted cursor-not-allowed",
+                                        error ? "border-status-error focus:border-status-error focus:ring-status-error/50" : "border-border"
                                     )}
                                 />
                             </div>
@@ -398,16 +400,16 @@ export function SecuritySettings({ userData, onSave }: SecuritySettingsProps) {
                     
                     {/* Status Messages */}
                     {error && (
-                        <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
-                            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                            <p className="text-sm text-red-700">{error}</p>
+                        <div className="flex items-center gap-3 p-4 bg-status-error/10 border border-status-error/20 rounded-lg">
+                            <AlertCircle className="w-5 h-5 text-status-error flex-shrink-0" />
+                            <p className="text-sm text-status-error">{error}</p>
                         </div>
                     )}
                     
                     {success && (
-                        <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
-                            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                            <p className="text-sm text-green-700">Security settings updated successfully!</p>
+                        <div className="flex items-center gap-3 p-4 bg-status-success/10 border border-status-success/20 rounded-lg">
+                            <CheckCircle className="w-5 h-5 text-status-success flex-shrink-0" />
+                            <p className="text-sm text-status-success">Security settings updated successfully!</p>
                         </div>
                     )}
                     
@@ -417,15 +419,13 @@ export function SecuritySettings({ userData, onSave }: SecuritySettingsProps) {
                             disabled={loading}
                             className={cn(
                                 "inline-flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200",
-                                "focus:outline-none focus:ring-2 focus:ring-offset-2",
-                                loading 
-                                    ? "bg-gray-300 text-gray-500 cursor-not-allowed" 
-                                    : "bg-gradient-to-r from-[#0a5a2f] to-[#157a42] text-white hover:from-[#0e6537] hover:to-[#157a42] focus:ring-[#0e6537]/50 shadow-lg hover:shadow-xl"
+                                "bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-2 focus:ring-primary/50",
+                                "disabled:opacity-50 disabled:cursor-not-allowed"
                             )}
                         >
                             {loading ? (
                                 <>
-                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                                     Saving...
                                 </>
                             ) : (
@@ -438,6 +438,6 @@ export function SecuritySettings({ userData, onSave }: SecuritySettingsProps) {
                     </div>
                 </form>
             </div>
-        </section>
+        </div>
     );
 } 
