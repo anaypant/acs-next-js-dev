@@ -8,6 +8,7 @@ import type { Message } from '@/types/conversation';
 /**
  * Message Item Component
  * Displays individual messages with feedback options
+ * Uses ACS theme colors for consistent styling
  */
 export interface MessageItemProps {
   message: Message;
@@ -49,16 +50,26 @@ export function MessageItem({
       className={`flex ${isUser ? "justify-end" : "justify-start"}`}
     >
       <div className={`max-w-md w-full flex flex-col gap-1 ${isUser ? "items-end" : "items-start"}`}>
-        <div className={`rounded-xl px-6 py-4 shadow-sm ${isUser ? "bg-gradient-to-br from-secondary to-secondary-dark text-secondary-foreground" : "bg-muted text-card-foreground border"}`}>
-          <div className="whitespace-pre-line text-base">{message.body}</div>
+        {/* Message Bubble - Google Docs Style with ACS Theme */}
+        <div className={cn(
+          "rounded-lg px-4 py-3 shadow-md border",
+          isUser 
+            ? "bg-primary text-text-on-primary border-primary/20" // White text on primary color for outbound
+            : "bg-card text-foreground border-border shadow-sm" // Dark text on card background for inbound
+        )}>
+          <div className="whitespace-pre-line text-sm leading-relaxed">{message.body}</div>
         </div>
-        <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
+        
+        {/* Message Metadata */}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
           <span>{isUser ? "You" : (message.sender_name || message.sender_email || clientEmail)}</span>
           <span>·</span>
           <span>{message.localDate ? formatLocalTimeOnly(message.localDate.toISOString()) : ""}</span>
+          
+          {/* EV Score and Feedback for Client Messages */}
           {!isUser && typeof message.ev_score === 'number' && message.ev_score >= 0 && message.ev_score <= 100 && (
             <span className="ml-2 flex items-center gap-1">
-              <span className="font-semibold text-green-700">EV {message.ev_score}</span>
+              <span className="font-semibold text-status-success">EV {message.ev_score}</span>
               {!isEvUpdating && (
                 <>
                   <button
@@ -66,7 +77,7 @@ export function MessageItem({
                     disabled={isEvUpdating}
                     className={cn(
                       "p-1 rounded-md transition-colors",
-                      currentEvFeedback === 'positive' ? "bg-green-100 text-green-700" : "hover:bg-gray-100 text-gray-500",
+                      currentEvFeedback === 'positive' ? "bg-status-success/20 text-status-success" : "hover:bg-muted text-muted-foreground",
                       isEvUpdating && "animate-pulse"
                     )}
                   >
@@ -77,7 +88,7 @@ export function MessageItem({
                     disabled={isEvUpdating}
                     className={cn(
                       "p-1 rounded-md transition-colors",
-                      currentEvFeedback === 'negative' ? "bg-red-100 text-red-700" : "hover:bg-gray-100 text-gray-500",
+                      currentEvFeedback === 'negative' ? "bg-status-error/20 text-status-error" : "hover:bg-muted text-muted-foreground",
                       isEvUpdating && "animate-pulse"
                     )}
                   >
@@ -87,6 +98,8 @@ export function MessageItem({
               )}
             </span>
           )}
+          
+          {/* Feedback for User Messages */}
           {isUser && !isUpdating && (
             <span className="ml-2 flex items-center gap-1">
               <button
@@ -94,7 +107,7 @@ export function MessageItem({
                 disabled={isUpdating}
                 className={cn(
                   "p-1 rounded-md transition-colors",
-                  currentFeedback === 'like' ? "bg-green-100 text-green-700" : "hover:bg-gray-100 text-gray-500",
+                  currentFeedback === 'like' ? "bg-status-success/20 text-status-success" : "hover:bg-muted text-muted-foreground",
                   isUpdating && "animate-pulse"
                 )}
               >
@@ -105,14 +118,14 @@ export function MessageItem({
                 disabled={isUpdating}
                 className={cn(
                   "p-1 rounded-md transition-colors",
-                  currentFeedback === 'dislike' ? "bg-red-100 text-red-700" : "hover:bg-gray-100 text-gray-500",
+                  currentFeedback === 'dislike' ? "bg-status-error/20 text-status-error" : "hover:bg-muted text-muted-foreground",
                   isUpdating && "animate-pulse"
                 )}
               >
                 <ThumbsDown className="w-4 h-4" />
               </button>
               <button
-                className="p-0.5 rounded-full hover:bg-gray-100 text-gray-400"
+                className="p-0.5 rounded-full hover:bg-muted text-muted-foreground transition-colors"
                 onClick={() => onReport(message.id)}
                 aria-label="Report response"
                 title="Report this AI response"

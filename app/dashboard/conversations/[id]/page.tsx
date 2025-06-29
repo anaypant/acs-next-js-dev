@@ -3,34 +3,38 @@
  * Purpose: Renders a detailed conversation view with message history, client information, and AI-powered insights.
  * Author: Alejo Cagliolo
  * Date: 5/25/25
- * Version: 4.3.0 - Simplified to use conversation object directly
+ * Version: 5.0.0 - Google Docs Style Layout with Single Column Widget System
  */
 
 "use client"
 import { ArrowLeft, HelpCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useSession } from "next-auth/react"
 import { Logo } from "@/app/utils/Logo"
+import { cn } from "@/lib/utils"
 
 // Import components
 import {
   LoadingSkeleton,
-  ColumnToggleButton,
-  ResizableSidebar,
-  EnhancedContactCard,
-  EnhancedAIInsights,
-  EnhancedReplyComposer,
   MessageList,
-  FlaggedStatusWidget,
-  SpamStatusWidget,
   CompletionModal,
   ReportModal,
   GenerateModal,
   EmailPreviewModal,
-  FlaggedNotificationModal
+  FlaggedNotificationModal,
+  WidgetToolboxModal,
+  MessageToolbar,
+  AIToolbar,
+  FloatingWidget
 } from "./components"
+
+// Import widget system
+import { SingleColumnWidgetLayout } from "@/components/features/widgets"
+import { useWidgetLayout } from "@/hooks/useWidgetLayout"
+
 import type { Conversation } from '@/types/conversation';
+import type { WidgetActions, WidgetState } from '@/types/widgets';
 
 // Import hooks and utilities
 import { useConversationDetail } from "./hooks/useConversationDetail"
@@ -41,6 +45,7 @@ export default function ConversationDetailPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   
   const conversationDetail = useConversationDetail();
   const {
@@ -61,7 +66,24 @@ export default function ConversationDetailPage() {
     setReportMessageId, setShowGenerateModal, setShowEmailPreviewModal,
     setShowFlaggedNotification, setShowCompletionModal, setShowReportModal,
     toggleLeftColumn, toggleRightColumn,
+    isToolboxOpen, setIsToolboxOpen
   } = conversationDetail;
+
+  // Widget layout management
+  const {
+    widgets,
+    isLoading: widgetsLoading,
+    addWidget,
+    removeWidget,
+    reorderWidgets,
+    reorderColumnWidgets,
+    clearAllWidgets,
+    moveWidget,
+    updateWidgetPosition: updateFloatingWidgetPosition,
+    toggleWidgetVisibility,
+    makeWidgetFloat,
+    returnWidgetToColumn
+  } = useWidgetLayout();
 
   // Custom hooks
   const conversationActions = useConversationActions();
@@ -202,12 +224,58 @@ export default function ConversationDetailPage() {
   const emailSubject = conversation?.thread?.subject || '';
   const isBusy = conversation?.thread?.busy || false;
 
-  if (isLoading) {
+  // Widget actions and state
+  const widgetActions: WidgetActions = {
+    onCall: handleCall,
+    onEmail: handleEmail,
+    onAddNote: handleAddNote,
+    onUnflag: handleUnflag,
+    onComplete: handleOpenCompletionModal,
+    onClearFlag: handleClearFlag,
+    onMarkAsNotSpam: handleMarkAsNotSpam,
+    onGenerateResponse: handleGenerateAIResponse,
+    onSendEmail: handleOpenEmailPreview,
+    onOverride: handleOverride,
+    onReport: handleReport,
+    onFeedback: handleResponseFeedback,
+    onEvFeedback: handleEvFeedback
+  };
+
+  const widgetState: WidgetState = {
+    updating: false,
+    unflagging,
+    clearingFlag,
+    completingConversation,
+    updatingSpam,
+    reportingResponse,
+    generatingResponse,
+    sendingEmail,
+    updatingOverride,
+    updatingFeedbackId,
+    updatingEvFeedbackId
+  };
+
+  // Handle making widget float
+  const handleMakeWidgetFloat = (widgetId: string, position: { x: number; y: number }) => {
+    makeWidgetFloat(widgetId, position);
+  };
+
+  // Handle floating widget drag end
+  const handleFloatingWidgetDragEnd = (widgetId: string, position: { x: number; y: number }) => {
+    updateFloatingWidgetPosition(widgetId, position);
+  };
+
+  // Handle closing floating widget
+  const handleCloseFloatingWidget = (widgetId: string) => {
+    returnWidgetToColumn(widgetId);
+  };
+
+  if (isLoading || widgetsLoading) {
     return <LoadingSkeleton />;
   }
 
   return (
-    <div className="flex flex-col h-full max-h-full bg-gradient-to-br from-[#f0f9f4] via-[#e6f5ec] to-[#d8eee1]">
+    <div className="flex flex-col h-full max-h-full bg-muted/30" data-dashboard-layout>
       {/* Modals */}
       <ReportModal 
         isOpen={showReportModal}
@@ -251,81 +319,98 @@ export default function ConversationDetailPage() {
         clientEmail={clientEmail}
       />
 
-      {/* Fixed Header */}
-      <header className="flex-shrink-0 bg-card/80 backdrop-blur-sm border-b border-border shadow-sm">
-        <div className="w-full max-w-[1600px] mx-auto p-4">
-          <div className="flex items-center gap-4">
+      {/* Floating Widgets */}
+      {widgets.filter(w => w.isFloating && w.isVisible).map(widget => (
+        <FloatingWidget
+          key={widget.id}
+          widget={widget}
+          conversation={conversation || null}
+          actions={widgetActions}
+          state={widgetState}
+          onClose={() => handleCloseFloatingWidget(widget.id)}
+          onDragEnd={(position) => handleFloatingWidgetDragEnd(widget.id, position)}
+          onSnapToColumn={() => handleCloseFloatingWidget(widget.id)}
+        />
+      ))}
+
+      {/* Fixed Header - Google Docs Style */}
+      <header className="flex-shrink-0 bg-card border-b border-border shadow-sm">
+        <div className="w-full max-w-[1600px] mx-auto px-4 lg:px-6 py-3">
+          <div className="flex items-center gap-2 lg:gap-4">
             <Logo size="md" variant="icon-only" />
             <button
               onClick={() => router.back()}
-              className="p-2 hover:bg-[#0e6537]/10 rounded-lg transition-colors"
+              className="p-2 hover:bg-muted rounded-lg transition-colors"
               title="Go back"
             >
-              <ArrowLeft className="h-5 w-5 text-[#0e6537]" />
+              <ArrowLeft className="h-5 w-5 text-foreground" />
             </button>
-            <div className="flex-1">
-              <h1 className="text-xl font-bold text-[#0e6537]">Conversation Detail</h1>
-              <p className="text-sm text-gray-600">with {leadName}</p>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-base lg:text-lg font-medium text-foreground truncate">Conversation Detail</h1>
+              <p className="text-xs lg:text-sm text-muted-foreground truncate">with {leadName}</p>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={showKeyboardShortcuts}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-muted rounded-lg transition-colors"
                 title="Keyboard shortcuts (Ctrl + ?)"
               >
-                <HelpCircle className="w-5 h-5 text-gray-500" />
+                <HelpCircle className="w-5 h-5 text-muted-foreground" />
               </button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <div className="flex-1 w-full max-w-[1600px] mx-auto p-4 flex gap-4 min-h-0 overflow-hidden">
-        {/* Left Sidebar or Toggle */}
-        {columnState.left ? (
-          <ResizableSidebar
-            position="left"
-            isExpanded={columnState.left}
-            onToggle={toggleLeftColumn}
-            className="w-[320px] min-w-[280px] max-w-[400px]"
-          >
-            <div className="flex flex-col gap-4 h-full max-h-full overflow-y-auto">
-              <EnhancedContactCard
-                conversation={conversation}
-                onCall={handleCall}
-                onEmail={handleEmail}
-                onAddNote={handleAddNote}
-              />
-              <EnhancedAIInsights
-                conversation={conversation}
-              />
-              <FlaggedStatusWidget
-                conversation={conversation}
-                onUnflag={handleUnflag}
-                updating={unflagging}
-                onComplete={handleOpenCompletionModal}
-                onClearFlag={handleClearFlag}
-                clearingFlag={clearingFlag}
-              />
-            </div>
-          </ResizableSidebar>
-        ) : (
-          <div className="flex flex-col justify-center">
-            <ColumnToggleButton
-              isExpanded={columnState.left}
-              onToggle={toggleLeftColumn}
-              position="left"
-              label="Show/hide context panel"
+      {/* Main Content Area - Google Docs Style */}
+      <div className="flex-1 w-full max-w-[1600px] mx-auto flex flex-col lg:flex-row gap-4 lg:gap-6 min-h-0 overflow-hidden p-4 lg:p-6">
+        {/* Left Sidebar - Single Column Widget System */}
+        <div className="w-full lg:w-1/3 lg:min-w-[320px] lg:max-w-[400px] flex flex-col order-2 lg:order-1">
+          <div className="flex-1 min-h-0">
+            <SingleColumnWidgetLayout
+              widgets={widgets.filter(w => w.isVisible)}
+              conversation={conversation || null}
+              actions={widgetActions}
+              state={widgetState}
+              onAddWidget={() => setIsToolboxOpen(true)}
+              onRemoveWidget={removeWidget}
+              onMoveWidget={moveWidget}
+              onReorderColumnWidgets={reorderColumnWidgets}
+              onMakeWidgetFloat={handleMakeWidgetFloat}
+              className="h-full"
             />
           </div>
-        )}
+        </div>
 
-        {/* Center Chat Area */}
-        <div className="flex-1 flex flex-col min-w-0 min-h-0">
-          <div className="bg-card rounded-2xl shadow-sm border border-border flex-1 flex flex-col min-h-0">
+        {/* Column Boundary Indicator - Only visible when dragging */}
+        <div 
+          className={cn(
+            "fixed top-0 w-1 bg-primary/20 pointer-events-none transition-opacity duration-300 z-40",
+            "lg:left-[33.333%] md:left-[40%] left-[50%]",
+            widgets.some(w => w.isFloating) ? "opacity-30" : "opacity-0"
+          )}
+          style={{ height: '100vh' }}
+        />
+
+        {/* Center Chat Area - Google Docs Style */}
+        <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-card border-2 border-border/60 rounded-xl shadow-lg overflow-hidden order-1 lg:order-2">
+          {/* Message Toolbar */}
+          <MessageToolbar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onJumpToUnread={handleJumpToUnread}
+            onShowKeyboardShortcuts={showKeyboardShortcuts}
+            widgets={widgets}
+            onAddWidget={() => setIsToolboxOpen(true)}
+            onRemoveWidget={removeWidget}
+            onToggleWidgetVisibility={toggleWidgetVisibility}
+            searchInputRef={searchInputRef}
+          />
+
+          {/* Message List */}
+          <div className="flex-1 min-h-0">
             <MessageList
-              conversation={conversation}
+              conversation={conversation || null}
               feedback={feedback}
               evFeedback={evFeedback}
               updatingFeedbackId={updatingFeedbackId}
@@ -334,51 +419,36 @@ export default function ConversationDetailPage() {
               onEvFeedback={handleEvFeedback}
               onReport={handleReport}
               searchInputRef={searchInputRef}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              onJumpToUnread={handleJumpToUnread}
             />
           </div>
-        </div>
 
-        {/* Right Sidebar or Toggle */}
-        {columnState.right ? (
-          <ResizableSidebar
-            position="right"
-            isExpanded={columnState.right}
-            onToggle={toggleRightColumn}
-            className="w-[320px] min-w-[280px] max-w-[400px]"
-          >
-            <div className="flex flex-col h-full max-h-full p-4 overflow-y-auto" data-panel="right">
-              <EnhancedReplyComposer
-                conversation={conversation}
-                messageInput={messageInput}
-                onMessageChange={setMessageInput}
-                onGenerateResponse={handleGenerateAIResponse}
-                onSendEmail={handleOpenEmailPreview}
-                generatingResponse={generatingResponse}
-                isBusy={isBusy}
-                onOverrideToggle={handleOverride}
-                updatingOverride={updatingOverride}
-                onOpenGenerateModal={() => setShowGenerateModal(true)}
-              />
-              <div className="mt-4">
-                <SpamStatusWidget
-                  conversation={conversation}
-                  onMarkAsNotSpam={handleMarkAsNotSpam}
-                  updating={updatingSpam}
-                />
-              </div>
-            </div>
-          </ResizableSidebar>
-        ) : (
-          <div className="flex flex-col justify-center">
-            <ColumnToggleButton
-              isExpanded={columnState.right}
-              onToggle={toggleRightColumn}
-              position="right"
-              label="Show/hide reply panel"
-            />
-          </div>
-        )}
+          {/* AI Toolbar */}
+          <AIToolbar
+            onGenerateResponse={handleGenerateAIResponse}
+            onSendEmail={handleOpenEmailPreview}
+            onOpenGenerateModal={() => setShowGenerateModal(true)}
+            generatingResponse={generatingResponse}
+            isBusy={isBusy}
+            isFlagged={isResponseFlagged}
+            overrideEnabled={false}
+            onOverrideToggle={handleOverride}
+            updatingOverride={updatingOverride}
+          />
+        </div>
       </div>
+
+      {/* Widget Toolbox Modal */}
+      {isToolboxOpen && (
+        <WidgetToolboxModal
+          isOpen={isToolboxOpen}
+          onClose={() => setIsToolboxOpen(false)}
+          currentWidgets={widgets}
+          onAddWidget={addWidget}
+        />
+      )}
     </div>
   );
 }
@@ -429,4 +499,55 @@ export default function ConversationDetailPage() {
  * - Components now extract data directly from conversation object
  * - Simplified prop passing and reduced code duplication
  * - Improved maintainability by centralizing data access in components
+ * 
+ * 5/25/25 - Version 4.4.0 - Google Docs Styling with ACS Theme
+ * - Fixed TypeScript errors by properly typing conversation as null when undefined
+ * - Updated to use ACS theme colors throughout the page
+ * - Implemented Google Docs-like styling with clean, minimal design
+ * - Removed gradient background in favor of clean card-based layout
+ * - Added proper border separators between panels
+ * - Enhanced visual hierarchy with consistent spacing and typography
+ * - Improved accessibility with proper contrast ratios
+ * 
+ * 5/25/25 - Version 4.5.0 - Widget System Integration
+ * - Integrated new widget system for left sidebar
+ * - Replaced hardcoded components with dynamic widget layout
+ * - Added widget toolbox for adding/removing widgets
+ * - Implemented widget persistence with localStorage
+ * - Added ACS theme compliance to all widget components
+ * - Created modular widget architecture with proper sizing
+ * - Enhanced user experience with customizable widget layout
+ * 
+ * 5/25/25 - Version 5.0.0 - Google Docs Style Layout with Single Column Widget System
+ * - Implemented Google Docs-style layout with message list as the main document
+ * - Created single column widget system with 4 rows and 1 column grid
+ * - Added widget conflict detection with red highlighting for occupied widgets
+ * - Moved AI response section to bottom of conversation area
+ * - Created MessageToolbar component for widget controls at top of message list
+ * - Implemented 2/3 - 1/3 layout split (message list takes 2/3, widgets take 1/3)
+ * - Added warning color to theme system for widget conflicts
+ * - Enhanced widget snapping with conflict resolution
+ * - Improved overall user experience with Google Docs-style interface
+ * 
+ * 5/25/25 - Version 5.1.0 - AI Toolbar Redesign
+ * - Replaced bulky AI response section with clean, icon-based toolbar
+ * - Created AIToolbar component with aesthetic ACS theme compliance
+ * - Added hover tooltips for all toolbar actions
+ * - Implemented smooth animations and micro-interactions
+ * - Added status indicators for flagged responses and override settings
+ * - Decluttered message list area for better focus on conversation
+ * - Enhanced user experience with intuitive icon-based interface
+ * - Maintained all AI functionality through modal-based interactions
+ * 
+ * 5/25/25 - Version 5.2.0 - Responsive Layout and Height Matching
+ * - Fixed left column height to match right message column height
+ * - Implemented responsive grid layout that adapts to different screen sizes
+ * - Added mobile-first responsive design with proper breakpoints
+ * - Enhanced widget grid with dynamic cell sizing based on screen width
+ * - Added window resize listener for real-time responsive updates
+ * - Improved layout on mobile devices with stacked column layout
+ * - Enhanced header responsiveness with proper text truncation
+ * - Optimized spacing and padding for different screen sizes
+ * - Ensured consistent height distribution across all screen sizes
+ * - Added proper flex layout to prevent height mismatches
  */

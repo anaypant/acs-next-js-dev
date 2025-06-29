@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, forwardRef } from 'react';
-import { ChevronDown, Search, Calendar } from 'lucide-react';
+import { ChevronDown, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MessageItem } from './MessageItem';
 import { groupMessagesByDate } from '@/lib/utils/conversation';
@@ -16,6 +16,9 @@ export interface MessageListProps {
   onReport: (messageId: string) => void;
   className?: string;
   searchInputRef?: React.RefObject<HTMLInputElement | null>;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
+  onJumpToUnread?: () => void;
 }
 
 export const MessageList = forwardRef<HTMLDivElement, MessageListProps>(({
@@ -28,10 +31,12 @@ export const MessageList = forwardRef<HTMLDivElement, MessageListProps>(({
   onEvFeedback,
   onReport,
   className,
-  searchInputRef
+  searchInputRef,
+  searchQuery = '',
+  onSearchChange,
+  onJumpToUnread
 }, ref) => {
   const [showNewMessageButton, setShowNewMessageButton] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
   const internalSearchRef = useRef<HTMLInputElement>(null);
@@ -75,64 +80,26 @@ export const MessageList = forwardRef<HTMLDivElement, MessageListProps>(({
     endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Jump to last unread
-  const jumpToLastUnread = () => {
-    const unreadMessages = messages.filter(msg => !msg.read);
-    if (unreadMessages.length > 0) {
-      const lastUnread = unreadMessages[unreadMessages.length - 1];
-      const element = document.getElementById(`message-${lastUnread.id}`);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }
-  };
-
   return (
     <div ref={ref} className={cn("flex flex-col h-full", className)}>
-      {/* Toolbar */}
-      <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-border bg-card/80 backdrop-blur-sm">
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              ref={searchRef}
-              type="text"
-              placeholder="Search conversation..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0e6537] text-sm"
-            />
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={jumpToLastUnread}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <Calendar className="w-4 h-4" />
-            Jump to unread
-          </button>
-        </div>
-      </div>
-
-      {/* Messages Container */}
-      <div 
+      {/* Messages Container - Google Docs Style */}
+      <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-4 space-y-6 min-h-0"
+        className="flex-1 overflow-y-auto p-6 space-y-6 min-h-0 bg-background scrollbar-message"
       >
         {filteredGroups.length === 0 ? (
-          <div className="text-center text-gray-500 py-8">
+          <div className="text-center text-muted-foreground py-8">
             {searchQuery ? 'No messages found matching your search.' : 'No messages found.'}
           </div>
         ) : (
           filteredGroups.map((group, groupIndex) => (
             <div key={group.date} className="space-y-4">
-              {/* Date Separator */}
+              {/* Date Separator - Google Docs Style */}
               <div className="flex items-center justify-center">
-                <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full">
-                  <Calendar className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-600">{group.date}</span>
+                <div className="flex items-center gap-2 px-4 py-2 bg-muted rounded-full">
+                  <Calendar className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-medium text-muted-foreground">{group.date}</span>
                 </div>
               </div>
 
@@ -169,11 +136,11 @@ export const MessageList = forwardRef<HTMLDivElement, MessageListProps>(({
         )}
       </div>
 
-      {/* Floating New Message Button */}
+      {/* Floating New Message Button - Google Docs Style */}
       {showNewMessageButton && (
         <button
           onClick={scrollToBottom}
-          className="fixed bottom-24 right-8 flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/90 transition-colors z-10"
+          className="fixed bottom-24 right-8 flex items-center gap-2 px-4 py-2 bg-primary text-text-on-primary rounded-full shadow-lg hover:bg-primary/90 transition-colors z-10"
         >
           <ChevronDown className="w-4 h-4" />
           <span className="text-sm font-medium">New messages</span>

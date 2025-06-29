@@ -66,4 +66,19 @@ export function toTitleCase(str: string): string {
   return str.replace(/\w\S*/g, (txt) => 
     txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
   );
+}
+
+/**
+ * Gets initials from a name string
+ * @param name - The name to get initials from
+ * @returns Up to 2 uppercase initials
+ */
+export function getInitials(name: string): string {
+  if (!name || typeof name !== 'string') return '';
+  
+  return name
+    .split(' ')
+    .map(n => n[0]?.toUpperCase())
+    .join('')
+    .slice(0, 2);
 } 

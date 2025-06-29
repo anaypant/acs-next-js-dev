@@ -9,4 +9,5 @@ export * from './history';
 export * from './junk';
 export * from './landing';
 export * from './lcp';
-export * from './theme'; 
+export * from './theme';
+export * from './widgets'; 

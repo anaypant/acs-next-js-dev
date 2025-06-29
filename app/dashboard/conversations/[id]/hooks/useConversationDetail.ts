@@ -71,9 +71,19 @@ export function useConversationDetail() {
     right: true
   });
 
+  // Widget toolbox state
+  const [isToolboxOpen, setIsToolboxOpen] = useState(false);
+  const [draggedWidget, setDraggedWidget] = useState<string | null>(null);
+
   // Column toggle handlers
   const toggleLeftColumn = () => setColumnState((prev: ColumnState) => ({ ...prev, left: !prev.left }));
   const toggleRightColumn = () => setColumnState((prev: ColumnState) => ({ ...prev, right: !prev.right }));
+
+  // Widget position update handler
+  const updateWidgetPosition = (widgetId: string, position: { x: number; y: number }) => {
+    // TODO: Implement widget position persistence
+    console.log('Update widget position:', widgetId, position);
+  };
 
   // Load user signature
   useEffect(() => {
@@ -128,5 +138,10 @@ export function useConversationDetail() {
     columnState,
     toggleLeftColumn,
     toggleRightColumn,
+
+    // Widget toolbox state
+    isToolboxOpen, setIsToolboxOpen,
+    draggedWidget, setDraggedWidget,
+    updateWidgetPosition,
   };
 } 

@@ -48,6 +48,11 @@ export interface ThemeStatus {
   info: string;
 }
 
+// Warning color for widget conflicts
+export interface ThemeWarning {
+  main: string;
+}
+
 // Interactive color structure
 export interface ThemeInteractive {
   hover: string;
@@ -119,6 +124,9 @@ export interface ThemeColors {
   // Status colors
   status: ThemeStatus;
   
+  // Warning color for widget conflicts
+  warning: ThemeWarning;
+  
   // Interactive colors
   interactive: ThemeInteractive;
   
@@ -184,6 +192,9 @@ export interface ThemeCSSVariables {
   '--status-warning': string;
   '--status-error': string;
   '--status-info': string;
+  
+  // Warning variable
+  '--warning': string;
   
   // Chart variables
   '--chart-1': string;

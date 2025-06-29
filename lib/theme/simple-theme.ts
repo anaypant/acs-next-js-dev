@@ -49,6 +49,9 @@ export interface SimpleTheme {
     'status-error': string;
     'status-info': string;
     
+    // Warning color for widget conflicts
+    'warning': string;
+    
     // Midnight palette
     'midnight-50': string;
     'midnight-100': string;
@@ -70,10 +73,10 @@ export const greenTheme: SimpleTheme = {
   name: 'Green & White',
   colors: {
     // Core colors - More aesthetic and modern
-    primary: '#059669',
+    primary: '#288e41',
     'primary-light': '#10b981',
     'primary-dark': '#047857',
-    secondary: '#059669',
+    secondary: '#288e41',
     'secondary-light': '#34d399',
     'secondary-dark': '#047857',
     'secondary-xlight': '#d1fae5',
@@ -110,6 +113,9 @@ export const greenTheme: SimpleTheme = {
     'status-warning': '#eab308',
     'status-error': '#ef4444',
     'status-info': '#3b82f6',
+    
+    // Warning color for widget conflicts
+    'warning': '#ff0000',
     
     // Midnight palette
     'midnight-50': '#eafff6',
@@ -172,6 +178,9 @@ export const blueTheme: SimpleTheme = {
     'status-warning': '#eab308',
     'status-error': '#ef4444',
     'status-info': '#3b82f6',
+    
+    // Warning color for widget conflicts
+    'warning': '#ff0000',
     
     // Midnight palette
     'midnight-50': '#f0f7ff',

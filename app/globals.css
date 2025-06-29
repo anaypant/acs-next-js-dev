@@ -55,6 +55,9 @@
     --status-error: #ef4444;
     --status-info: #3b82f6;
     
+    /* Warning color for widget conflicts */
+    --warning: #ff0000;
+    
     /* Enhanced text contrast variants with fallbacks */
     --text-on-primary: #FFFFFF;
     --text-on-secondary: #FFFFFF;
@@ -152,6 +155,64 @@
 
 html, body {
   height: 100%;
+}
+
+/* ACS Themed Scrollbars */
+@layer utilities {
+  /* Webkit browsers (Chrome, Safari, Edge) */
+  .scrollbar-acs::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-acs::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 4px;
+  }
+
+  .scrollbar-acs::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+  }
+
+  .scrollbar-acs::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
+  }
+
+  .scrollbar-acs::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* Firefox */
+  .scrollbar-acs {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  /* Custom scrollbar for message lists and widgets */
+  .scrollbar-message::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-message::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-message::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+    transition: background-color 0.2s ease;
+  }
+
+  .scrollbar-message::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
+  }
+
+  .scrollbar-message {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
 }
 
 /* Gradient text animation */

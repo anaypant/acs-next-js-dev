@@ -10,6 +10,9 @@ export { SpamStatusWidget } from './SpamStatusWidget';
 export { ConversationHeader } from './ConversationHeader';
 export { MessageItem } from './MessageItem';
 export { AIResponseSection } from './AIResponseSection';
+export { ConversationAIResponse } from './ConversationAIResponse';
+export { MessageToolbar } from './MessageToolbar';
+export { AIToolbar } from './AIToolbar';
 
 // Enhanced components
 export { ResizableSidebar } from './ResizableSidebar';
@@ -17,6 +20,11 @@ export { EnhancedContactCard } from './EnhancedContactCard';
 export { EnhancedAIInsights } from './EnhancedAIInsights';
 export { EnhancedReplyComposer } from './EnhancedReplyComposer';
 export { MessageList } from './MessageList';
+
+// Widget components
+export { FloatingWidget } from './FloatingWidget';
+export { WidgetToolboxModal } from './WidgetToolboxModal';
+export { HeaderToolbox } from './HeaderToolbox';
 
 // Modal components
 export { CompletionModal } from './modals/CompletionModal';

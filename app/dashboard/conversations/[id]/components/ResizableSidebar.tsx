@@ -81,17 +81,17 @@ export function ResizableSidebar({
     <div
       ref={sidebarRef}
       className={cn(
-        "relative flex flex-col bg-card/80 border border-border rounded-2xl shadow-sm overflow-hidden",
+        "relative flex flex-col bg-card border border-border shadow-sm overflow-hidden",
         "transition-all duration-300 ease-in-out",
         className
       )}
       style={{ width: `${width}px` }}
     >
-      {/* Close button */}
+      {/* Close button - Google Docs Style */}
       <button
         onClick={onToggle}
         className={cn(
-          "absolute top-3 p-1 rounded-full text-gray-500 hover:text-gray-900 hover:bg-gray-200/50 transition-colors z-20",
+          "absolute top-3 p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors z-20",
           position === 'left' ? "right-3" : "left-3"
         )}
         title="Close panel"
@@ -99,16 +99,16 @@ export function ResizableSidebar({
         <X className="w-5 h-5" />
       </button>
 
-      {/* Resize handle */}
+      {/* Resize handle - Google Docs Style */}
       <div
         className={cn(
-          "absolute top-0 bottom-0 w-1 cursor-col-resize bg-transparent hover:bg-[#0e6537]/20 transition-colors",
+          "absolute top-0 bottom-0 w-1 cursor-col-resize bg-transparent hover:bg-primary/20 transition-colors",
           "flex items-center justify-center",
           position === 'left' ? '-right-0.5' : '-left-0.5'
         )}
         onMouseDown={handleMouseDown}
       >
-        <div className="w-0.5 h-8 bg-gray-300 rounded-full" />
+        <div className="w-0.5 h-8 bg-border rounded-full" />
       </div>
 
       {/* Content */}
