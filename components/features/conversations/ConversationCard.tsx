@@ -16,7 +16,8 @@ import {
   ChevronRight,
   MoreVertical,
   Trash2,
-  Settings
+  Settings,
+  Info
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
@@ -26,6 +27,8 @@ import {
 } from '@/lib/utils/conversation';
 import { formatLocalTime } from '@/app/utils/timezone';
 import type { Conversation } from '@/types/conversation';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { EVScoreInfoContent } from '@/components/features/analytics/EVScoreInfoContent';
 
 // Color palette for conversation avatars
 const CONVERSATION_COLORS = [
@@ -311,12 +314,22 @@ export function ConversationCard({
           {/* EV Score - Bigger and on the right */}
           {score >= 0 && (
             <div className="flex-shrink-0">
-              <div 
-                className="px-3 py-2 rounded-lg text-sm font-bold shadow-md"
-                style={evColorStyle}
-              >
-                EV {score}
-              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    className="px-3 py-2 rounded-lg text-sm font-bold shadow-md flex items-center gap-1 focus:outline-none"
+                    style={evColorStyle}
+                    onClick={e => e.stopPropagation()}
+                    aria-label="Show EV Score info"
+                  >
+                    EV {score}
+                    <Info className="w-3 h-3 ml-1 text-muted-foreground" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-80">
+                  <EVScoreInfoContent score={score} />
+                </PopoverContent>
+              </Popover>
             </div>
           )}
         </div>
@@ -406,12 +419,22 @@ export function ConversationCard({
                 </div>
               )}
               {score >= 0 && (
-                <div 
-                  className="px-2 py-1 rounded-full text-xs font-semibold"
-                  style={evColorStyle}
-                >
-                  EV {score}
-                </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      className="px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1 focus:outline-none"
+                      style={evColorStyle}
+                      onClick={e => e.stopPropagation()}
+                      aria-label="Show EV Score info"
+                    >
+                      EV {score}
+                      <Info className="w-3 h-3 ml-1 text-muted-foreground" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-80">
+                    <EVScoreInfoContent score={score} />
+                  </PopoverContent>
+                </Popover>
               )}
             </div>
           </div>

@@ -21,7 +21,8 @@ import {
   Clock,
   AlertCircle,
   Shield,
-  Mail
+  Mail,
+  Info
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
@@ -36,6 +37,8 @@ import {
 } from '@/lib/utils/conversations';
 import { useConversationBulkActions } from '@/hooks/useConversationBulkActions';
 import type { Conversation } from '@/types/conversation';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { EVScoreInfoContent } from '@/components/features/analytics/EVScoreInfoContent';
 
 interface EnhancedConversationsTableProps {
   conversations: Conversation[];
@@ -438,12 +441,24 @@ export function EnhancedConversationsTable({
                       onClick={() => handleRowClick(conversation.thread.conversation_id)}
                     >
                       {conversation.evScore !== null ? (
-                        <span className={cn(
-                          "inline-flex px-2 py-1 text-xs font-semibold rounded-full border",
-                          getEVScoreColor(conversation.evScore)
-                        )}>
-                          {conversation.evScore}
-                        </span>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              className={cn(
+                                "inline-flex px-2 py-1 text-xs font-semibold rounded-full border items-center gap-1 focus:outline-none",
+                                getEVScoreColor(conversation.evScore)
+                              )}
+                              onClick={e => e.stopPropagation()}
+                              aria-label="Show EV Score info"
+                            >
+                              {conversation.evScore}
+                              <Info className="w-3 h-3 ml-1 text-muted-foreground" />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent align="end" className="w-80">
+                            <EVScoreInfoContent score={conversation.evScore} />
+                          </PopoverContent>
+                        </Popover>
                       ) : (
                         <span className="text-sm text-gray-400">N/A</span>
                       )}
