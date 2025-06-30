@@ -33,7 +33,7 @@ export function useLocation() {
 
   // Debounced location search function
   const searchLocations = useCallback(async (query: string) => {
-    if (query.length < 3) {
+    if (query.length < 2) {
       setSuggestions([]);
       setIsDropdownOpen(false);
       return;
@@ -123,8 +123,8 @@ export function useLocation() {
           return a.fullAddress.localeCompare(b.fullAddress);
         });
         
-        // Limit to 5 most relevant results
-        const limitedSuggestions = processedSuggestions.slice(0, 5);
+        // Limit to 8 most relevant results for better progressive matching
+        const limitedSuggestions = processedSuggestions.slice(0, 8);
         
         setSuggestions(limitedSuggestions);
         setIsDropdownOpen(limitedSuggestions.length > 0);
@@ -149,10 +149,10 @@ export function useLocation() {
       clearTimeout(searchTimeout);
     }
     
-    // Set new timeout for debounced search (500ms delay)
+    // Set new timeout for debounced search (300ms delay for more responsive feel)
     const newTimeout = setTimeout(() => {
       searchLocations(value);
-    }, 500);
+    }, 300);
     
     setSearchTimeout(newTimeout);
     

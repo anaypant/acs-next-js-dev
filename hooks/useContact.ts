@@ -144,8 +144,7 @@ export function useContact(options: UseContactOptions = {}) {
           budgetRange: newContact.budgetRange || '',
           propertyTypes: newContact.propertyTypes || '',
           createdAt: newContact.createdAt,
-          updatedAt: newContact.updatedAt,
-          associated_account: (session.user as any).id
+          updatedAt: newContact.updatedAt
         }
       });
       
@@ -224,8 +223,7 @@ export function useContact(options: UseContactOptions = {}) {
           budgetRange: updatedContact.budgetRange || '',
           propertyTypes: updatedContact.propertyTypes || '',
           createdAt: updatedContact.createdAt,
-          updatedAt: updatedContact.updatedAt,
-          associated_account: (session.user as any).id
+          updatedAt: updatedContact.updatedAt
         }
       });
       
@@ -278,9 +276,7 @@ export function useContact(options: UseContactOptions = {}) {
         table_name: 'ManualContacts',
         attribute_name: 'id',
         attribute_value: contactId,
-        is_primary_key: true,
-        account_id: (session.user as any).id,
-        session: session.user.email
+        is_primary_key: true
       });
       
       console.log('[useContact] Delete response:', response);

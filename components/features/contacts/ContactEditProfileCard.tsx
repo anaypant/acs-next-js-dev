@@ -139,8 +139,7 @@ export function ContactEditProfileCard({
         lastContact: new Date().toISOString(),
         conversationCount: contact?.conversationCount || 0,
         createdAt: contact?.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        associated_account: session?.user?.email || ''
+        updatedAt: new Date().toISOString()
       };
 
       await onSubmit(contactData);

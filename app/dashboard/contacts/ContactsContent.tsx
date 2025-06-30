@@ -366,8 +366,7 @@ export default function ContactsContent() {
         lastContact: new Date().toISOString(),
         conversationCount: editingContact?.conversationCount || 0,
         createdAt: editingContact?.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        associated_account: session?.user ? (session.user as any).id : ''
+        updatedAt: new Date().toISOString()
       };
 
       if (editingContact) {
