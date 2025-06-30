@@ -74,7 +74,18 @@ export function useOptimisticConversations(options: UseOptimisticConversationsOp
 
   // Load conversations from storage or API
   const loadConversations = useCallback(async (forceRefresh = false) => {
-    if (!session?.user?.id) return;
+    if (!session?.user?.id) {
+      console.log('[useOptimisticConversations] No session user ID, skipping load');
+      return;
+    }
+
+    console.log('[useOptimisticConversations] Loading conversations:', {
+      forceRefresh,
+      hasSession: !!session,
+      userId: session.user.id,
+      hasCachedData: conversationStorage.hasData(),
+      isStale: conversationStorage.isStale(10)
+    });
 
     setLoading(true);
     setError(null);
@@ -84,18 +95,46 @@ export function useOptimisticConversations(options: UseOptimisticConversationsOp
       if (!forceRefresh && conversationStorage.hasData() && !conversationStorage.isStale(10)) {
         const cachedConversations = conversationStorage.getConversations();
         if (cachedConversations) {
+          console.log('[useOptimisticConversations] Using cached data:', {
+            conversationCount: cachedConversations.length,
+            sampleConversation: cachedConversations[0] ? {
+              id: cachedConversations[0].thread.conversation_id,
+              lead_name: cachedConversations[0].thread.lead_name,
+              messagesCount: cachedConversations[0].messages.length
+            } : null
+          });
           setConversations(cachedConversations);
           setLastUpdated(new Date());
-          console.log('[useOptimisticConversations] Using cached data');
           return;
         }
       }
 
+      console.log('[useOptimisticConversations] Fetching from API...');
       // Fetch from API
       const response = await apiClient.getThreads();
       
+      console.log('[useOptimisticConversations] API response:', {
+        success: response.success,
+        hasData: !!response.data,
+        dataType: typeof response.data,
+        dataKeys: response.data ? Object.keys(response.data) : null,
+        dataLength: response.data?.data?.length,
+        error: response.error
+      });
+      
       if (response.success && response.data?.data) {
+        console.log('[useOptimisticConversations] Processing API response data...');
         const processedConversations = processThreadsResponse(response.data.data);
+        console.log('[useOptimisticConversations] Processed conversations:', {
+          processedCount: processedConversations.length,
+          sampleProcessed: processedConversations[0] ? {
+            id: processedConversations[0].thread.conversation_id,
+            lead_name: processedConversations[0].thread.lead_name,
+            messagesCount: processedConversations[0].messages.length,
+            lastMessageAt: processedConversations[0].thread.lastMessageAt
+          } : null
+        });
+        
         setConversations(processedConversations);
         setLastUpdated(new Date());
         
@@ -103,6 +142,7 @@ export function useOptimisticConversations(options: UseOptimisticConversationsOp
         conversationStorage.storeConversations(processedConversations);
         console.log('[useOptimisticConversations] Fetched and stored conversations');
       } else {
+        console.error('[useOptimisticConversations] API response failed:', response);
         throw new Error(response.error || 'Failed to fetch conversations');
       }
     } catch (err) {

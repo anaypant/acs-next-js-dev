@@ -97,7 +97,7 @@ class DashboardServerApi {
     }
 
     async deleteThread(conversationId: string) {
-        return this.request<ThreadOperationResult>('lcp/delete_thread', 'POST', { conversationId }, ['threads']);
+        return this.request<ThreadOperationResult>('lcp/delete_thread', 'POST', { conversation_id: conversationId }, ['threads']);
     }
 
     clearCache() {

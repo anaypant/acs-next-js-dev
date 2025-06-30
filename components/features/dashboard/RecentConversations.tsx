@@ -29,6 +29,21 @@ export function RecentConversations({ conversations = [] }: RecentConversationsP
   // Just take the first 5 conversations (most recent first)
   const recentConversations = conversations.slice(0, 5);
 
+  console.log('[RecentConversations] Component render:', {
+    totalConversations: conversations.length,
+    recentConversationsCount: recentConversations.length,
+    sampleConversation: recentConversations[0] ? {
+      id: recentConversations[0].thread.conversation_id,
+      lead_name: recentConversations[0].thread.lead_name,
+      messagesCount: recentConversations[0].messages.length
+    } : null,
+    allConversations: conversations.map(c => ({
+      id: c.thread.conversation_id,
+      lead_name: c.thread.lead_name,
+      lastMessageAt: c.thread.lastMessageAt
+    }))
+  });
+
   return (
     <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
       <div className="flex items-center justify-between mb-4">

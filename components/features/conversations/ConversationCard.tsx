@@ -209,6 +209,22 @@ export function ConversationCard({
           </div>
         )}
 
+        {/* Delete button for simple variant */}
+        {onDelete && (
+          <button
+            className="absolute top-2 right-2 p-1.5 bg-status-error/10 text-status-error rounded-full hover:bg-status-error/20 transition-colors cursor-pointer z-10"
+            onClick={handleDelete}
+            disabled={deleting}
+            title="Delete conversation"
+          >
+            {deleting ? (
+              <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Trash2 className="w-3 h-3" />
+            )}
+          </button>
+        )}
+
         <div className="flex items-start gap-3 w-full">
           {/* Avatar */}
           <div className="flex-shrink-0">
