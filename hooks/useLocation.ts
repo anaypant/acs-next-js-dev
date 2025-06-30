@@ -42,21 +42,8 @@ export function useLocation() {
     setIsLoading(true);
     
     try {
-      // Use OpenStreetMap Nominatim API for geocoding (free, no API key required)
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?` +
-        `q=${encodeURIComponent(query)}&` +
-        `format=json&` +
-        `addressdetails=1&` +
-        `limit=8&` +
-        `countrycodes=us,ca,gb,au,de,fr,es,it,nl&` +
-        `featuretype=city`,
-        {
-          headers: {
-            'User-Agent': 'ACS-NextJS-App/1.0 (support@automatedconsultancy.com)'
-          }
-        }
-      );
+      // Use our local API route to avoid CORS issues
+      const response = await fetch(`/api/location/search?q=${encodeURIComponent(query)}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -66,13 +53,9 @@ export function useLocation() {
         const seenCities = new Set<string>();
         
         data.forEach((item: any) => {
-          if (!item.address) return;
-          
-          const address = item.address;
-          const city = address.city || address.town || address.village || address.hamlet || '';
-          const state = address.state || address.region || address.province || '';
-          const country = address.country || '';
-          const postcode = address.postcode || address.postal_code || '';
+          const city = item.city || '';
+          const state = item.state || '';
+          const country = item.country || '';
           
           // Skip if no city name
           if (!city) return;
@@ -120,8 +103,8 @@ export function useLocation() {
             city: city.trim(),
             state: state.trim(),
             country: mappedCountry.trim(),
-            zipCode: postcode.trim(),
-            displayName: item.display_name,
+            zipCode: '', // We'll get this from the API if available
+            displayName: item.fullAddress,
             uniqueKey
           };
           
