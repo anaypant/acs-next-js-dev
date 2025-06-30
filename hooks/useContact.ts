@@ -274,21 +274,13 @@ export function useContact(options: UseContactOptions = {}) {
       
       console.log('[useContact] Deleting contact:', contactId);
       
-      // Query all contacts in the ManualContacts table
-      const allContactsResponse = await apiClient.dbSelect({
-        table_name: 'ManualContacts',
-        index_name: 'associated_account-index',
-        key_name: 'associated_account',
-        key_value: (session.user as any).id
-      });
-      
-      console.log('[useContact] All contacts in ManualContacts table:', allContactsResponse);
-      
       const response = await apiClient.dbDelete({
         table_name: 'ManualContacts',
         attribute_name: 'id',
         attribute_value: contactId,
-        is_primary_key: true
+        is_primary_key: true,
+        account_id: (session.user as any).id,
+        session: session.user.email
       });
       
       console.log('[useContact] Delete response:', response);

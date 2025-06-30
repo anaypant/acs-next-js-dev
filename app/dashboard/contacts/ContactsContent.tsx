@@ -34,6 +34,8 @@ export default function ContactsContent() {
   const [savedContactName, setSavedContactName] = useState('')
   const [showVerifiedTooltip, setShowVerifiedTooltip] = useState(false)
   const [locationError, setLocationError] = useState<string | null>(null)
+  const [showInfoModal, setShowInfoModal] = useState(false)
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null)
 
   // Use contacts data hook to get real conversations
   const { conversations, loading: conversationsLoading, error: conversationsError } = useContactsData({
@@ -495,36 +497,30 @@ export default function ContactsContent() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {filteredContacts.map((contact) => (
                 <div
                   key={contact.id}
-                  className="bg-card border border-border rounded-lg p-4 hover:shadow-md transition-shadow"
+                  className="bg-card border border-border rounded-lg p-3 hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => {
+                    setSelectedContact(contact);
+                    setShowInfoModal(true);
+                  }}
                 >
-                  {/* Everything on one line */}
-                  <div className="flex items-center gap-2 mb-3">
-                    <h3 className="font-semibold text-foreground truncate flex-1">{contact.name}</h3>
+                  {/* Name and badges on one line */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="font-semibold text-foreground truncate flex-1 text-sm">{contact.name}</h3>
                     
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-1 flex-shrink-0">
                       {/* Verified badge */}
-                      <div className="flex items-center gap-1">
-                        <CheckCircle className="w-3 h-3 text-status-success" />
-                        <span className="text-xs text-muted-foreground">Verified</span>
-                      </div>
+                      <CheckCircle className="w-3 h-3 text-status-success" />
                       
                       {/* Status with icon */}
-                      <div className="flex items-center gap-1">
-                        {contact.status === 'client' ? (
-                          <BadgeCheck className="w-3 h-3 text-blue-600" title="Client" />
-                        ) : (
-                          <Target className="w-3 h-3 text-yellow-500" title="Lead" />
-                        )}
-                        {contact.status === 'client' ? (
-                          <span className="text-xs text-blue-600 font-medium">Client</span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">Lead</span>
-                        )}
-                      </div>
+                      {contact.status === 'client' ? (
+                        <BadgeCheck className="w-3 h-3 text-blue-600" title="Client" />
+                      ) : (
+                        <Target className="w-3 h-3 text-yellow-500" title="Lead" />
+                      )}
                       
                       {/* Action buttons */}
                       <button
@@ -532,83 +528,33 @@ export default function ContactsContent() {
                           e.stopPropagation()
                           handleEditContact(contact)
                         }}
-                        className="p-1.5 bg-background/80 backdrop-blur-sm rounded-lg hover:bg-background transition-colors"
+                        className="p-1 bg-background/80 backdrop-blur-sm rounded hover:bg-background transition-colors"
                         title="Edit contact"
                       >
-                        <Edit className="w-4 h-4 text-muted-foreground" />
+                        <Edit className="w-3 h-3 text-muted-foreground" />
                       </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
                           handleDeleteContact(contact.id)
                         }}
-                        className="p-1.5 bg-background/80 backdrop-blur-sm rounded-lg hover:bg-background transition-colors"
+                        className="p-1 bg-background/80 backdrop-blur-sm rounded hover:bg-background transition-colors"
                         title="Delete contact"
                       >
-                        <Trash2 className="w-4 h-4 text-status-error" />
+                        <Trash2 className="w-3 h-3 text-status-error" />
                       </button>
                     </div>
                   </div>
 
-                  {/* Contact info - clickable for details */}
-                  <div 
-                    className="cursor-pointer"
-                    onClick={() => router.push(`/dashboard/conversations/${contact.id}`)}
-                  >
-                    <p className="text-sm text-muted-foreground truncate">{contact.email}</p>
-                    
-                    {/* Contact details with icons */}
-                    <div className="mt-4 space-y-2 text-muted-foreground">
-                      {contact.phone && (
-                        <div className="flex items-center gap-3 text-base">
-                          <Phone className="h-4 w-4 text-muted-light flex-shrink-0" />
-                          <span>{contact.phone}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-3 text-base">
-                        <Mail className="h-4 w-4 text-muted-light flex-shrink-0" />
-                        <span>{contact.email}</span>
-                      </div>
-                      {contact.location && (
-                        <div className="flex items-center gap-3 text-base">
-                          <Home className="h-4 w-4 text-muted-light flex-shrink-0" />
-                          <span>{contact.location}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-3 text-base">
-                        <Calendar className="h-4 w-4 text-muted-light flex-shrink-0" />
-                        <span>Last contact: {formatLastContact(contact.lastContact)}</span>
-                      </div>
-                      <div className="flex items-center gap-3 text-base">
-                        <User2 className="h-4 w-4 text-muted-light flex-shrink-0" />
-                        <span>
-                          {contact.conversationCount} conversation{contact.conversationCount !== 1 ? "s" : ""}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Additional information */}
-                    {(contact.budgetRange || contact.propertyTypes) && (
-                      <div className="mt-5 pt-4 border-t border-border">
-                        {contact.budgetRange && (
-                          <p className="text-sm text-muted-foreground mb-1">
-                            <span className="font-semibold text-card-foreground">Budget:</span> {contact.budgetRange}
-                          </p>
-                        )}
-                        {contact.propertyTypes && (
-                          <p className="text-sm text-muted-foreground">
-                            <span className="font-semibold text-card-foreground">Interested in:</span> {contact.propertyTypes}
-                          </p>
-                        )}
-                      </div>
+                  {/* Simplified contact info */}
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground truncate">{contact.email}</p>
+                    {contact.phone && (
+                      <p className="text-xs text-muted-foreground truncate">{contact.phone}</p>
                     )}
-
-                    {/* Contact notes section */}
-                    {contact.notes && (
-                      <div className="mt-5 pt-4 border-t border-border">
-                        <p className="text-sm text-muted-light line-clamp-2">{contact.notes}</p>
-                      </div>
-                    )}
+                    <p className="text-xs text-muted-foreground">
+                      {formatLastContact(contact.lastContact)}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -983,6 +929,155 @@ export default function ContactsContent() {
             className="fixed inset-0 z-5" 
             onClick={() => setShowVerifiedTooltip(false)}
           />
+        )}
+
+        {/* Contact Info Modal - Better organized */}
+        {showInfoModal && selectedContact && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg">
+              <div className="p-6 border-b border-border">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <User2 className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-semibold text-foreground">{selectedContact.name}</h2>
+                      <p className="text-sm text-muted-foreground">{selectedContact.email}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowInfoModal(false);
+                      setSelectedContact(null);
+                    }}
+                    className="p-2 hover:bg-muted rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5 text-muted-foreground" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6">
+                {/* Status and Type Row */}
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Status</p>
+                    <div className="flex items-center gap-2">
+                      {selectedContact.status === 'client' ? (
+                        <>
+                          <BadgeCheck className="w-4 h-4 text-blue-600" />
+                          <span className="text-sm font-medium text-blue-600">Client</span>
+                        </>
+                      ) : (
+                        <>
+                          <Target className="w-4 h-4 text-yellow-500" />
+                          <span className="text-sm font-medium text-muted-foreground">Lead</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Type</p>
+                    <p className="text-sm font-medium text-foreground capitalize">{selectedContact.type}</p>
+                  </div>
+                </div>
+
+                {/* Contact Information */}
+                <div className="space-y-4 mb-6">
+                  <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">Contact Information</h3>
+                  
+                  {selectedContact.phone && (
+                    <div className="flex items-center gap-3">
+                      <Phone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground">Phone</p>
+                        <p className="text-sm text-foreground">{selectedContact.phone}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedContact.location && (
+                    <div className="flex items-center gap-3">
+                      <MapPin className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground">Location</p>
+                        <p className="text-sm text-foreground">{selectedContact.location}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3">
+                    <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">Last Contact</p>
+                      <p className="text-sm text-foreground">{formatLastContact(selectedContact.lastContact)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Property Details */}
+                {(selectedContact.budgetRange || selectedContact.propertyTypes) && (
+                  <div className="space-y-4 mb-6">
+                    <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">Property Details</h3>
+                    
+                    {selectedContact.budgetRange && (
+                      <div className="flex items-center gap-3">
+                        <Home className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground">Budget Range</p>
+                          <p className="text-sm text-foreground">{selectedContact.budgetRange}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedContact.propertyTypes && (
+                      <div className="flex items-center gap-3">
+                        <Building2 className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground">Property Types</p>
+                          <p className="text-sm text-foreground">{selectedContact.propertyTypes}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Notes */}
+                {selectedContact.notes && (
+                  <div className="space-y-3 mb-6">
+                    <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">Notes</h3>
+                    <div className="p-3 bg-muted/30 rounded-lg">
+                      <p className="text-sm text-foreground leading-relaxed">{selectedContact.notes}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-4 border-t border-border">
+                  <button
+                    onClick={() => {
+                      setShowInfoModal(false);
+                      setSelectedContact(null);
+                    }}
+                    className="flex-1 px-4 py-2.5 border border-border rounded-lg text-foreground hover:bg-muted transition-colors"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowInfoModal(false);
+                      setSelectedContact(null);
+                      handleEditContact(selectedContact);
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium"
+                  >
+                    Edit Contact
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </ErrorBoundary>
