@@ -1,12 +1,21 @@
 "use client"
 
-import { Search, Calendar, Plus, Phone, Mail, User2, Building2, Home, X, Edit, Trash2, AlertTriangle, Save } from "lucide-react"
-import { useState, useMemo } from "react"
+import { Search, Calendar, Plus, Phone, Mail, User2, Building2, Home, X, Edit, Trash2, AlertTriangle, Save, CheckCircle, Info, MapPin, Loader2, Sparkles, BadgeCheck, Target } from "lucide-react"
+import { useState, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useContactsData } from "@/hooks/useCentralizedDashboardData"
-import { useContact, useContactForm, type Contact } from "@/hooks/useContact"
+import { useContact, useContactForm } from "@/hooks/useContact"
+import { useLocation } from "@/hooks/useLocation"
+import type { Contact, CreateContactData } from "@/types/contact"
+import type { LocationSuggestion } from "@/types/location"
 import { LoadingSpinner } from "@/components/common/Feedback/LoadingSpinner"
+import { ErrorBoundary } from "@/components/common/Feedback/ErrorBoundary"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import type { Conversation } from "@/types/conversation"
 import { toast } from 'react-hot-toast'
@@ -23,6 +32,8 @@ export default function ContactsContent() {
   const [contactToDelete, setContactToDelete] = useState<Contact | null>(null)
   const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false)
   const [savedContactName, setSavedContactName] = useState('')
+  const [showVerifiedTooltip, setShowVerifiedTooltip] = useState(false)
+  const [locationError, setLocationError] = useState<string | null>(null)
 
   // Use contacts data hook to get real conversations
   const { conversations, loading: conversationsLoading, error: conversationsError } = useContactsData({
@@ -41,8 +52,27 @@ export default function ContactsContent() {
     fetchContacts,
   } = useContact()
 
-  // Use contact form hook
-  const { formData, errors, updateField, validateForm, resetForm } = useContactForm()
+  // Use location autocomplete hook
+  const {
+    isDropdownOpen: isLocationDropdownOpen,
+    suggestions: locationSuggestions,
+    isLoading: isLocationLoading,
+    handleLocationChange,
+    selectLocation,
+    closeDropdown: closeLocationDropdown
+  } = useLocation()
+
+  // Use enhanced contact form hook
+  const { 
+    formData, 
+    errors, 
+    loading: formLoading,
+    updateField, 
+    validateForm, 
+    validateField,
+    resetForm, 
+    setSubmitting,
+  } = useContactForm()
 
   // Process conversations into contacts
   const conversationContacts = useMemo((): Contact[] => {
@@ -135,10 +165,11 @@ export default function ContactsContent() {
     return "other"
   }
 
-  function determineContactStatus(thread: any): "active" | "inactive" | "completed" {
-    if (thread.completed) return "completed"
-    if (thread.spam || thread.flag) return "inactive"
-    return "active"
+  function determineContactStatus(thread: any): "client" | "lead" {
+    if (thread.completed || thread.status === 'completed') {
+      return "client"
+    }
+    return "lead"
   }
 
   function formatLastContact(dateString: string): string {
@@ -169,62 +200,16 @@ export default function ContactsContent() {
     }
   }
 
-  // Handle new contact submission
-  const handleSubmitContact = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!validateForm()) {
-      return
-    }
-
-    const result = await createContact(formData)
-    
-    if (result.success) {
-      console.log('✅ Contact created successfully!')
-      setShowNewContactModal(false)
-      resetForm()
-    } else {
-      console.error('❌ Failed to create contact:', result.error)
-      // In a real app, you'd show a toast notification here
-      alert(`Failed to create contact: ${result.error}`)
-    }
-  }
-
   // Handle edit contact
   const handleEditContact = (contact: Contact) => {
     setEditingContact(contact)
     // Pre-fill form with contact data
     Object.entries(contact).forEach(([key, value]) => {
       if (key in formData) {
-        updateField(key as keyof typeof formData, value || '')
+        updateField(key as keyof CreateContactData, value || '')
       }
     })
     setShowNewContactModal(true)
-  }
-
-  // Handle update contact
-  const handleUpdateContact = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!editingContact || !validateForm()) {
-      return
-    }
-
-    const result = await updateContact({
-      id: editingContact.id,
-      ...formData
-    })
-    
-    if (result.success) {
-      console.log('✅ Contact updated successfully!')
-      setShowNewContactModal(false)
-      setEditingContact(null)
-      resetForm()
-    } else {
-      console.error('❌ Failed to update contact:', result.error)
-      // In a real app, you'd show a toast notification here
-      alert(`Failed to update contact: ${result.error}`)
-    }
   }
 
   // Handle delete contact
@@ -242,12 +227,18 @@ export default function ContactsContent() {
       const result = await deleteContact(contactToDelete.id)
       if (result.success) {
         console.log('✅ Contact deleted successfully!')
+        toast.success(`Contact "${contactToDelete.name}" deleted successfully!`, {
+          duration: 3000,
+          position: 'top-right',
+        });
         setShowDeleteModal(false)
         setContactToDelete(null)
       } else {
         console.error('❌ Failed to delete contact:', result.error)
-        // In a real app, you'd show a toast notification here
-        alert(`Failed to delete contact: ${result.error}`)
+        toast.error(`Failed to delete contact: ${result.error}`, {
+          duration: 4000,
+          position: 'top-right',
+        });
       }
     }
   }
@@ -261,14 +252,14 @@ export default function ContactsContent() {
   // Update the handleSaveAsContact function to refresh contacts after saving
   const handleSaveAsContact = async (contact: Contact) => {
     try {
-      // Pre-fill the form with all available contact data, setting status to active
+      // Pre-fill the form with all available contact data, setting status to lead
       const contactData = {
         name: contact.name,
         email: contact.email,
         phone: contact.phone || '',
         location: contact.location || '',
         type: contact.type,
-        status: 'active' as const, // Always set to active when saving as contact
+        status: 'lead' as const, // Changed from 'active' to 'lead'
         notes: contact.notes || '',
         budgetRange: contact.budgetRange || '',
         propertyTypes: contact.propertyTypes || '',
@@ -308,7 +299,102 @@ export default function ContactsContent() {
     }
   }
 
-  const loading = conversationsLoading || contactsLoading
+  // Update the location selection to validate and show errors
+  const selectLocationSuggestion = (suggestion: LocationSuggestion) => {
+    selectLocation(suggestion, (locationData) => {
+      // Only set location if it has city, state, and country
+      if (suggestion.city && suggestion.state && suggestion.country) {
+        updateField('location', suggestion.fullAddress);
+        setLocationError(null); // Clear error
+      } else {
+        // Show error if incomplete
+        setLocationError('Please select a complete location with city, state, and country');
+      }
+    });
+  };
+
+  // Update location input change to validate
+  const handleLocationInputChange = (value: string) => {
+    handleLocationChange(value, (locationValue) => {
+      updateField('location', locationValue);
+      
+      // Validate location on input change
+      if (locationValue) {
+        const parts = locationValue.split(',').map(part => part.trim());
+        if (parts.length < 3) {
+          setLocationError('Please select a complete location (city, state, country)');
+        } else {
+          setLocationError(null);
+        }
+      } else {
+        setLocationError(null);
+      }
+    });
+  };
+
+  // Add location validation to the form
+  const validateLocation = (location: string) => {
+    if (!location) return null; // Optional field
+    
+    // Check if location has at least city, state, and country
+    const parts = location.split(',').map(part => part.trim());
+    if (parts.length < 3) {
+      return 'Please select a complete location (city, state, country)';
+    }
+    
+    return null;
+  };
+
+  // Update the handleSubmit to include location validation
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Add location validation
+    const locationError = validateLocation(formData.location);
+    if (locationError) {
+      toast.error(locationError, {
+        duration: 3000,
+        position: 'top-right',
+      });
+      return;
+    }
+    
+    if (!validateForm()) return;
+
+    try {
+      const contactData = {
+        name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
+        phone: formData.phone?.trim() || '',
+        location: formData.location?.trim() || '',
+        type: formData.type,
+        status: formData.status,
+        budgetRange: formData.budgetRange?.trim() || '',
+        propertyTypes: formData.propertyTypes?.trim() || '',
+        notes: formData.notes?.trim() || '',
+        lastContact: new Date().toISOString(),
+        conversationCount: editingContact?.conversationCount || 0,
+        createdAt: editingContact?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        associated_account: (session.user as any).id
+      };
+
+      if (editingContact) {
+        await updateContact({ id: editingContact.id, ...contactData });
+      } else {
+        await createContact(contactData);
+      }
+
+      setShowNewContactModal(false);
+      setEditingContact(null);
+      resetForm();
+      closeLocationDropdown();
+    } catch (error) {
+      console.error('Error saving contact:', error);
+    }
+  };
+
+  const loading = conversationsLoading || contactsLoading || formLoading
   const error = conversationsError || contactsError
 
   if (loading) {
@@ -331,345 +417,339 @@ export default function ContactsContent() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-background-muted">
-      <div className="flex-shrink-0 p-6 pb-4">
-        <h1 className="text-4xl font-extrabold text-card-foreground mb-2 tracking-tight">Contacts</h1>
-        <p className="text-lg text-muted-foreground">
-          Manage and view client information extracted from conversations.
-          {allContacts.length > 0 && ` Found ${allContacts.length} unique contacts.`}
-        </p>
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-6">
-        {/* Search and filter controls */}
-        <div className="bg-card p-5 rounded-xl border border-border shadow-sm mb-6 flex flex-col md:flex-row gap-4 items-center">
-          {/* Search input with icon */}
-          <div className="flex-1 relative w-full">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-light" />
-            <input
-              type="text"
-              placeholder="Search contacts by name, email, phone, or location..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-midnight-700 focus:border-midnight-700 text-card-foreground bg-background placeholder-text-muted-light"
-            />
-          </div>
-
-          {/* Filter controls */}
-          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-midnight-700 focus:border-midnight-700 text-card-foreground bg-background"
-            >
-              <option value="all">All Types</option>
-              <option value="buyer">Buyers</option>
-              <option value="seller">Sellers</option>
-              <option value="investor">Investors</option>
-              <option value="other">Other</option>
-            </select>
-
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-midnight-700 focus:border-midnight-700 text-card-foreground bg-background"
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="completed">Completed</option>
-            </select>
-
-            <button 
-              onClick={() => {
-                setEditingContact(null)
-                resetForm()
-                setShowNewContactModal(true)
-              }}
-              className="px-5 py-2.5 bg-gradient-to-r from-midnight-700 to-midnight-600 text-white rounded-lg shadow-md hover:from-midnight-600 hover:to-midnight-700 hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap font-medium"
-            >
-              <Plus className="h-5 w-5" />
-              New Contact
-            </button>
-          </div>
+    <ErrorBoundary>
+      <div className="flex flex-col h-full overflow-hidden bg-background-muted">
+        <div className="flex-shrink-0 p-6 pb-4">
+          <h1 className="text-4xl font-extrabold text-card-foreground mb-2 tracking-tight">Contacts</h1>
+          <p className="text-lg text-muted-foreground">
+            Manage and view client information extracted from conversations.
+            {allContacts.length > 0 && ` Found ${allContacts.length} unique contacts.`}
+          </p>
         </div>
 
-        {/* Contacts grid with responsive layout */}
-        {filteredContacts.length === 0 ? (
-          <div className="text-center py-16 bg-card rounded-xl border border-border shadow-sm">
-            <p className="text-muted-foreground text-xl font-medium mb-2">
-              {searchTerm || typeFilter !== "all" || statusFilter !== "all"
-                ? "No contacts match your filters"
-                : "No contacts found"}
-            </p>
-            <p className="text-muted-light text-base">
-              {searchTerm || typeFilter !== "all" || statusFilter !== "all"
-                ? "Try adjusting your search or filters"
-                : "Contacts will appear here as you receive conversations"}
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-6">
-            {filteredContacts.map((contact) => (
-              <div
-                key={contact.id}
-                className="bg-card rounded-xl border border-border shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-200 flex flex-col relative group"
+        <div className="flex-1 overflow-y-auto px-6">
+          {/* Search and filter controls */}
+          <div className="bg-card p-5 rounded-xl border border-border shadow-sm mb-6 flex flex-col md:flex-row gap-4 items-center">
+            {/* Search input with icon */}
+            <div className="flex-1 relative w-full">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-light" />
+              <input
+                type="text"
+                placeholder="Search contacts by name, email, phone, or location..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-midnight-700 focus:border-midnight-700 text-card-foreground bg-background placeholder-text-muted-light"
+              />
+            </div>
+
+            {/* Filter controls */}
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-midnight-700 focus:border-midnight-700 text-card-foreground bg-background"
               >
-                {/* Action buttons overlay */}
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
-                  {/* Show "Save as Contact" button only for conversation-derived contacts that aren't already saved */}
-                  {!contact.isManual && !manualContacts.some(manualContact => manualContact.email === contact.email) && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleSaveAsContact(contact)
-                      }}
-                      className="p-1.5 bg-background/80 backdrop-blur-sm rounded-lg hover:bg-background transition-colors"
-                      title="Save as contact"
-                    >
-                      <Save className="h-3 w-3 text-status-success" />
-                    </button>
-                  )}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleEditContact(contact)
-                    }}
-                    className="p-1.5 bg-background/80 backdrop-blur-sm rounded-lg hover:bg-background transition-colors"
-                    title="Edit contact"
-                  >
-                    <Edit className="h-3 w-3 text-muted-foreground" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleDeleteContact(contact.id)
-                    }}
-                    className="p-1.5 bg-background/80 backdrop-blur-sm rounded-lg hover:bg-background transition-colors"
-                    title="Delete contact"
-                  >
-                    <Trash2 className="h-3 w-3 text-status-error" />
-                  </button>
-                </div>
+                <option value="all">All Types</option>
+                <option value="buyer">Buyers</option>
+                <option value="seller">Sellers</option>
+                <option value="investor">Investors</option>
+                <option value="other">Other</option>
+              </select>
 
-                <div 
-                  className="p-5 flex-grow cursor-pointer"
-                  onClick={() => router.push(`/dashboard/conversations/${contact.id}`)}
-                >
-                  {/* Contact header with name and status badges */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="font-bold text-card-foreground text-xl leading-tight">{contact.name}</h3>
-                      <p className="text-sm text-muted-foreground">{contact.email}</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2 justify-end">
-                      {/* Verified badge for manual contacts */}
-                      {contact.isManual && (
-                        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-midnight-50 text-midnight-700 border border-midnight-200 flex items-center gap-1">
-                          <User2 className="h-3 w-3" />
-                          VERIFIED*
-                        </span>
-                      )}
-                      {/* Status badge */}
-                      <span
-                        className={cn(
-                          "px-2.5 py-1 rounded-full text-xs font-semibold",
-                          contact.status === "active"
-                            ? "bg-status-success-light text-status-success-text"
-                            : contact.status === "completed"
-                              ? "bg-status-info-light text-status-info-text"
-                              : "bg-muted text-muted-foreground"
-                        )}
-                      >
-                        {contact.status.toUpperCase()}
-                      </span>
-                      {/* Type badge */}
-                      <span
-                        className={cn(
-                          "px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1",
-                          contact.type === "buyer"
-                            ? "bg-contact-buyer-light text-contact-buyer-text"
-                            : contact.type === "seller"
-                              ? "bg-contact-seller-light text-contact-seller-text"
-                              : contact.type === "investor"
-                                ? "bg-contact-investor-light text-contact-investor-text"
-                                : "bg-muted text-muted-foreground"
-                        )}
-                      >
-                        {getTypeIcon(contact.type)}
-                        {contact.type.toUpperCase()}
-                      </span>
-                    </div>
-                  </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-midnight-700 focus:border-midnight-700 text-card-foreground bg-background"
+              >
+                <option value="all">All Status</option>
+                <option value="client">Clients</option>
+                <option value="lead">Leads</option>
+              </select>
 
-                  {/* Contact details with icons */}
-                  <div className="mt-4 space-y-2 text-muted-foreground">
-                    {contact.phone && (
-                      <div className="flex items-center gap-3 text-base">
-                        <Phone className="h-4 w-4 text-muted-light flex-shrink-0" />
-                        <span>{contact.phone}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-3 text-base">
-                      <Mail className="h-4 w-4 text-muted-light flex-shrink-0" />
-                      <span>{contact.email}</span>
-                    </div>
-                    {contact.location && (
-                      <div className="flex items-center gap-3 text-base">
-                        <Home className="h-4 w-4 text-muted-light flex-shrink-0" />
-                        <span>{contact.location}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-3 text-base">
-                      <Calendar className="h-4 w-4 text-muted-light flex-shrink-0" />
-                      <span>Last contact: {formatLastContact(contact.lastContact)}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-base">
-                      <User2 className="h-4 w-4 text-muted-light flex-shrink-0" />
-                      <span>
-                        {contact.conversationCount} conversation{contact.conversationCount !== 1 ? "s" : ""}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Additional information */}
-                  {(contact.budgetRange || contact.propertyTypes) && (
-                    <div className="mt-5 pt-4 border-t border-border">
-                      {contact.budgetRange && (
-                        <p className="text-sm text-muted-foreground mb-1">
-                          <span className="font-semibold text-card-foreground">Budget:</span> {contact.budgetRange}
-                        </p>
-                      )}
-                      {contact.propertyTypes && (
-                        <p className="text-sm text-muted-foreground">
-                          <span className="font-semibold text-card-foreground">Interested in:</span> {contact.propertyTypes}
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Contact notes section */}
-                  {contact.notes && (
-                    <div className="mt-5 pt-4 border-t border-border">
-                      <p className="text-sm text-muted-light line-clamp-2">{contact.notes}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+              <button 
+                onClick={() => {
+                  setEditingContact(null)
+                  resetForm()
+                  setShowNewContactModal(true)
+                }}
+                className="px-5 py-2.5 bg-gradient-to-r from-midnight-700 to-midnight-600 text-white rounded-lg shadow-md hover:from-midnight-600 hover:to-midnight-700 hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap font-medium"
+              >
+                <Plus className="h-5 w-5" />
+                New Contact
+              </button>
+            </div>
           </div>
-        )}
-      </div>
 
-      {/* New/Edit Contact Modal */}
-      {showNewContactModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-card rounded-xl border border-border shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto scrollbar-hide">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-card-foreground">
-                  {editingContact ? 'Edit Contact' : 'New Contact'}
-                </h2>
-                <button
-                  onClick={() => {
-                    setShowNewContactModal(false)
-                    setEditingContact(null)
-                    resetForm()
-                  }}
-                  className="p-2 hover:bg-muted rounded-lg transition-colors"
+          {/* Contacts grid with responsive layout */}
+          {filteredContacts.length === 0 ? (
+            <div className="text-center py-16 bg-card rounded-xl border border-border shadow-sm">
+              <p className="text-muted-foreground text-xl font-medium mb-2">
+                {searchTerm || typeFilter !== "all" || statusFilter !== "all"
+                  ? "No contacts match your filters"
+                  : "No contacts found"}
+              </p>
+              <p className="text-muted-light text-base">
+                {searchTerm || typeFilter !== "all" || statusFilter !== "all"
+                  ? "Try adjusting your search or filters"
+                  : "Contacts will appear here as you receive conversations"}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredContacts.map((contact) => (
+                <div
+                  key={contact.id}
+                  className="bg-card border border-border rounded-lg p-4 hover:shadow-md transition-shadow"
                 >
-                  <X className="h-5 w-5 text-muted-foreground" />
-                </button>
+                  {/* Everything on one line */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <h3 className="font-semibold text-foreground truncate flex-1">{contact.name}</h3>
+                    
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {/* Verified badge */}
+                      <div className="flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3 text-status-success" />
+                        <span className="text-xs text-muted-foreground">Verified</span>
+                      </div>
+                      
+                      {/* Status with icon */}
+                      <div className="flex items-center gap-1">
+                        {contact.status === 'client' ? (
+                          <BadgeCheck className="w-3 h-3 text-blue-600" title="Client" />
+                        ) : (
+                          <Target className="w-3 h-3 text-yellow-500" title="Lead" />
+                        )}
+                        {contact.status === 'client' ? (
+                          <span className="text-xs text-blue-600 font-medium">Client</span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Lead</span>
+                        )}
+                      </div>
+                      
+                      {/* Action buttons */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleEditContact(contact)
+                        }}
+                        className="p-1.5 bg-background/80 backdrop-blur-sm rounded-lg hover:bg-background transition-colors"
+                        title="Edit contact"
+                      >
+                        <Edit className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteContact(contact.id)
+                        }}
+                        className="p-1.5 bg-background/80 backdrop-blur-sm rounded-lg hover:bg-background transition-colors"
+                        title="Delete contact"
+                      >
+                        <Trash2 className="w-4 h-4 text-status-error" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Contact info - clickable for details */}
+                  <div 
+                    className="cursor-pointer"
+                    onClick={() => router.push(`/dashboard/conversations/${contact.id}`)}
+                  >
+                    <p className="text-sm text-muted-foreground truncate">{contact.email}</p>
+                    
+                    {/* Contact details with icons */}
+                    <div className="mt-4 space-y-2 text-muted-foreground">
+                      {contact.phone && (
+                        <div className="flex items-center gap-3 text-base">
+                          <Phone className="h-4 w-4 text-muted-light flex-shrink-0" />
+                          <span>{contact.phone}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-3 text-base">
+                        <Mail className="h-4 w-4 text-muted-light flex-shrink-0" />
+                        <span>{contact.email}</span>
+                      </div>
+                      {contact.location && (
+                        <div className="flex items-center gap-3 text-base">
+                          <Home className="h-4 w-4 text-muted-light flex-shrink-0" />
+                          <span>{contact.location}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-3 text-base">
+                        <Calendar className="h-4 w-4 text-muted-light flex-shrink-0" />
+                        <span>Last contact: {formatLastContact(contact.lastContact)}</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-base">
+                        <User2 className="h-4 w-4 text-muted-light flex-shrink-0" />
+                        <span>
+                          {contact.conversationCount} conversation{contact.conversationCount !== 1 ? "s" : ""}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Additional information */}
+                    {(contact.budgetRange || contact.propertyTypes) && (
+                      <div className="mt-5 pt-4 border-t border-border">
+                        {contact.budgetRange && (
+                          <p className="text-sm text-muted-foreground mb-1">
+                            <span className="font-semibold text-card-foreground">Budget:</span> {contact.budgetRange}
+                          </p>
+                        )}
+                        {contact.propertyTypes && (
+                          <p className="text-sm text-muted-foreground">
+                            <span className="font-semibold text-card-foreground">Interested in:</span> {contact.propertyTypes}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Contact notes section */}
+                    {contact.notes && (
+                      <div className="mt-5 pt-4 border-t border-border">
+                        <p className="text-sm text-muted-light line-clamp-2">{contact.notes}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Enhanced New/Edit Contact Modal */}
+        {showNewContactModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b border-border">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold text-foreground">
+                    {editingContact ? 'Edit Contact' : 'Add New Contact'}
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setShowNewContactModal(false)
+                      setEditingContact(null)
+                      resetForm()
+                      closeLocationDropdown()
+                    }}
+                    className="p-2 hover:bg-muted rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5 text-muted-foreground" />
+                  </button>
+                </div>
               </div>
 
-              <form onSubmit={editingContact ? handleUpdateContact : handleSubmitContact} className="space-y-4">
-                {/* Name and Email in a row */}
+              <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                {/* Name and Email Row */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Name */}
                   <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-card-foreground mb-2">
-                      Name *
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Name <span className="text-status-error">*</span>
                     </label>
-                    <input
+                    <Input
                       type="text"
-                      id="name"
                       value={formData.name}
                       onChange={(e) => updateField('name', e.target.value)}
-                      className={cn(
-                        "w-full px-4 py-3 rounded-lg border transition-all duration-200",
-                        "focus:ring-2 focus:ring-primary focus:border-primary",
-                        "text-card-foreground bg-background",
-                        errors.name ? "border-status-error focus:border-status-error focus:ring-status-error" : "border-border"
-                      )}
-                      placeholder="Enter contact name"
+                      placeholder="Full name"
+                      className={cn(errors.name && "border-status-error focus:ring-status-error")}
                     />
-                    {errors.name && <p className="text-sm text-status-error mt-1">{errors.name}</p>}
+                    {errors.name && (
+                      <p className="text-xs text-status-error mt-1">{errors.name}</p>
+                    )}
                   </div>
-
-                  {/* Email */}
                   <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-card-foreground mb-2">
-                      Email *
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Email <span className="text-status-error">*</span>
                     </label>
-                    <input
+                    <Input
                       type="email"
-                      id="email"
                       value={formData.email}
-                      onChange={(e) => updateField('email', e.target.value)}
-                      className={cn(
-                        "w-full px-4 py-3 rounded-lg border transition-all duration-200",
-                        "focus:ring-2 focus:ring-primary focus:border-primary",
-                        "text-card-foreground bg-background",
-                        errors.email ? "border-status-error focus:border-status-error focus:ring-status-error" : "border-border"
-                      )}
-                      placeholder="Enter email address"
+                      onChange={(e) => updateField('email', e.target.value.toLowerCase())}
+                      placeholder="email@example.com"
+                      className={cn(errors.email && "border-status-error focus:ring-status-error")}
                     />
-                    {errors.email && <p className="text-sm text-status-error mt-1">{errors.email}</p>}
+                    {errors.email && (
+                      <p className="text-xs text-status-error mt-1">{errors.email}</p>
+                    )}
                   </div>
                 </div>
 
-                {/* Phone and Location in a row */}
+                {/* Phone and Location Row */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Phone */}
                   <div>
-                    <label htmlFor="phone" className="block text-sm font-medium text-card-foreground mb-2">
+                    <label className="block text-sm font-medium text-foreground mb-2">
                       Phone
                     </label>
-                    <input
+                    <Input
                       type="tel"
-                      id="phone"
                       value={formData.phone}
                       onChange={(e) => updateField('phone', e.target.value)}
-                      className={cn(
-                        "w-full px-4 py-3 rounded-lg border transition-all duration-200",
-                        "focus:ring-2 focus:ring-primary focus:border-primary",
-                        "text-card-foreground bg-background",
-                        errors.phone ? "border-status-error focus:border-status-error focus:ring-status-error" : "border-border"
-                      )}
-                      placeholder="Enter phone number"
+                      placeholder="(123) 456-7890"
+                      className={cn(errors.phone && "border-status-error focus:ring-status-error")}
                     />
-                    {errors.phone && <p className="text-sm text-status-error mt-1">{errors.phone}</p>}
+                    {errors.phone && (
+                      <p className="text-xs text-status-error mt-1">{errors.phone}</p>
+                    )}
                   </div>
-
-                  {/* Location */}
-                  <div>
-                    <label htmlFor="location" className="block text-sm font-medium text-card-foreground mb-2">
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-foreground mb-2">
                       Location
                     </label>
-                    <input
-                      type="text"
-                      id="location"
-                      value={formData.location}
-                      onChange={(e) => updateField('location', e.target.value)}
-                      className="w-full px-4 py-3 rounded-lg border border-border transition-all duration-200 focus:ring-2 focus:ring-primary focus:border-primary text-card-foreground bg-background"
-                      placeholder="Enter location"
-                    />
+                    <div className="relative">
+                      <Input
+                        type="text"
+                        value={formData.location}
+                        onChange={(e) => handleLocationInputChange(e.target.value)}
+                        placeholder="Start typing city name..."
+                        autoComplete="off"
+                        className={cn(
+                          "transition-all duration-200",
+                          locationError 
+                            ? "border-status-error focus:ring-status-error focus:border-status-error" 
+                            : "border-border focus:ring-primary focus:border-primary"
+                        )}
+                      />
+                      {isLocationLoading && (
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                          <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                        </div>
+                      )}
+                    </div>
+                    {locationError && (
+                      <p className="text-xs text-status-error mt-1 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        {locationError}
+                      </p>
+                    )}
+                    {isLocationDropdownOpen && (
+                      <div className="absolute z-20 w-full mt-1 bg-card border border-border rounded-lg shadow-2xl backdrop-blur-sm">
+                        {locationSuggestions.length > 0 ? (
+                          <div className="max-h-60 overflow-y-auto scrollbar-hide">
+                            {locationSuggestions.map((suggestion) => (
+                              <button
+                                key={suggestion.uniqueKey}
+                                type="button"
+                                className="w-full text-left p-3 hover:bg-muted transition-colors text-foreground border-b border-border last:border-b-0 font-medium"
+                                onClick={() => selectLocationSuggestion(suggestion)}
+                              >
+                                <div className="font-semibold text-sm text-foreground">{suggestion.city}</div>
+                                <div className="text-xs text-muted-foreground">{suggestion.fullAddress}</div>
+                              </button>
+                            ))}
+                          </div>
+                        ) : !isLocationLoading && formData.location.length > 2 && (
+                          <div className="p-3 text-muted-foreground text-xs font-medium">
+                            No locations found. Try a different search term.
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Type and Status in a row */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Type */}
+                  {/* Type dropdown */}
                   <div>
                     <label htmlFor="type" className="block text-sm font-medium text-card-foreground mb-2">
                       Type
@@ -687,7 +767,7 @@ export default function ContactsContent() {
                     </select>
                   </div>
 
-                  {/* Status */}
+                  {/* Updated Status dropdown */}
                   <div>
                     <label htmlFor="status" className="block text-sm font-medium text-card-foreground mb-2">
                       Status
@@ -698,47 +778,47 @@ export default function ContactsContent() {
                       onChange={(e) => updateField('status', e.target.value as any)}
                       className="w-full px-4 py-3 rounded-lg border border-border transition-all duration-200 focus:ring-2 focus:ring-primary focus:border-primary text-card-foreground bg-background"
                     >
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                      <option value="completed">Completed</option>
+                      <option value="lead">Lead</option>
+                      <option value="client">Client</option>
                     </select>
                   </div>
                 </div>
 
-                {/* Budget Range and Property Types in a row */}
+                {/* Budget Range and Property Types Row */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Budget Range */}
                   <div>
-                    <label htmlFor="budgetRange" className="block text-sm font-medium text-card-foreground mb-2">
+                    <label className="block text-sm font-medium text-foreground mb-2">
                       Budget Range
                     </label>
-                    <input
+                    <Input
                       type="text"
-                      id="budgetRange"
                       value={formData.budgetRange}
                       onChange={(e) => updateField('budgetRange', e.target.value)}
-                      className="w-full px-4 py-3 rounded-lg border border-border transition-all duration-200 focus:ring-2 focus:ring-primary focus:border-primary text-card-foreground bg-background"
-                      placeholder="e.g., $300K-500K"
+                      placeholder="e.g., 300k-500k, 1M, 500,000"
+                      className={cn(errors.budgetRange && "border-status-error focus:ring-status-error")}
                     />
+                    {errors.budgetRange && (
+                      <p className="text-xs text-status-error mt-1">{errors.budgetRange}</p>
+                    )}
                   </div>
-
-                  {/* Property Types */}
                   <div>
-                    <label htmlFor="propertyTypes" className="block text-sm font-medium text-card-foreground mb-2">
+                    <label className="block text-sm font-medium text-foreground mb-2">
                       Property Types
                     </label>
-                    <input
+                    <Input
                       type="text"
-                      id="propertyTypes"
                       value={formData.propertyTypes}
                       onChange={(e) => updateField('propertyTypes', e.target.value)}
-                      className="w-full px-4 py-3 rounded-lg border border-border transition-all duration-200 focus:ring-2 focus:ring-primary focus:border-primary text-card-foreground bg-background"
-                      placeholder="e.g., Single Family, Condo"
+                      placeholder="e.g., Condo, Townhouse, Single Family"
+                      className={cn(errors.propertyTypes && "border-status-error focus:ring-status-error")}
                     />
+                    {errors.propertyTypes && (
+                      <p className="text-xs text-status-error mt-1">{errors.propertyTypes}</p>
+                    )}
                   </div>
                 </div>
 
-                {/* Notes - full width */}
+                {/* Notes with character counter */}
                 <div>
                   <label htmlFor="notes" className="block text-sm font-medium text-card-foreground mb-2">
                     Notes
@@ -747,11 +827,43 @@ export default function ContactsContent() {
                     id="notes"
                     value={formData.notes}
                     onChange={(e) => updateField('notes', e.target.value)}
+                    onBlur={() => validateField('notes')}
                     rows={3}
-                    className="w-full px-4 py-3 rounded-lg border border-border transition-all duration-200 focus:ring-2 focus:ring-primary focus:border-primary text-card-foreground bg-background resize-none"
+                    className={cn(
+                      "w-full px-4 py-3 rounded-lg border transition-all duration-200",
+                      "focus:ring-2 focus:ring-primary focus:border-primary",
+                      "text-card-foreground bg-background resize-none",
+                      errors.notes 
+                        ? "border-status-error focus:border-status-error focus:ring-status-error/20" 
+                        : "border-border"
+                    )}
                     placeholder="Add notes about this contact..."
                   />
+                  <div className="flex justify-between items-center mt-1">
+                    {errors.notes && (
+                      <p className="text-sm text-status-error flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        {errors.notes}
+                      </p>
+                    )}
+                    <p className={cn(
+                      "text-xs ml-auto",
+                      formData.notes.length > 450 ? "text-status-error" : "text-muted-foreground"
+                    )}>
+                      {formData.notes.length}/500
+                    </p>
+                  </div>
                 </div>
+
+                {/* Summary error message */}
+                {Object.keys(errors).length > 0 && (
+                  <div className="p-3 bg-status-error/10 border border-status-error/20 rounded-lg">
+                    <p className="text-sm text-status-error flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4" />
+                      Please correct the highlighted fields before submitting.
+                    </p>
+                  </div>
+                )}
 
                 {/* Submit Button */}
                 <div className="flex gap-3 pt-4">
@@ -763,101 +875,116 @@ export default function ContactsContent() {
                       resetForm()
                     }}
                     className="flex-1 px-4 py-3 border border-border rounded-lg text-card-foreground hover:bg-muted transition-colors"
+                    disabled={formLoading}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-4 py-3 bg-gradient-to-r from-midnight-700 to-midnight-600 text-white rounded-lg hover:from-midnight-600 hover:to-midnight-700 transition-all duration-200 font-medium"
+                    disabled={formLoading || Object.keys(errors).length > 0}
+                    className={cn(
+                      "flex-1 px-4 py-3 rounded-lg transition-all duration-200 font-medium",
+                      formLoading || Object.keys(errors).length > 0
+                        ? "bg-muted text-muted-foreground cursor-not-allowed"
+                        : "bg-gradient-to-r from-midnight-700 to-midnight-600 text-white hover:from-midnight-600 hover:to-midnight-700"
+                    )}
                   >
-                    {editingContact ? 'Update Contact' : 'Create Contact'}
+                    {formLoading ? 'Saving...' : (editingContact ? 'Update Contact' : 'Create Contact')}
                   </button>
                 </div>
               </form>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && contactToDelete && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-card rounded-xl border border-border shadow-lg max-w-md w-full">
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-status-error/10 rounded-lg">
-                  <AlertTriangle className="h-6 w-6 text-status-error" />
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && contactToDelete && (
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-card rounded-xl border border-border shadow-lg max-w-md w-full">
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-status-error/10 rounded-lg">
+                    <AlertTriangle className="h-6 w-6 text-status-error" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-card-foreground">Delete Contact</h3>
+                    <p className="text-sm text-muted-foreground">This action cannot be undone.</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-card-foreground">Delete Contact</h3>
-                  <p className="text-sm text-muted-foreground">This action cannot be undone.</p>
+                
+                <div className="mb-6 p-4 bg-background-muted rounded-lg">
+                  <p className="text-card-foreground font-medium">{contactToDelete.name}</p>
+                  <p className="text-sm text-muted-foreground">{contactToDelete.email}</p>
                 </div>
-              </div>
-              
-              <div className="mb-6 p-4 bg-background-muted rounded-lg">
-                <p className="text-card-foreground font-medium">{contactToDelete.name}</p>
-                <p className="text-sm text-muted-foreground">{contactToDelete.email}</p>
-              </div>
 
-              <div className="flex gap-3">
-                <button
-                  onClick={cancelDelete}
-                  className="flex-1 px-4 py-2.5 border border-border rounded-lg text-card-foreground hover:bg-muted transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmDelete}
-                  className="flex-1 px-4 py-2.5 bg-status-error text-white rounded-lg hover:bg-status-error/90 transition-colors font-medium"
-                >
-                  Delete Contact
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={cancelDelete}
+                    className="flex-1 px-4 py-2.5 border border-border rounded-lg text-card-foreground hover:bg-muted transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDelete}
+                    className="flex-1 px-4 py-2.5 bg-status-error text-white rounded-lg hover:bg-status-error/90 transition-colors font-medium"
+                  >
+                    Delete Contact
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Save Success Modal */}
-      {showSaveSuccessModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-card rounded-xl border border-border shadow-lg max-w-md w-full">
-            <div className="p-6 text-center">
-              <div className="flex items-center justify-center mb-4">
-                <div className="p-3 bg-status-success/10 rounded-full">
-                  <Save className="h-8 w-8 text-status-success" />
+        {/* Save Success Modal */}
+        {showSaveSuccessModal && (
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-card rounded-xl border border-border shadow-lg max-w-md w-full">
+              <div className="p-6 text-center">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="p-3 bg-status-success/10 rounded-full">
+                    <Save className="h-8 w-8 text-status-success" />
+                  </div>
                 </div>
-              </div>
-              
-              <h3 className="text-xl font-semibold text-card-foreground mb-2">
-                Contact Saved!
-              </h3>
-              
-              <p className="text-muted-foreground mb-3">
-                "{savedContactName}" has been added to your contacts.
-              </p>
-              
-              {/* Verified Contacts indicator */}
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-midnight-50 border border-midnight-200 rounded-full text-sm font-medium text-midnight-700">
-                <User2 className="h-4 w-4" />
-                Verified Contacts*
-              </div>
-              
-              <div className="mt-6">
-                <button
-                  onClick={() => {
-                    setShowSaveSuccessModal(false)
-                    setSavedContactName('')
-                  }}
-                  className="px-6 py-2.5 bg-gradient-to-r from-midnight-700 to-midnight-600 text-white rounded-lg hover:from-midnight-600 hover:to-midnight-700 transition-all duration-200 font-medium"
-                >
-                  OK
-                </button>
+                
+                <h3 className="text-xl font-semibold text-card-foreground mb-2">
+                  Contact Saved!
+                </h3>
+                
+                <p className="text-muted-foreground mb-3">
+                  "{savedContactName}" has been added to your contacts.
+                </p>
+                
+                {/* Verified Contacts indicator */}
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-midnight-50 border border-midnight-200 rounded-full text-sm font-medium text-midnight-700">
+                  <User2 className="h-4 w-4" />
+                  Verified Contacts*
+                </div>
+                
+                <div className="mt-6">
+                  <button
+                    onClick={() => {
+                      setShowSaveSuccessModal(false)
+                      setSavedContactName('')
+                    }}
+                    className="px-6 py-2.5 bg-gradient-to-r from-midnight-700 to-midnight-600 text-white rounded-lg hover:from-midnight-600 hover:to-midnight-700 transition-all duration-200 font-medium"
+                  >
+                    OK
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+
+        {/* Click outside to close tooltip */}
+        {showVerifiedTooltip && (
+          <div 
+            className="fixed inset-0 z-5" 
+            onClick={() => setShowVerifiedTooltip(false)}
+          />
+        )}
+      </div>
+    </ErrorBoundary>
   )
 }

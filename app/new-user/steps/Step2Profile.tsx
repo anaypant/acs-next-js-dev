@@ -2,19 +2,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { User, MapPin, Building, Briefcase, ArrowRight, ChevronDown, Loader2, Sparkles } from 'lucide-react';
+import { useLocation } from '@/hooks/useLocation';
+import type { LocationSuggestion } from '@/types/location';
 
 const PROFILE_TITLE = "Tell Us About Yourself";
 const PROFILE_SUBTITLE = "Help us personalize your ACS experience with some basic information.";
-const COUNTRIES = [
-  "United States", "Canada", "United Kingdom", "Australia", "Germany", "France", "Spain", "Italy", "Netherlands", "Other"
-];
-const US_STATES = [
-  "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware", "Florida", "Georgia",
-  "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland",
-  "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey",
-  "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina",
-  "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming"
-];
 
 interface ProfileData {
   bio: string;
@@ -24,16 +16,6 @@ interface ProfileData {
   zipcode: string;
   company: string;
   jobTitle: string;
-}
-
-interface LocationSuggestion {
-  fullAddress: string;
-  city: string;
-  state: string;
-  country: string;
-  zipCode: string;
-  displayName: string;
-  uniqueKey: string;
 }
 
 interface Step2ProfileProps {
@@ -51,10 +33,16 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
   onBack,
   loading,
 }) => {
-  const [isAddressDropdownOpen, setIsAddressDropdownOpen] = useState(false);
-  const [addressSuggestions, setAddressSuggestions] = useState<LocationSuggestion[]>([]);
-  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
-  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+  // Use the extracted location hook with all constants
+  const {
+    isDropdownOpen: isAddressDropdownOpen,
+    suggestions: addressSuggestions,
+    isLoading: isLoadingLocations,
+    handleLocationChange,
+    selectLocation,
+    closeDropdown: closeLocationDropdown,
+    constants: { COUNTRIES, US_STATES }
+  } = useLocation();
 
   const handleInputChange = (field: keyof ProfileData, value: string) => {
     setData({
@@ -63,177 +51,23 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
     });
   };
 
-  // Debounced location search function
-  const searchLocations = useCallback(async (query: string) => {
-    if (query.length < 3) {
-      setAddressSuggestions([]);
-      setIsAddressDropdownOpen(false);
-      return;
-    }
-
-    setIsLoadingLocations(true);
-    
-    try {
-      // Use OpenStreetMap Nominatim API for geocoding (free, no API key required)
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?` +
-        `q=${encodeURIComponent(query)}&` +
-        `format=json&` +
-        `addressdetails=1&` +
-        `limit=8&` +
-        `countrycodes=us,ca,gb,au,de,fr,es,it,nl&` +
-        `featuretype=city`,
-        {
-          headers: {
-            'User-Agent': 'ACS-NextJS-App/1.0 (support@automatedconsultancy.com)'
-          }
-        }
-      );
-      
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Process and deduplicate results
-        const processedSuggestions: LocationSuggestion[] = [];
-        const seenCities = new Set<string>();
-        
-        data.forEach((item: any) => {
-          if (!item.address) return;
-          
-          const address = item.address;
-          const city = address.city || address.town || address.village || address.hamlet || '';
-          const state = address.state || address.region || address.province || '';
-          const country = address.country || '';
-          const postcode = address.postcode || address.postal_code || '';
-          
-          // Skip if no city name
-          if (!city) return;
-          
-          // Map country names to our dropdown values
-          let mappedCountry = country;
-          switch (country) {
-            case 'United States of America':
-            case 'United States':
-              mappedCountry = 'United States';
-              break;
-            case 'United Kingdom':
-            case 'England':
-            case 'Scotland':
-            case 'Wales':
-            case 'Northern Ireland':
-              mappedCountry = 'United Kingdom';
-              break;
-            case 'Deutschland':
-              mappedCountry = 'Germany';
-              break;
-            case 'España':
-              mappedCountry = 'Spain';
-              break;
-            case 'France':
-            case 'République française':
-              mappedCountry = 'France';
-              break;
-            default:
-              if (!COUNTRIES.includes(country)) {
-                mappedCountry = 'Other';
-              }
-              break;
-          }
-          
-          // Create unique key for deduplication
-          const uniqueKey = `${city.toLowerCase()}-${state.toLowerCase()}-${mappedCountry.toLowerCase()}`;
-          
-          // Skip duplicates
-          if (seenCities.has(uniqueKey)) return;
-          seenCities.add(uniqueKey);
-          
-          const suggestion: LocationSuggestion = {
-            fullAddress: `${city}${state ? ', ' + state : ''}${mappedCountry ? ', ' + mappedCountry : ''}`,
-            city: city.trim(),
-            state: state.trim(),
-            country: mappedCountry.trim(),
-            zipCode: postcode.trim(),
-            displayName: item.display_name,
-            uniqueKey
-          };
-          
-          processedSuggestions.push(suggestion);
-        });
-        
-        // Sort by relevance (shorter display names first, then alphabetically)
-        processedSuggestions.sort((a, b) => {
-          const aRelevance = a.city.toLowerCase().indexOf(query.toLowerCase());
-          const bRelevance = b.city.toLowerCase().indexOf(query.toLowerCase());
-          
-          if (aRelevance !== bRelevance) {
-            return aRelevance - bRelevance;
-          }
-          
-          return a.fullAddress.localeCompare(b.fullAddress);
-        });
-        
-        // Limit to 5 most relevant results
-        const limitedSuggestions = processedSuggestions.slice(0, 5);
-        
-        setAddressSuggestions(limitedSuggestions);
-        setIsAddressDropdownOpen(limitedSuggestions.length > 0);
-      } else {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-    } catch (error) {
-      console.error('Error fetching location suggestions:', error);
-      // Show error state but don't break the UI
-      setAddressSuggestions([]);
-      setIsAddressDropdownOpen(false);
-    } finally {
-      setIsLoadingLocations(false);
-    }
-  }, []);
-
-  const handleLocationChange = (value: string) => {
-    handleInputChange('location', value);
-    
-    // Clear existing timeout
-    if (searchTimeout) {
-      clearTimeout(searchTimeout);
-    }
-    
-    // Set new timeout for debounced search (500ms delay)
-    const newTimeout = setTimeout(() => {
-      searchLocations(value);
-    }, 500);
-    
-    setSearchTimeout(newTimeout);
-    
-    // If input is cleared, close dropdown immediately
-    if (value.length === 0) {
-      setAddressSuggestions([]);
-      setIsAddressDropdownOpen(false);
-      setIsLoadingLocations(false);
-    }
+  const handleLocationInputChange = (value: string) => {
+    handleLocationChange(value, (locationValue) => {
+      handleInputChange('location', locationValue);
+    });
   };
 
   const selectAddressSuggestion = (suggestion: LocationSuggestion) => {
-    setData({
-      ...data,
-      location: suggestion.city,
-      state: suggestion.state,
-      country: suggestion.country,
-      zipcode: suggestion.zipCode,
+    selectLocation(suggestion, (locationData) => {
+      setData({
+        ...data,
+        location: locationData.location,
+        state: locationData.state,
+        country: locationData.country,
+        zipcode: locationData.zipcode,
+      });
     });
-    setIsAddressDropdownOpen(false);
-    setAddressSuggestions([]);
-    setIsLoadingLocations(false);
   };
-
-  // Clean up timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (searchTimeout) {
-        clearTimeout(searchTimeout);
-      }
-    };
-  }, [searchTimeout]);
 
   const canProceed = data.bio.trim().length > 0 && 
                     data.location.trim().length > 0 && 
@@ -296,7 +130,7 @@ const Step2Profile: React.FC<Step2ProfileProps> = ({
                 type="text"
                 className="w-full p-4 pr-10 rounded-lg bg-muted text-foreground border border-border focus:outline-none focus:ring-2 focus:ring-primary text-base font-medium placeholder-muted-foreground/70 transition-all duration-200"
                 value={data.location}
-                onChange={(e) => handleLocationChange(e.target.value)}
+                onChange={(e) => handleLocationInputChange(e.target.value)}
                 placeholder="Start typing your city name..."
                 autoComplete="off"
               />

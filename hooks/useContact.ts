@@ -4,46 +4,13 @@ import { apiClient } from '@/lib/api/client';
 import { handleApiError } from '@/lib/api/errorHandling';
 import { v4 as uuidv4 } from 'uuid';
 import type { ApiResponse } from '@/types/api';
-
-export interface Contact {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  location?: string;
-  type: "buyer" | "seller" | "investor" | "other";
-  status: "active" | "inactive" | "completed";
-  lastContact: string;
-  notes?: string;
-  conversationCount: number;
-  budgetRange?: string;
-  propertyTypes?: string;
-  createdAt: string;
-  updatedAt: string;
-  userId: string;
-  isManual?: boolean; // Flag to distinguish manual contacts
-}
-
-export interface CreateContactData {
-  name: string;
-  email: string;
-  phone?: string;
-  location?: string;
-  type: "buyer" | "seller" | "investor" | "other";
-  status?: "active" | "inactive" | "completed";
-  notes?: string;
-  budgetRange?: string;
-  propertyTypes?: string;
-}
-
-export interface UpdateContactData extends Partial<CreateContactData> {
-  id: string;
-}
-
-export interface UseContactOptions {
-  autoRefresh?: boolean;
-  refreshInterval?: number;
-}
+import type { 
+  Contact, 
+  CreateContactData, 
+  UpdateContactData, 
+  UseContactOptions,
+  ContactFormErrors
+} from '@/types/contact';
 
 export function useContact(options: UseContactOptions = {}) {
   const { data: session } = useSession();
@@ -147,7 +114,7 @@ export function useContact(options: UseContactOptions = {}) {
     const newContact: Contact = {
       id: uuidv4(),
       ...contactData,
-      status: contactData.status || 'active',
+      status: contactData.status || 'lead',
       lastContact: new Date().toISOString(),
       conversationCount: 0,
       userId: (session.user as any).id,
@@ -428,7 +395,7 @@ export function useSingleContact(contactId: string) {
   };
 }
 
-// Hook for contact form management
+// Enhanced hook for contact form management
 export function useContactForm() {
   const [formData, setFormData] = useState<CreateContactData>({
     name: '',
@@ -436,42 +403,213 @@ export function useContactForm() {
     phone: '',
     location: '',
     type: 'other',
-    status: 'active',
+    status: 'lead',
     notes: '',
     budgetRange: '',
     propertyTypes: '',
   });
 
-  const [errors, setErrors] = useState<Partial<Record<keyof CreateContactData, string>>>({});
+  const [errors, setErrors] = useState<ContactFormErrors>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Enhanced validation function with flexible budget validation
+  const validateForm = useCallback((): boolean => {
+    const newErrors: ContactFormErrors = {};
+
+    // Name validation - more specific rules
+    if (!formData.name.trim()) {
+      newErrors.name = 'Name is required';
+    } else if (formData.name.trim().length < 2) {
+      newErrors.name = 'Name must be at least 2 characters';
+    } else if (!/^[a-zA-Z0-9\s\-'\.]+$/.test(formData.name.trim())) {
+      newErrors.name = 'Name can only contain letters, numbers, spaces, hyphens, apostrophes, and periods';
+    }
+
+    // Email validation - more comprehensive
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      newErrors.email = 'Please enter a valid email address (e.g., john@example.com)';
+    }
+
+    // Phone validation - enhanced formatting
+    if (formData.phone && formData.phone.trim()) {
+      const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+      const cleanPhone = formData.phone.replace(/[\s\-\(\)]/g, '');
+      if (!phoneRegex.test(cleanPhone)) {
+        newErrors.phone = 'Please enter a valid phone number (e.g., (123) 456-7890)';
+      }
+    }
+
+    // Budget range validation - much more flexible
+    if (formData.budgetRange && formData.budgetRange.trim()) {
+      const budgetValue = formData.budgetRange.trim();
+      
+      // Allow various formats: 300k-400k, 300000, 3M, 300,000, $300k, etc.
+      const budgetRegex = /^[\$]?[\d,]+[KMB]?\s*[-–—]?\s*[\$]?[\d,]*[KMB]?$/i;
+      
+      if (!budgetRegex.test(budgetValue)) {
+        newErrors.budgetRange = 'Please enter a valid budget (e.g., 300k-400k, 300000, 3M, $300k)';
+      } else {
+        // Additional check to ensure it's not just text
+        const hasNumbers = /\d/.test(budgetValue);
+        if (!hasNumbers) {
+          newErrors.budgetRange = 'Budget must contain numbers';
+        }
+      }
+    }
+
+    // Property types validation
+    if (formData.propertyTypes && formData.propertyTypes.trim()) {
+      const propertyRegex = /^[a-zA-Z\s,]+$/;
+      if (!propertyRegex.test(formData.propertyTypes.trim())) {
+        newErrors.propertyTypes = 'Please use only letters, spaces, and commas';
+      }
+    }
+
+    // Notes validation - character limit
+    if (formData.notes && formData.notes.length > 500) {
+      newErrors.notes = 'Notes cannot exceed 500 characters';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }, [formData]);
+
+  // Enhanced field update with budget formatting
   const updateField = useCallback((field: keyof CreateContactData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    let processedValue = value;
+    
+    // Phone number formatting
+    if (field === 'phone' && value) {
+      // Remove all non-digits
+      const digits = value.replace(/\D/g, '');
+      
+      // Format as (XXX) XXX-XXXX
+      if (digits.length <= 3) {
+        processedValue = `(${digits}`;
+      } else if (digits.length <= 6) {
+        processedValue = `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+      } else {
+        processedValue = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+      }
+    }
+    
+    // Email to lowercase
+    if (field === 'email') {
+      processedValue = value.toLowerCase();
+    }
+    
+    // Property types - only allow letters, spaces, and commas
+    if (field === 'propertyTypes') {
+      processedValue = value.replace(/[^a-zA-Z\s,]/g, '');
+    }
+    
+    // Budget range - allow flexible input but clean it up
+    if (field === 'budgetRange') {
+      // Remove any characters that aren't numbers, letters, commas, dashes, or dollar signs
+      processedValue = value.replace(/[^\d\w\s,\-\$]/gi, '');
+      
+      // Convert common abbreviations to uppercase for consistency
+      processedValue = processedValue.replace(/\b(k|m|b)\b/gi, (match) => match.toUpperCase());
+    }
+    
+    setFormData(prev => ({ ...prev, [field]: processedValue }));
+    
     // Clear error for this field when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
   }, [errors]);
 
-  const validateForm = useCallback((): boolean => {
-    const newErrors: Partial<Record<keyof CreateContactData, string>> = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
+  // Validate single field on blur with flexible budget validation
+  const validateField = useCallback((field: keyof CreateContactData) => {
+    const newErrors = { ...errors };
+    
+    switch (field) {
+      case 'name':
+        if (!formData.name.trim()) {
+          newErrors.name = 'Name is required';
+        } else if (formData.name.trim().length < 2) {
+          newErrors.name = 'Name must be at least 2 characters';
+        } else if (!/^[a-zA-Z0-9\s\-'\.]+$/.test(formData.name.trim())) {
+          newErrors.name = 'Name can only contain letters, numbers, spaces, hyphens, apostrophes, and periods';
+        } else {
+          delete newErrors.name;
+        }
+        break;
+        
+      case 'email':
+        if (!formData.email.trim()) {
+          newErrors.email = 'Email is required';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+          newErrors.email = 'Please enter a valid email address (e.g., john@example.com)';
+        } else {
+          delete newErrors.email;
+        }
+        break;
+        
+      case 'phone':
+        if (formData.phone && formData.phone.trim()) {
+          const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+          const cleanPhone = formData.phone.replace(/[\s\-\(\)]/g, '');
+          if (!phoneRegex.test(cleanPhone)) {
+            newErrors.phone = 'Please enter a valid phone number (e.g., (123) 456-7890)';
+          } else {
+            delete newErrors.phone;
+          }
+        } else {
+          delete newErrors.phone;
+        }
+        break;
+        
+      case 'budgetRange':
+        if (formData.budgetRange && formData.budgetRange.trim()) {
+          const budgetValue = formData.budgetRange.trim();
+          
+          // Flexible budget regex
+          const budgetRegex = /^[\$]?[\d,]+[KMB]?\s*[-–—]?\s*[\$]?[\d,]*[KMB]?$/i;
+          
+          if (!budgetRegex.test(budgetValue)) {
+            newErrors.budgetRange = 'Please enter a valid budget (e.g., 300k-400k, 300000, 3M, $300k)';
+          } else {
+            // Additional check to ensure it's not just text
+            const hasNumbers = /\d/.test(budgetValue);
+            if (!hasNumbers) {
+              newErrors.budgetRange = 'Budget must contain numbers';
+            } else {
+              delete newErrors.budgetRange;
+            }
+          }
+        } else {
+          delete newErrors.budgetRange;
+        }
+        break;
+        
+      case 'propertyTypes':
+        if (formData.propertyTypes && formData.propertyTypes.trim()) {
+          const propertyRegex = /^[a-zA-Z\s,]+$/;
+          if (!propertyRegex.test(formData.propertyTypes.trim())) {
+            newErrors.propertyTypes = 'Please use only letters, spaces, and commas';
+          } else {
+            delete newErrors.propertyTypes;
+          }
+        } else {
+          delete newErrors.propertyTypes;
+        }
+        break;
+        
+      case 'notes':
+        if (formData.notes && formData.notes.length > 500) {
+          newErrors.notes = 'Notes cannot exceed 500 characters';
+        } else {
+          delete newErrors.notes;
+        }
+        break;
     }
-
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
-    }
-
-    if (formData.phone && !/^[\+]?[1-9][\d]{0,15}$/.test(formData.phone.replace(/[\s\-\(\)]/g, ''))) {
-      newErrors.phone = 'Please enter a valid phone number';
-    }
-
+    
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  }, [formData]);
+  }, [formData, errors]);
 
   const resetForm = useCallback(() => {
     setFormData({
@@ -480,19 +618,27 @@ export function useContactForm() {
       phone: '',
       location: '',
       type: 'other',
-      status: 'active',
+      status: 'lead',
       notes: '',
       budgetRange: '',
       propertyTypes: '',
     });
     setErrors({});
+    setIsSubmitting(false);
+  }, []);
+
+  const setSubmitting = useCallback((submitting: boolean) => {
+    setIsSubmitting(submitting);
   }, []);
 
   return {
     formData,
     errors,
+    isSubmitting,
     updateField,
     validateForm,
+    validateField,
     resetForm,
+    setSubmitting,
   };
 } 
