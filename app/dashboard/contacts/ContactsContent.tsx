@@ -4,10 +4,10 @@ import { Search, Calendar, Plus, Phone, Mail, User2, Building2, Home, X, Edit, T
 import { useState, useMemo, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { useContactsData } from "@/hooks/useCentralizedDashboardData"
-import { useContact, useContactForm } from "@/hooks/useContact"
+import { useContact } from "@/hooks/useContact"
+import { useContactForm } from "@/hooks/useContact"
 import { useLocation } from "@/hooks/useLocation"
-import type { Contact, CreateContactData } from "@/types/contact"
+import type { Contact, CreateContactData, UnifiedContactData } from "@/types/contact"
 import type { LocationSuggestion } from "@/types/location"
 import { LoadingSpinner } from "@/components/common/Feedback/LoadingSpinner"
 import { ErrorBoundary } from "@/components/common/Feedback/ErrorBoundary"
@@ -16,7 +16,6 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import type { Conversation } from "@/types/conversation"
 import { toast } from 'react-hot-toast'
 import { ContactProfileCard } from "@/components/features/contacts/ContactProfileCard"
 import { ContactDetailProfileCard } from "@/components/features/contacts/ContactDetailProfileCard"
@@ -28,8 +27,9 @@ export default function ContactsContent() {
   const [searchTerm, setSearchTerm] = useState("")
   const [typeFilter, setTypeFilter] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [timeFilter, setTimeFilter] = useState<string>("all")
   const [showNewContactModal, setShowNewContactModal] = useState(false)
-  const [editingContact, setEditingContact] = useState<Contact | null>(null)
+  const [editingContact, setEditingContact] = useState<Contact | undefined>(undefined)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [contactToDelete, setContactToDelete] = useState<Contact | null>(null)
   const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false)
@@ -37,24 +37,26 @@ export default function ContactsContent() {
   const [showVerifiedTooltip, setShowVerifiedTooltip] = useState(false)
   const [locationError, setLocationError] = useState<string | null>(null)
   const [showInfoModal, setShowInfoModal] = useState(false)
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null)
+  const [selectedContact, setSelectedContact] = useState<Contact | undefined>(undefined)
 
-  // Use contacts data hook to get real conversations
-  const { conversations, loading: conversationsLoading, error: conversationsError } = useContactsData({
-    autoRefresh: true,
-    refreshInterval: 30000,
-  })
-
-  // Use contact management hook
+  // Use enhanced contact hook with unified functionality
   const { 
-    contacts: manualContacts, 
-    loading: contactsLoading, 
-    error: contactsError,
+    contacts,
+    unifiedContacts,
+    loading,
+    error,
+    createContactFromConversation,
+    linkContactWithConversation,
+    getContactConversations,
+    searchContacts,
     createContact,
     updateContact,
     deleteContact,
     fetchContacts,
-  } = useContact()
+  } = useContact({
+    autoRefresh: true,
+    refreshInterval: 30000,
+  })
 
   // Use location autocomplete hook
   const {
@@ -78,69 +80,9 @@ export default function ContactsContent() {
     setSubmitting,
   } = useContactForm()
 
-  // Process conversations into contacts
-  const conversationContacts = useMemo((): Contact[] => {
-    if (!conversations) return []
-
-    // Group conversations by email to create unique contacts
-    const contactMap = new Map<string, Contact>()
-
-    conversations.forEach((conversation: Conversation) => {
-      const { thread } = conversation
-      const email = thread.client_email
-
-      if (!email) return
-
-      const existingContact = contactMap.get(email)
-
-      if (existingContact) {
-        // Update existing contact with latest information
-        existingContact.conversationCount++
-        if (new Date(thread.lastMessageAt) > new Date(existingContact.lastContact)) {
-          existingContact.lastContact = thread.lastMessageAt
-          existingContact.name = thread.lead_name || existingContact.name
-          existingContact.phone = thread.phone || existingContact.phone
-          existingContact.location = thread.location || existingContact.location
-          existingContact.budgetRange = thread.budget_range || existingContact.budgetRange
-          existingContact.propertyTypes = thread.preferred_property_types || existingContact.propertyTypes
-        }
-      } else {
-        // Create new contact
-        const contact: Contact = {
-          id: thread.conversation_id,
-          name: thread.lead_name || "Unknown Contact",
-          email: email,
-          phone: thread.phone,
-          location: thread.location,
-          type: determineContactType(thread),
-          status: determineContactStatus(thread),
-          lastContact: thread.lastMessageAt,
-          notes: thread.ai_summary,
-          conversationCount: 1,
-          budgetRange: thread.budget_range,
-          propertyTypes: thread.preferred_property_types,
-          createdAt: thread.createdAt,
-          updatedAt: thread.updatedAt,
-          userId: session?.user?.email || '',
-          isManual: false, // Mark as conversation-derived contact
-        }
-        contactMap.set(email, contact)
-      }
-    })
-
-    return Array.from(contactMap.values())
-  }, [conversations, session?.user?.email])
-
-  // Combine conversation contacts with manual contacts
-  const allContacts = useMemo(() => {
-    const manualContactEmails = new Set(manualContacts.map(c => c.email))
-    const filteredConversationContacts = conversationContacts.filter(c => !manualContactEmails.has(c.email))
-    return [...manualContacts, ...filteredConversationContacts]
-  }, [manualContacts, conversationContacts])
-
-  // Filter contacts based on search term and filters
+  // Filter contacts based on search term and filters (using simple contacts for the grid)
   const filteredContacts = useMemo(() => {
-    return allContacts.filter((contact) => {
+    return contacts.filter((contact) => {
       const matchesSearch =
         contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         contact.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -150,59 +92,41 @@ export default function ContactsContent() {
       const matchesType = typeFilter === 'all' || contact.type === typeFilter;
       const matchesStatus = statusFilter === 'all' || contact.status === statusFilter;
 
-      return matchesSearch && matchesType && matchesStatus;
+      // Filter by time
+      const contactDate = new Date(contact.lastContact);
+      const now = new Date();
+      const matchesTime = (() => {
+        switch (timeFilter) {
+          case 'day':
+            const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            return contactDate >= oneDayAgo;
+          case 'week':
+            const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            return contactDate >= oneWeekAgo;
+          case 'month':
+            const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            return contactDate >= oneMonthAgo;
+          case 'year':
+            const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+            return contactDate >= oneYearAgo;
+          default:
+            return true;
+        }
+      })();
+
+      return matchesSearch && matchesType && matchesStatus && matchesTime;
     });
-  }, [allContacts, searchTerm, typeFilter, statusFilter]);
+  }, [contacts, searchTerm, typeFilter, statusFilter, timeFilter]);
 
-  // Helper functions
-  function determineContactType(thread: any): "buyer" | "seller" | "investor" | "other" {
-    const summary = (thread.ai_summary || "").toLowerCase()
-    const propertyTypes = (thread.preferred_property_types || "").toLowerCase()
-
-    if (summary.includes("buy") || summary.includes("purchase") || propertyTypes.includes("residential")) {
-      return "buyer"
-    } else if (summary.includes("sell") || summary.includes("listing")) {
-      return "seller"
-    } else if (summary.includes("invest") || propertyTypes.includes("investment")) {
-      return "investor"
-    }
-    return "other"
+  // Clear all filters
+  const clearFilters = () => {
+    setTypeFilter("all")
+    setStatusFilter("all")
+    setTimeFilter("all")
   }
 
-  function determineContactStatus(thread: any): "client" | "lead" {
-    if (thread.completed || thread.status === 'completed') {
-      return "client"
-    }
-    return "lead"
-  }
-
-  function formatLastContact(dateString: string): string {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
-
-    if (diffInHours < 24) {
-      return `${diffInHours} hours ago`
-    } else if (diffInHours < 168) {
-      const days = Math.floor(diffInHours / 24)
-      return `${days} days ago`
-    } else {
-      return date.toLocaleDateString()
-    }
-  }
-
-  function getTypeIcon(type: string) {
-    switch (type) {
-      case "buyer":
-        return <Home className="h-4 w-4" />
-      case "seller":
-        return <Building2 className="h-4 w-4" />
-      case "investor":
-        return <User2 className="h-4 w-4" />
-      default:
-        return <User2 className="h-4 w-4" />
-    }
-  }
+  // Check if any filters are active
+  const hasActiveFilters = typeFilter !== "all" || statusFilter !== "all" || timeFilter !== "all"
 
   // Handle edit contact
   const handleEditContact = (contact: Contact) => {
@@ -212,7 +136,7 @@ export default function ContactsContent() {
 
   // Handle delete contact
   const handleDeleteContact = (contactId: string) => {
-    const contact = allContacts.find(c => c.id === contactId)
+    const contact = contacts.find(c => c.id === contactId)
     if (contact) {
       setContactToDelete(contact)
       setShowDeleteModal(true)
@@ -297,96 +221,6 @@ export default function ContactsContent() {
     }
   }
 
-  // Update the location selection to validate and show errors
-  const selectLocationSuggestion = (suggestion: LocationSuggestion) => {
-    selectLocation(suggestion, (locationData) => {
-      // Only set location if it has city, state, and country
-      if (suggestion.city && suggestion.state && suggestion.country) {
-        updateField('location', suggestion.fullAddress);
-        setLocationError(null); // Clear error
-      } else {
-        // Show error if incomplete
-        setLocationError('Please select a complete location with city, state, and country');
-      }
-    });
-  };
-
-  // Update location input change to validate
-  const handleLocationInputChange = (value: string) => {
-    handleLocationChange(value, (locationValue) => {
-      updateField('location', locationValue);
-      
-      // Validate location on input change
-      if (locationValue) {
-        const parts = locationValue.split(',').map(part => part.trim());
-        if (parts.length < 3) {
-          setLocationError('Please select a complete location (city, state, country)');
-        } else {
-          setLocationError(null);
-        }
-      } else {
-        setLocationError(null);
-      }
-    });
-  };
-
-  // Add location validation to the form
-  const validateLocation = (location: string | undefined) => {
-    if (!location || location.length < 3) return 'Please select a complete location (city, state, country)';
-    return null;
-  };
-
-  // Update the handleSubmit to include location validation
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Add location validation
-    const locationError = validateLocation(formData.location);
-    if (locationError) {
-      toast.error(locationError, {
-        duration: 3000,
-        position: 'top-right',
-      });
-      return;
-    }
-    
-    if (!validateForm()) return;
-
-    try {
-      const contactData = {
-        name: formData.name.trim(),
-        email: formData.email.trim().toLowerCase(),
-        phone: formData.phone?.trim() || '',
-        location: formData.location?.trim() || '',
-        type: formData.type,
-        status: formData.status,
-        budgetRange: formData.budgetRange?.trim() || '',
-        propertyTypes: formData.propertyTypes?.trim() || '',
-        notes: formData.notes?.trim() || '',
-        lastContact: new Date().toISOString(),
-        conversationCount: editingContact?.conversationCount || 0,
-        createdAt: editingContact?.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-
-      if (editingContact) {
-        await updateContact({ id: editingContact.id, ...contactData });
-      } else {
-        await createContact(contactData);
-      }
-
-      setShowNewContactModal(false);
-      setEditingContact(null);
-      resetForm();
-      closeLocationDropdown();
-    } catch (error) {
-      console.error('Error saving contact:', error);
-    }
-  };
-
-  const loading = conversationsLoading || contactsLoading || isSubmitting
-  const error = conversationsError || contactsError
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full bg-background-muted">
@@ -398,9 +232,10 @@ export default function ContactsContent() {
   if (error) {
     return (
       <div className="flex items-center justify-center h-full bg-background-muted">
-        <div className="text-center p-6 bg-card rounded-lg shadow-md">
-          <p className="text-status-error font-semibold mb-2">Error loading contacts</p>
-          <p className="text-muted-foreground text-sm">{error}</p>
+        <div className="text-center">
+          <AlertTriangle className="h-12 w-12 text-status-error mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-foreground mb-2">Error Loading Contacts</h3>
+          <p className="text-muted-foreground">{error}</p>
         </div>
       </div>
     )
@@ -413,7 +248,7 @@ export default function ContactsContent() {
           <h1 className="text-4xl font-extrabold text-card-foreground mb-2 tracking-tight">Contacts</h1>
           <p className="text-lg text-muted-foreground">
             Manage and view client information extracted from conversations.
-            {allContacts.length > 0 && ` Found ${allContacts.length} unique contacts.`}
+            {contacts.length > 0 && ` Found ${contacts.length} unique contacts.`}
           </p>
         </div>
 
@@ -456,9 +291,21 @@ export default function ContactsContent() {
                 <option value="lead">Leads</option>
               </select>
 
+              <select
+                value={timeFilter}
+                onChange={(e) => setTimeFilter(e.target.value)}
+                className="px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-midnight-700 focus:border-midnight-700 text-card-foreground bg-background"
+              >
+                <option value="all">All Time</option>
+                <option value="day">Last Day</option>
+                <option value="week">Last Week</option>
+                <option value="month">Last Month</option>
+                <option value="year">Last Year</option>
+              </select>
+
               <button 
                 onClick={() => {
-                  setEditingContact(null)
+                  setEditingContact(undefined)
                   resetForm()
                   setShowNewContactModal(true)
                 }}
@@ -471,6 +318,7 @@ export default function ContactsContent() {
           </div>
 
           {/* Contacts grid with responsive layout */}
+          <div className="space-y-4">
           {filteredContacts.length === 0 ? (
             <div className="text-center py-16 bg-card rounded-xl border border-border shadow-sm">
               <p className="text-muted-foreground text-xl font-medium mb-2">
@@ -487,19 +335,20 @@ export default function ContactsContent() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {filteredContacts.map((contact) => (
-                <ContactProfileCard
+                  <ContactProfileCard
                   key={contact.id}
-                  contact={contact}
-                  onEdit={handleEditContact}
-                  onDelete={handleDeleteContact}
-                  onClick={(c) => {
-                    setSelectedContact(c);
+                    contact={contact}
+                    onEdit={handleEditContact}
+                    onDelete={handleDeleteContact}
+                                         onClick={(c) => {
+                       setSelectedContact(c);
                     setShowInfoModal(true);
                   }}
-                />
+                  />
               ))}
             </div>
           )}
+          </div>
         </div>
 
         {/* Enhanced New/Edit Contact Modal */}
@@ -507,11 +356,11 @@ export default function ContactsContent() {
           contact={editingContact}
           isOpen={showNewContactModal}
           onClose={() => {
-            setShowNewContactModal(false)
-            setEditingContact(null)
-            resetForm()
-            closeLocationDropdown()
-          }}
+                      setShowNewContactModal(false)
+            setEditingContact(undefined)
+                      resetForm()
+                      closeLocationDropdown()
+                    }}
           onSubmit={async (contactData) => {
             if (editingContact) {
               await updateContact({ id: editingContact.id, ...contactData });
@@ -625,14 +474,14 @@ export default function ContactsContent() {
         {/* Contact Info Modal */}
         {selectedContact && (
           <ContactDetailProfileCard
-            contact={selectedContact ?? undefined}
+            contact={selectedContact}
             onClose={() => {
-              setShowInfoModal(false);
-              setSelectedContact(null);
+                      setShowInfoModal(false);
+              setSelectedContact(undefined);
             }}
             onEdit={(contact) => {
-              setShowInfoModal(false);
-              setSelectedContact(null);
+                      setShowInfoModal(false);
+              setSelectedContact(undefined);
               handleEditContact(contact);
             }}
           />

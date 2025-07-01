@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { apiClient } from '@/lib/api/client';
 import { handleApiError } from '@/lib/api/errorHandling';
@@ -11,6 +11,38 @@ import type {
   UseContactOptions,
   ContactFormErrors
 } from '@/types/contact';
+import type { Conversation } from '@/types/conversation';
+import { useContactsData } from '@/hooks/useCentralizedDashboardData';
+
+// Helper functions for contact processing
+const determineContactType = (thread: any): "buyer" | "seller" | "investor" | "other" => {
+  const summary = (thread.ai_summary || "").toLowerCase();
+  const propertyTypes = (thread.preferred_property_types || "").toLowerCase();
+
+  if (summary.includes("buy") || summary.includes("purchase") || propertyTypes.includes("residential")) {
+    return "buyer";
+  } else if (summary.includes("sell") || summary.includes("listing")) {
+    return "seller";
+  } else if (summary.includes("invest") || propertyTypes.includes("investment")) {
+    return "investor";
+  }
+  return "other";
+};
+
+const determineContactStatus = (thread: any): "client" | "lead" => {
+  if (thread.completed || thread.status === 'completed') {
+    return "client";
+  }
+  return "lead";
+};
+
+const determineRelationshipStrength = (messageCount: number, lastActivity: number): "strong" | "medium" | "weak" => {
+  const daysSinceLastActivity = (Date.now() - lastActivity) / (1000 * 60 * 60 * 24);
+  
+  if (messageCount > 10 && daysSinceLastActivity < 7) return "strong";
+  if (messageCount > 5 && daysSinceLastActivity < 30) return "medium";
+  return "weak";
+};
 
 export function useContact(options: UseContactOptions = {}) {
   const { data: session } = useSession();
@@ -18,17 +50,107 @@ export function useContact(options: UseContactOptions = {}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Get conversations for unified contact processing
+  const { conversations, loading: conversationsLoading, error: conversationsError } = useContactsData({
+    autoRefresh: options.autoRefresh || false,
+    refreshInterval: options.refreshInterval || 30000,
+  });
+
+  // Create unified contact data by merging conversations and manual contacts
+  const unifiedContacts = useMemo(() => {
+    if (!conversations || !contacts) return [];
+
+    const contactMap = new Map<string, any>();
+    
+    // First, process manual contacts
+    contacts.forEach(contact => {
+      const linkedConversations = conversations.filter(conv => 
+        contact.linkedConversationIds?.includes(conv.thread.conversation_id) ||
+        conv.thread.client_email === contact.email
+      );
+      
+      const totalMessages = linkedConversations.reduce((sum, conv) => sum + conv.messages.length, 0);
+      const lastActivity = linkedConversations.length > 0 
+        ? Math.max(...linkedConversations.map(conv => new Date(conv.thread.lastMessageAt).getTime()))
+        : new Date(contact.lastContact).getTime();
+      
+      contactMap.set(contact.email, {
+        contact: {
+          ...contact,
+          linkedConversationIds: linkedConversations.map(conv => conv.thread.conversation_id),
+          primaryConversationId: contact.primaryConversationId || linkedConversations[0]?.thread.conversation_id,
+          lastConversationDate: linkedConversations.length > 0 
+            ? new Date(Math.max(...linkedConversations.map(conv => new Date(conv.thread.lastMessageAt).getTime()))).toISOString()
+            : contact.lastContact,
+          totalConversationMessages: totalMessages,
+        },
+        conversations: linkedConversations,
+        totalMessages,
+        lastActivity: new Date(lastActivity).toISOString(),
+        relationshipStrength: determineRelationshipStrength(totalMessages, lastActivity),
+      });
+    });
+
+    // Then, process conversations that don't have manual contacts
+    conversations.forEach(conversation => {
+      const email = conversation.thread.client_email;
+      if (!email || contactMap.has(email)) return;
+
+      // Create a contact from conversation data
+      const contactFromConversation: Contact = {
+        id: conversation.thread.conversation_id,
+        name: conversation.thread.lead_name || "Unknown Contact",
+        email: email,
+        phone: conversation.thread.phone || '',
+        location: conversation.thread.location || '',
+        type: determineContactType(conversation.thread),
+        status: determineContactStatus(conversation.thread),
+        lastContact: conversation.thread.lastMessageAt,
+        notes: conversation.thread.ai_summary || '',
+        conversationCount: 1,
+        budgetRange: conversation.thread.budget_range || '',
+        propertyTypes: conversation.thread.preferred_property_types || '',
+        createdAt: conversation.thread.createdAt,
+        updatedAt: conversation.thread.updatedAt,
+        userId: session?.user?.email || '',
+        isManual: false,
+        linkedConversationIds: [conversation.thread.conversation_id],
+        primaryConversationId: conversation.thread.conversation_id,
+        contactSource: "conversation",
+        lastConversationDate: conversation.thread.lastMessageAt,
+        totalConversationMessages: conversation.messages.length,
+      };
+
+      contactMap.set(email, {
+        contact: contactFromConversation,
+        conversations: [conversation],
+        totalMessages: conversation.messages.length,
+        lastActivity: conversation.thread.lastMessageAt,
+        relationshipStrength: determineRelationshipStrength(conversation.messages.length, new Date(conversation.thread.lastMessageAt).getTime()),
+      });
+    });
+
+    return Array.from(contactMap.values()).sort((a, b) => 
+      new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime()
+    );
+  }, [conversations, contacts, session?.user?.email]);
+
   // Fetch contacts from database
-  const fetchContacts = useCallback(async () => {
-    if (!session?.user?.email) return;
+  const fetchContacts = useCallback(async (): Promise<ApiResponse<Contact[]>> => {
+    if (!session?.user?.email) {
+      return {
+        success: false,
+        error: 'No user session',
+        status: 401
+      };
+    }
 
     try {
       setLoading(true);
       setError(null);
 
-      console.log('[useContact] Fetching contacts for user:', (session.user as any).id);
+      console.log('[useContact] Fetching contacts for user:', session.user.email);
 
-      // Query with associated_account-index and associated_account
       const response = await apiClient.dbSelect({
         table_name: 'ManualContacts',
         index_name: 'associated_account-index',
@@ -37,69 +159,77 @@ export function useContact(options: UseContactOptions = {}) {
       });
 
       console.log('[useContact] Query with associated_account-index:', response);
-      console.log('[useContact] Raw contacts from database:', response.data?.items);
-      console.log('[useContact] === MANUAL CONTACTS TABLE CONTENTS ===');
-      console.log('[useContact] Total contacts found:', response.data?.items?.length || 0);
-      if (response.data?.items && response.data.items.length > 0) {
-        response.data.items.forEach((contact: any, index: number) => {
-          console.log(`[useContact] Contact ${index + 1}:`, {
-            id: contact.id,
-            name: contact.name,
-            email: contact.email,
-            'account-id': contact['account-id'],
-            associated_account: contact.associated_account,
-            allFields: Object.keys(contact),
-            fullContact: contact
-          });
-        });
-      } else {
-        console.log('[useContact] No contacts found in ManualContacts table');
-      }
-      console.log('[useContact] === END MANUAL CONTACTS TABLE CONTENTS ===');
 
-      if (response.success && response.data?.items) {
-        // Transform database format to frontend format
-        const transformedContacts: Contact[] = response.data.items.map((item: any) => ({
+      if (response.success && response.data) {
+        const rawContacts = response.data.items || response.data;
+        console.log('[useContact] Raw contacts from database:', rawContacts);
+
+        // Debug: Log the contents of the ManualContacts table
+        console.log('[useContact] === MANUAL CONTACTS TABLE CONTENTS ===');
+        console.log('[useContact] Total contacts found:', Array.isArray(rawContacts) ? rawContacts.length : 0);
+        if (Array.isArray(rawContacts)) {
+          rawContacts.forEach((contact: any, index: number) => {
+            console.log(`[useContact] Contact ${index + 1}:`, contact);
+          });
+        }
+        console.log('[useContact] === END MANUAL CONTACTS TABLE CONTENTS ===');
+
+        // Transform the raw data to match our Contact interface
+        const transformedContacts: Contact[] = (Array.isArray(rawContacts) ? rawContacts : []).map((item: any) => ({
           id: item.id,
-          name: item.name,
-          email: item.email,
-          phone: item.phone,
-          location: item.location,
-          type: item.type,
-          status: item.status,
-          lastContact: item.last_contact || item.lastContact,
-          notes: item.notes,
-          conversationCount: item.conversation_count || item.conversationCount || 0,
-          budgetRange: item.budget_range || item.budgetRange,
-          propertyTypes: item.property_types || item.propertyTypes,
-          createdAt: item.created_at || item.createdAt,
-          updatedAt: item.updated_at || item.updatedAt,
-          userId: item.associated_account,
+          name: item.name || 'Unknown',
+          email: item.email || '',
+          phone: item.phone || '',
+          location: item.location || '',
+          type: item.type || 'other',
+          status: item.status || 'lead',
+          lastContact: item.lastContact || new Date().toISOString(),
+          notes: item.notes || '',
+          conversationCount: item.conversationCount || 0,
+          budgetRange: item.budgetRange || '',
+          propertyTypes: item.propertyTypes || '',
+          createdAt: item.createdAt || new Date().toISOString(),
+          updatedAt: item.updatedAt || new Date().toISOString(),
+          userId: item.userId || (session.user as any).id,
           isManual: true,
+          // Add conversation linking fields
+          linkedConversationIds: item.linkedConversationIds || [],
+          primaryConversationId: item.primaryConversationId || '',
+          contactSource: item.contactSource || 'manual',
+          lastConversationDate: item.lastConversationDate || '',
+          totalConversationMessages: item.totalConversationMessages || 0,
         }));
-        
+
         console.log('[useContact] Transformed contacts:', transformedContacts);
+
         setContacts(transformedContacts);
+        return {
+          success: true,
+          data: transformedContacts,
+          status: 200
+        };
       } else {
-        console.error('[useContact] Database query failed:', response);
-        throw handleApiError(response);
+        console.error('[useContact] Failed to fetch contacts:', response);
+        setError(response.error || 'Failed to fetch contacts');
+        return {
+          success: false,
+          error: response.error || 'Failed to fetch contacts',
+          status: response.status || 500
+        };
       }
-    } catch (err) {
-      console.error('[useContact] Error fetching contacts:', err);
-      const appError = handleApiError(err);
-      setError(appError.message);
-      setContacts([]);
+    } catch (error) {
+      console.error('[useContact] Error fetching contacts:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setError(errorMessage);
+      return {
+        success: false,
+        error: errorMessage,
+        status: 500
+      };
     } finally {
       setLoading(false);
     }
   }, [session?.user?.email]);
-
-  // Load contacts on mount (only on client side)
-  useEffect(() => {
-    if (session?.user?.email && typeof window !== 'undefined') {
-      fetchContacts();
-    }
-  }, [session?.user?.email, fetchContacts]);
 
   // Create a new contact
   const createContact = useCallback(async (contactData: CreateContactData): Promise<ApiResponse<Contact>> => {
@@ -119,7 +249,13 @@ export function useContact(options: UseContactOptions = {}) {
       conversationCount: 0,
       userId: (session.user as any).id,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      // Initialize conversation linking fields
+      linkedConversationIds: contactData.linkedConversationIds || [],
+      primaryConversationId: contactData.primaryConversationId || '',
+      contactSource: contactData.contactSource || 'manual',
+      lastConversationDate: contactData.linkedConversationIds?.length ? new Date().toISOString() : '',
+      totalConversationMessages: 0,
     };
     
     try {
@@ -144,7 +280,13 @@ export function useContact(options: UseContactOptions = {}) {
           budgetRange: newContact.budgetRange || '',
           propertyTypes: newContact.propertyTypes || '',
           createdAt: newContact.createdAt,
-          updatedAt: newContact.updatedAt
+          updatedAt: newContact.updatedAt,
+          // Add new conversation linking fields
+          linkedConversationIds: newContact.linkedConversationIds,
+          primaryConversationId: newContact.primaryConversationId,
+          contactSource: newContact.contactSource,
+          lastConversationDate: newContact.lastConversationDate,
+          totalConversationMessages: newContact.totalConversationMessages,
         }
       });
       
@@ -198,7 +340,13 @@ export function useContact(options: UseContactOptions = {}) {
     const updatedContact: Contact = {
       ...existingContact,
       ...contactData,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      // Preserve conversation linking fields if not provided
+      linkedConversationIds: contactData.linkedConversationIds || existingContact.linkedConversationIds,
+      primaryConversationId: contactData.primaryConversationId || existingContact.primaryConversationId,
+      contactSource: contactData.contactSource || existingContact.contactSource,
+      lastConversationDate: contactData.lastConversationDate || existingContact.lastConversationDate,
+      totalConversationMessages: contactData.totalConversationMessages || existingContact.totalConversationMessages,
     };
     
     try {
@@ -223,7 +371,13 @@ export function useContact(options: UseContactOptions = {}) {
           budgetRange: updatedContact.budgetRange || '',
           propertyTypes: updatedContact.propertyTypes || '',
           createdAt: updatedContact.createdAt,
-          updatedAt: updatedContact.updatedAt
+          updatedAt: updatedContact.updatedAt,
+          // Update conversation linking fields
+          linkedConversationIds: updatedContact.linkedConversationIds,
+          primaryConversationId: updatedContact.primaryConversationId,
+          contactSource: updatedContact.contactSource,
+          lastConversationDate: updatedContact.lastConversationDate,
+          totalConversationMessages: updatedContact.totalConversationMessages,
         }
       });
       
@@ -310,63 +464,153 @@ export function useContact(options: UseContactOptions = {}) {
     }
   }, [session?.user?.email]);
 
-  // Get a single contact by ID
-  const getContact = useCallback((contactId: string): Contact | undefined => {
-    return contacts.find(contact => contact.id === contactId);
-  }, [contacts]);
+  // Create a manual contact from a conversation
+  const createContactFromConversation = useCallback(async (conversation: Conversation): Promise<Contact | null> => {
+    if (!session?.user?.email) return null;
 
-  // Search contacts
-  const searchContacts = useCallback((searchTerm: string, filters?: {
-    type?: string;
-    status?: string;
-  }): Contact[] => {
-    return contacts.filter((contact) => {
-      const matchesSearch =
-        contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        contact.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (contact.phone && contact.phone.includes(searchTerm)) ||
-        (contact.location && contact.location.toLowerCase().includes(searchTerm.toLowerCase()));
+    try {
+      setLoading(true);
+      setError(null);
 
-      const matchesType = !filters?.type || filters.type === 'all' || contact.type === filters.type;
-      const matchesStatus = !filters?.status || filters.status === 'all' || contact.status === filters.status;
+      const contactData: CreateContactData = {
+        name: conversation.thread.lead_name || "Unknown Contact",
+        email: conversation.thread.client_email,
+        phone: conversation.thread.phone,
+        location: conversation.thread.location,
+        type: determineContactType(conversation.thread),
+        status: "lead",
+        notes: conversation.thread.ai_summary,
+        budgetRange: conversation.thread.budget_range,
+        propertyTypes: conversation.thread.preferred_property_types,
+        linkedConversationIds: [conversation.thread.conversation_id],
+        primaryConversationId: conversation.thread.conversation_id,
+        contactSource: "conversation",
+      };
 
-      return matchesSearch && matchesType && matchesStatus;
-    });
-  }, [contacts]);
+      const result = await createContact(contactData);
+      
+      if (result.success && result.data) {
+        // Refresh contacts to get the updated list
+        await fetchContacts();
+        return result.data;
+      } else {
+        setError(result.error || 'Failed to create contact from conversation');
+        return null;
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(errorMessage);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [session?.user?.email, createContact, fetchContacts]);
 
-  // Clear error
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
+  // Link an existing manual contact with a conversation
+  const linkContactWithConversation = useCallback(async (
+    contactId: string, 
+    conversationId: string, 
+    linkType: "primary" | "secondary" = "secondary"
+  ): Promise<boolean> => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  // Refresh contacts
-  const refreshContacts = useCallback(async () => {
-    await fetchContacts();
-    return { success: true, contacts };
-  }, [fetchContacts, contacts]);
+      const contact = contacts.find(c => c.id === contactId);
+      if (!contact) {
+        setError('Contact not found');
+        return false;
+      }
+
+      const conversation = conversations?.find(c => c.thread.conversation_id === conversationId);
+      if (!conversation) {
+        setError('Conversation not found');
+        return false;
+      }
+
+      // Update the contact with the new conversation link
+      const updatedLinkedIds = [...(contact.linkedConversationIds || []), conversationId];
+      const updatedContact: Contact = {
+        ...contact,
+        linkedConversationIds: updatedLinkedIds,
+        primaryConversationId: linkType === "primary" ? conversationId : contact.primaryConversationId,
+        contactSource: contact.contactSource === "manual" ? "merged" : contact.contactSource,
+        lastConversationDate: conversation.thread.lastMessageAt,
+        totalConversationMessages: (contact.totalConversationMessages || 0) + conversation.messages.length,
+      };
+
+      const result = await updateContact(updatedContact);
+      
+      if (result.success) {
+        // Refresh contacts to get the updated list
+        await fetchContacts();
+        return true;
+      } else {
+        setError(result.error || 'Failed to link contact with conversation');
+        return false;
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(errorMessage);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [contacts, conversations, updateContact, fetchContacts]);
+
+  // Get all conversations for a specific contact
+  const getContactConversations = useCallback((contactEmail: string): Conversation[] => {
+    return conversations?.filter(conv => conv.thread.client_email === contactEmail) || [];
+  }, [conversations]);
+
+  // Search contacts (unified search across conversations and manual contacts)
+  const searchContacts = useCallback((searchTerm: string) => {
+    if (!searchTerm) return unifiedContacts;
+    
+    const term = searchTerm.toLowerCase();
+    return unifiedContacts.filter(uc => 
+      uc.contact.name.toLowerCase().includes(term) ||
+      uc.contact.email.toLowerCase().includes(term) ||
+      (uc.contact.phone && uc.contact.phone.includes(term)) ||
+      (uc.contact.location && uc.contact.location.toLowerCase().includes(term)) ||
+      uc.conversations.some((conv: any) => 
+        conv.thread.lead_name?.toLowerCase().includes(term) ||
+        conv.messages.some((msg: any) => msg.body.toLowerCase().includes(term))
+      )
+    );
+  }, [unifiedContacts]);
+
+  // Load contacts on mount
+  useEffect(() => {
+    fetchContacts();
+  }, [fetchContacts]);
 
   return {
     // State
     contacts,
-    loading,
-    error,
+    unifiedContacts,
+    loading: loading || conversationsLoading,
+    error: error || conversationsError,
     
     // Actions
+    fetchContacts,
     createContact,
     updateContact,
     deleteContact,
-    getContact,
+    createContactFromConversation,
+    linkContactWithConversation,
+    getContactConversations,
     searchContacts,
-    clearError,
-    refreshContacts,
-    fetchContacts,
+    
+    // Raw data access
+    conversations,
   };
 }
 
 // Hook for managing a single contact
 export function useSingleContact(contactId: string) {
-  const { getContact, updateContact, deleteContact } = useContact();
-  const contact = getContact(contactId);
+  const { contacts, updateContact, deleteContact } = useContact();
+  const contact = contacts.find(c => c.id === contactId);
 
   const update = useCallback(async (data: Omit<UpdateContactData, 'id'>) => {
     return await updateContact({ ...data, id: contactId });

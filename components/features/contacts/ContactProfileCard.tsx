@@ -1,7 +1,9 @@
 "use client"
 
 import { Edit, Trash2 } from "lucide-react"
+import { useMemo } from "react"
 import type { Contact } from "@/types/contact"
+import { useContact } from "@/hooks/useContact"
 
 interface ContactProfileCardProps {
   contact: Contact
@@ -17,6 +19,14 @@ export function ContactProfileCard({
   onClick 
 }: ContactProfileCardProps) {
   
+  // Get unified contact data for this contact
+  const { unifiedContacts } = useContact()
+  
+  // Find the unified contact data for this contact
+  const unifiedContact = useMemo(() => {
+    return unifiedContacts.find(uc => uc.contact.id === contact.id || uc.contact.email === contact.email)
+  }, [unifiedContacts, contact])
+  
   function formatLastContact(dateString: string): string {
     const date = new Date(dateString)
     const now = new Date()
@@ -31,6 +41,21 @@ export function ContactProfileCard({
       return date.toLocaleDateString()
     }
   }
+
+  // Get the most accurate last contact time
+  const lastContactTime = useMemo(() => {
+    if (unifiedContact && unifiedContact.conversations.length > 0) {
+      // Use the most recent conversation's last message time
+      const mostRecentConversation = unifiedContact.conversations.reduce((latest, current) => {
+        const latestTime = new Date(latest.thread.lastMessageAt).getTime()
+        const currentTime = new Date(current.thread.lastMessageAt).getTime()
+        return currentTime > latestTime ? current : latest
+      })
+      return formatLastContact(mostRecentConversation.thread.lastMessageAt)
+    }
+    // Fall back to contact's lastContact
+    return formatLastContact(contact.lastContact)
+  }, [unifiedContact, contact.lastContact])
 
   return (
     <div
@@ -73,7 +98,7 @@ export function ContactProfileCard({
           <p className="text-xs text-muted-foreground truncate">{contact.phone}</p>
         )}
         <p className="text-xs text-muted-foreground">
-          {formatLastContact(contact.lastContact)}
+          {lastContactTime}
         </p>
       </div>
     </div>

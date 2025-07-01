@@ -20,6 +20,13 @@ export interface Contact {
   updatedAt: string;
   userId: string;
   isManual?: boolean; // Flag to distinguish manual contacts
+  
+  // New fields for conversation linking
+  linkedConversationIds?: string[]; // Array of conversation IDs linked to this contact
+  primaryConversationId?: string; // The main conversation ID for this contact
+  contactSource?: "conversation" | "manual" | "merged"; // How this contact was created
+  lastConversationDate?: string; // Date of the most recent conversation
+  totalConversationMessages?: number; // Total messages across all conversations
 }
 
 export interface CreateContactData {
@@ -32,10 +39,17 @@ export interface CreateContactData {
   notes?: string;
   budgetRange?: string;
   propertyTypes?: string;
+  
+  // New fields for conversation linking
+  linkedConversationIds?: string[];
+  primaryConversationId?: string;
+  contactSource?: "conversation" | "manual" | "merged";
 }
 
 export interface UpdateContactData extends Partial<CreateContactData> {
   id: string;
+  lastConversationDate?: string;
+  totalConversationMessages?: number;
 }
 
 export interface UseContactOptions {
@@ -57,4 +71,23 @@ export interface ContactFormErrors {
   notes?: string;
   budgetRange?: string;
   propertyTypes?: string;
+  linkedConversationIds?: string;
+  primaryConversationId?: string;
+  contactSource?: string;
+}
+
+// New interfaces for contact-conversation relationships
+export interface ContactConversationLink {
+  contactId: string;
+  conversationId: string;
+  linkedAt: string;
+  linkType: "primary" | "secondary";
+}
+
+export interface UnifiedContactData {
+  contact: Contact;
+  conversations: any[]; // Array of conversation objects
+  totalMessages: number;
+  lastActivity: string;
+  relationshipStrength: "strong" | "medium" | "weak"; // Based on interaction frequency
 } 

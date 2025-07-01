@@ -1,7 +1,13 @@
 "use client"
 
-import { X, Phone, Mail, User2, Building2, Home, Calendar, MapPin, BadgeCheck, Target } from "lucide-react"
+import { useState, useMemo } from "react"
+import { X, Edit, Phone, Mail, MapPin, Calendar, User2, Building2, Home, MessageCircle, Link, Plus, BadgeCheck, Target, Sparkles, Loader2, AlertTriangle, CheckCircle, Info } from "lucide-react"
 import type { Contact } from "@/types/contact"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import { useContact } from "@/hooks/useContact"
+import { toast } from 'react-hot-toast'
 
 interface ContactDetailProfileCardProps {
   contact: Contact
@@ -9,12 +15,17 @@ interface ContactDetailProfileCardProps {
   onEdit: (contact: Contact) => void
 }
 
-export function ContactDetailProfileCard({ 
-  contact, 
-  onClose, 
-  onEdit 
-}: ContactDetailProfileCardProps) {
+export function ContactDetailProfileCard({ contact, onClose, onEdit }: ContactDetailProfileCardProps) {
+  const [isLinking, setIsLinking] = useState(false)
   
+  // Get unified contact data for this contact
+  const { unifiedContacts, createContactFromConversation, linkContactWithConversation } = useContact()
+  
+  // Find the unified contact data for this contact
+  const unifiedContact = useMemo(() => {
+    return unifiedContacts.find(uc => uc.contact.id === contact.id || uc.contact.email === contact.email)
+  }, [unifiedContacts, contact])
+
   function formatLastContact(dateString: string): string {
     const date = new Date(dateString)
     const now = new Date()
@@ -30,109 +41,195 @@ export function ContactDetailProfileCard({
     }
   }
 
+  function getTypeIcon(type: string) {
+    switch (type) {
+      case "buyer":
+        return <Home className="h-5 w-5" />
+      case "seller":
+        return <Building2 className="h-5 w-5" />
+      case "investor":
+        return <User2 className="h-5 w-5" />
+      default:
+        return <User2 className="h-5 w-5" />
+    }
+  }
+
+  function getRelationshipStrengthColor(strength: string) {
+    switch (strength) {
+      case "strong":
+        return "bg-green-100 text-green-800 border-green-200"
+      case "medium":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200"
+      case "weak":
+        return "bg-gray-100 text-gray-800 border-gray-200"
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200"
+    }
+  }
+
+  function getContactSourceBadge(source?: string) {
+    if (!source) return null
+    
+    const sourceConfig = {
+      conversation: { label: "From Chat", color: "bg-blue-100 text-blue-800 border-blue-200", icon: <User2 className="h-3 w-3" /> },
+      manual: { label: "Verified", color: "bg-green-100 text-green-800 border-green-200", icon: <CheckCircle className="h-3 w-3" /> },
+      merged: { label: "Linked", color: "bg-orange-100 text-orange-800 border-orange-200", icon: <Link className="h-3 w-3" /> }
+    }
+    
+    const config = sourceConfig[source as keyof typeof sourceConfig]
+    if (!config) return null
+    
+    return (
+      <Badge className={cn("text-xs border flex items-center gap-1", config.color)}>
+        {config.icon}
+        {config.label}
+      </Badge>
+    )
+  }
+
+  // Handle creating contact from conversation
+  const handleCreateContactFromConversation = async (conversationId: string) => {
+    if (!unifiedContact) return
+    
+    const conversation = unifiedContact.conversations.find(conv => conv.thread.conversation_id === conversationId)
+    if (conversation) {
+      const result = await createContactFromConversation(conversation)
+      if (result) {
+        toast.success(`Contact created from conversation!`, {
+          duration: 3000,
+          position: 'top-right',
+        })
+        onClose() // Close the modal after successful creation
+      } else {
+        toast.error('Failed to create contact from conversation', {
+          duration: 4000,
+          position: 'top-right',
+        })
+      }
+    }
+  }
+
+  // Handle linking contact with conversation
+  const handleLinkContactWithConversation = async (conversationId: string) => {
+    setIsLinking(true)
+    try {
+      const result = await linkContactWithConversation(contact.id, conversationId, "secondary")
+      if (result) {
+        toast.success('Contact linked with conversation!', {
+          duration: 3000,
+          position: 'top-right',
+        })
+      } else {
+        toast.error('Failed to link contact with conversation', {
+          duration: 4000,
+          position: 'top-right',
+        })
+      }
+    } finally {
+      setIsLinking(false)
+    }
+  }
+
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg">
-        <div className="p-6 border-b border-border">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <User2 className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-foreground">{contact.name}</h2>
-                <p className="text-sm text-muted-foreground">{contact.email}</p>
-              </div>
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="bg-card rounded-xl border border-border shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-border">
+          <div className="flex items-center gap-3">
+            {getTypeIcon(contact.type)}
+            <div>
+              <h2 className="text-xl font-semibold text-card-foreground">{contact.name}</h2>
+              <p className="text-sm text-muted-foreground">{contact.email}</p>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-muted rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5 text-muted-foreground" />
-            </button>
           </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-muted rounded-lg transition-colors"
+          >
+            <X className="h-5 w-5 text-muted-foreground" />
+          </button>
         </div>
 
-        <div className="p-6">
-          {/* Status and Type Row */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="p-3 bg-muted/50 rounded-lg">
-              <p className="text-xs font-medium text-muted-foreground mb-1">Status</p>
-              <div className="flex items-center gap-2">
-                {contact.status === 'client' ? (
-                  <>
-                    <BadgeCheck className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm font-medium text-blue-600">Client</span>
-                  </>
-                ) : (
-                  <>
-                    <Target className="w-4 h-4 text-status-error" />
-                    <span className="text-sm font-medium text-muted-foreground">Lead</span>
-                  </>
-                )}
-              </div>
-            </div>
-            <div className="p-3 bg-muted/50 rounded-lg">
-              <p className="text-xs font-medium text-muted-foreground mb-1">Type</p>
-              <p className="text-sm font-medium text-foreground capitalize">{contact.type}</p>
-            </div>
+        {/* Content */}
+        <div className="p-6 space-y-6">
+          {/* Status and badges */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <Badge className={cn(
+              "text-sm border flex items-center gap-1",
+              contact.status === "client" 
+                ? "bg-blue-100 text-blue-800 border-blue-200" 
+                : "bg-yellow-100 text-yellow-800 border-yellow-200"
+            )}>
+              {contact.status === "client" ? (
+                <>
+                  <User2 className="h-3 w-3" />
+                  CLIENT
+                </>
+              ) : (
+                <>
+                  <Target className="h-3 w-3" />
+                  LEAD
+                </>
+              )}
+            </Badge>
+            
+            {getContactSourceBadge(contact.contactSource)}
+            
+            {unifiedContact && (
+              <Badge className={cn("text-sm border", getRelationshipStrengthColor(unifiedContact.relationshipStrength))}>
+                {unifiedContact.relationshipStrength}
+              </Badge>
+            )}
           </div>
 
-          {/* Contact Information */}
-          <div className="space-y-4 mb-6">
-            <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">Contact Information</h3>
-            
+          {/* Contact info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {contact.phone && (
               <div className="flex items-center gap-3">
-                <Phone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">Phone</p>
-                  <p className="text-sm text-foreground">{contact.phone}</p>
-                </div>
+                <Phone className="h-4 w-4 text-muted-foreground" />
+                <span className="text-card-foreground">{contact.phone}</span>
               </div>
             )}
-
+            
             {contact.location && (
               <div className="flex items-center gap-3">
-                <MapPin className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">Location</p>
-                  <p className="text-sm text-foreground">{contact.location}</p>
-                </div>
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                <span className="text-card-foreground">{contact.location}</span>
               </div>
             )}
-
+            
             <div className="flex items-center gap-3">
-              <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Last Contact</p>
-                <p className="text-sm text-foreground">{formatLastContact(contact.lastContact)}</p>
-              </div>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="text-card-foreground">
+                Last contact: {unifiedContact && unifiedContact.conversations.length > 0 
+                  ? formatLastContact(unifiedContact.conversations[0].thread.lastMessageAt)
+                  : formatLastContact(contact.lastContact)
+                }
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <MessageCircle className="h-4 w-4 text-muted-foreground" />
+              <span className="text-card-foreground">
+                {unifiedContact ? unifiedContact.conversations.length : contact.conversationCount} conversation{(unifiedContact ? unifiedContact.conversations.length : contact.conversationCount) !== 1 ? 's' : ''}
+              </span>
             </div>
           </div>
 
-          {/* Property Details */}
+          {/* Additional details */}
           {(contact.budgetRange || contact.propertyTypes) && (
-            <div className="space-y-4 mb-6">
-              <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">Property Details</h3>
-              
+            <div className="space-y-3">
               {contact.budgetRange && (
-                <div className="flex items-center gap-3">
-                  <Home className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground">Budget Range</p>
-                    <p className="text-sm text-foreground">{contact.budgetRange}</p>
-                  </div>
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Budget Range</h4>
+                  <p className="text-card-foreground">{contact.budgetRange}</p>
                 </div>
               )}
-
+              
               {contact.propertyTypes && (
-                <div className="flex items-center gap-3">
-                  <Building2 className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground">Property Types</p>
-                    <p className="text-sm text-foreground">{contact.propertyTypes}</p>
-                  </div>
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Property Types</h4>
+                  <p className="text-card-foreground">{contact.propertyTypes}</p>
                 </div>
               )}
             </div>
@@ -140,31 +237,86 @@ export function ContactDetailProfileCard({
 
           {/* Notes */}
           {contact.notes && (
-            <div className="space-y-3 mb-6">
-              <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">Notes</h3>
-              <div className="p-3 bg-muted/30 rounded-lg">
-                <p className="text-sm text-foreground leading-relaxed">{contact.notes}</p>
-              </div>
+            <div>
+              <h4 className="text-sm font-medium text-muted-foreground mb-2">Notes</h4>
+              <p className="text-card-foreground text-sm leading-relaxed">{contact.notes}</p>
             </div>
           )}
 
-          {/* Action Buttons */}
+          {/* Unified contact information */}
+          {unifiedContact && (
+            <div className="border-t border-border pt-6">
+              <h4 className="text-sm font-medium text-muted-foreground mb-3">Conversation History</h4>
+              
+              {unifiedContact.conversations.length > 0 ? (
+                <div className="space-y-3">
+                  {unifiedContact.conversations.map((conversation, index) => (
+                    <div key={conversation.thread.conversation_id} className="bg-muted/50 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-card-foreground">
+                          Conversation {index + 1}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {conversation.messages.length} messages
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        {conversation.thread.ai_summary || "No summary available"}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          Last: {formatLastContact(conversation.thread.lastMessageAt)}
+                        </span>
+                        {!contact.isManual && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleCreateContactFromConversation(conversation.thread.conversation_id)}
+                            className="h-6 text-xs"
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            Save as Contact
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-muted-foreground">
+                  <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No conversations found for this contact</p>
+                  {contact.isManual && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {/* TODO: Show conversation linking modal */}}
+                      className="mt-2"
+                      disabled={isLinking}
+                    >
+                      {isLinking ? (
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      ) : (
+                        <Link className="h-3 w-3 mr-1" />
+                      )}
+                      Link Conversation
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Action buttons */}
           <div className="flex gap-3 pt-4 border-t border-border">
-            <button
-              onClick={onClose}
-              className="flex-1 px-4 py-2.5 border border-border rounded-lg text-foreground hover:bg-muted transition-colors"
+            <Button
+              onClick={() => onEdit(contact)}
+              className="flex-1"
+              variant="outline"
             >
-              Close
-            </button>
-            <button
-              onClick={() => {
-                onClose()
-                onEdit(contact)
-              }}
-              className="flex-1 px-4 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium"
-            >
+              <Edit className="h-4 w-4 mr-2" />
               Edit Contact
-            </button>
+            </Button>
           </div>
         </div>
       </div>
