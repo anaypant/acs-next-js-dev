@@ -29,6 +29,7 @@ import { formatLocalTime } from '@/app/utils/timezone';
 import type { Conversation } from '@/types/conversation';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { EVScoreInfoContent } from '@/components/features/analytics/EVScoreInfoContent';
+import { EVScoreInfoModal } from '@/components/features/analytics/EVScoreInfoModal';
 
 // Color palette for conversation avatars
 const CONVERSATION_COLORS = [
@@ -89,6 +90,7 @@ export function ConversationCard({
   const [localIsUpdatingLcp, setLocalIsUpdatingLcp] = useState(false);
   const [localIsUpdatingRead, setLocalIsUpdatingRead] = useState(false);
   const [localIsDeleting, setLocalIsDeleting] = useState(false);
+  const [showEVModal, setShowEVModal] = useState(false);
 
   // Update local state when prop changes
   useEffect(() => {
@@ -194,7 +196,7 @@ export function ConversationCard({
             ? 'border-status-warning/20 bg-status-warning/5'
             : 'border-border'
         }`}
-        onClick={handleClick}
+        onClick={() => { if (!showEVModal) handleClick(); }}
       >
         {/* Status badges */}
         {!isFlagged && isFlaggedForReview && (
@@ -314,22 +316,17 @@ export function ConversationCard({
           {/* EV Score - Bigger and on the right */}
           {score >= 0 && (
             <div className="flex-shrink-0">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    className="px-3 py-2 rounded-lg text-sm font-bold shadow-md flex items-center gap-1 focus:outline-none"
-                    style={evColorStyle}
-                    onClick={e => e.stopPropagation()}
-                    aria-label="Show EV Score info"
-                  >
-                    EV {score}
-                    <Info className="w-3 h-3 ml-1 text-muted-foreground" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent align="end" className="w-80">
-                  <EVScoreInfoContent score={score} />
-                </PopoverContent>
-              </Popover>
+              <button
+                className="px-3 py-2 rounded-lg text-sm font-bold shadow-md flex items-center gap-1 focus:outline-none"
+                style={evColorStyle}
+                onClick={e => { e.stopPropagation(); setShowEVModal(true); }}
+                aria-label="Show EV Score info"
+                type="button"
+              >
+                <Info className="w-4 h-4 mr-1" />
+                EV {score}
+              </button>
+              <EVScoreInfoModal isOpen={showEVModal} onClose={() => setShowEVModal(false)} score={score} />
             </div>
           )}
         </div>
@@ -349,7 +346,7 @@ export function ConversationCard({
           ? 'border-status-warning/20 bg-status-warning/5'
           : 'border-border'
       }`}
-      onClick={handleClick}
+      onClick={() => { if (!showEVModal) handleClick(); }}
     >
       {/* Status badges */}
       {!isFlagged && isFlaggedForReview && (
@@ -419,22 +416,16 @@ export function ConversationCard({
                 </div>
               )}
               {score >= 0 && (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button
-                      className="px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1 focus:outline-none"
-                      style={evColorStyle}
-                      onClick={e => e.stopPropagation()}
-                      aria-label="Show EV Score info"
-                    >
-                      EV {score}
-                      <Info className="w-3 h-3 ml-1 text-muted-foreground" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent align="end" className="w-80">
-                    <EVScoreInfoContent score={score} />
-                  </PopoverContent>
-                </Popover>
+                <button
+                  className="px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1 focus:outline-none"
+                  style={evColorStyle}
+                  onClick={e => { e.stopPropagation(); setShowEVModal(true); }}
+                  aria-label="Show EV Score info"
+                  type="button"
+                >
+                  <Info className="w-4 h-4 mr-1" />
+                  EV {score}
+                </button>
               )}
             </div>
           </div>
