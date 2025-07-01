@@ -125,7 +125,7 @@ function EVScoreFullGuideModal({ isOpen, onClose, onBack }: { isOpen: boolean; o
             onClick={onClose}
           />
           <motion.div
-            className="fixed inset-0 z-[61] flex items-center justify-center p-4"
+            className="fixed inset-0 z-[61] flex items-center justify-center"
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 40 }}
@@ -134,13 +134,9 @@ function EVScoreFullGuideModal({ isOpen, onClose, onBack }: { isOpen: boolean; o
             role="dialog"
           >
             <div
-              className="relative bg-card text-card-foreground border border-border rounded-2xl shadow-2xl w-full max-w-5xl mx-auto overflow-hidden animate-gradient-x flex flex-col"
+              className="relative bg-card text-card-foreground border border-border rounded-2xl shadow-2xl w-full max-w-full sm:max-w-2xl md:max-w-4xl xl:max-w-5xl min-w-0 mx-auto overflow-hidden animate-gradient-x flex flex-col p-2 sm:p-6 overflow-y-auto"
+              style={{ height: 'auto', minHeight: 400, maxHeight: '90vh' }}
               onClick={e => e.stopPropagation()}
-              style={{ 
-                minHeight: '600px', 
-                maxHeight: '90vh',
-                height: 'auto'
-              }}
             >
               <div className="h-2 w-full bg-gradient-to-r from-primary via-accent to-secondary animate-gradient-x" />
               <div className="flex items-center justify-between px-6 sm:px-10 py-7 border-b border-border bg-card/80 backdrop-blur-sm">
@@ -237,7 +233,7 @@ export function EVScoreInfoModal({ isOpen, onClose, score, modalId = 'ev-score-m
             />
             {/* Modal panel with slide+fade-in */}
             <motion.div
-              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              className="fixed inset-0 z-50 flex items-center justify-center"
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 40 }}
@@ -246,13 +242,9 @@ export function EVScoreInfoModal({ isOpen, onClose, score, modalId = 'ev-score-m
               role="dialog"
             >
               <div
-                className="relative bg-card text-card-foreground border border-border rounded-2xl shadow-2xl w-full max-w-5xl mx-auto overflow-hidden animate-gradient-x flex flex-col"
+                className="relative bg-card text-card-foreground border border-border rounded-2xl shadow-2xl w-full max-w-full sm:max-w-2xl md:max-w-4xl xl:max-w-5xl min-w-0 mx-auto overflow-hidden animate-gradient-x flex flex-col p-2 sm:p-6 overflow-y-auto"
+                style={{ height: 'auto', minHeight: 400, maxHeight: '90vh' }}
                 onClick={e => e.stopPropagation()}
-                style={{ 
-                  minHeight: '600px', 
-                  maxHeight: '90vh',
-                  height: 'auto'
-                }}
               >
                 {/* Top accent bar with ACS gradient */}
                 <div className="h-2 w-full bg-gradient-to-r from-primary via-accent to-secondary animate-gradient-x" />
