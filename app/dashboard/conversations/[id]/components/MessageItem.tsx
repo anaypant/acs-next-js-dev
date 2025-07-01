@@ -80,7 +80,7 @@ export function MessageItem({
                 <Info className="w-4 h-4 mr-1" />
                 EV {message.ev_score}
               </button>
-              <EVScoreInfoModal isOpen={showEVModal} onClose={() => setShowEVModal(false)} score={message.ev_score} />
+              <EVScoreInfoModal isOpen={showEVModal} onClose={() => setShowEVModal(false)} score={message.ev_score} modalId={`ev-modal-${message.id}`} />
               {!isEvUpdating && (
                 <>
                   <button

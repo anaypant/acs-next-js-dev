@@ -462,6 +462,7 @@ export function EnhancedConversationsTable({
                             isOpen={showEVModal} 
                             onClose={() => setShowEVModal(false)} 
                             score={modalScore ?? undefined} 
+                            modalId={`ev-modal-table-${conversation.thread.conversation_id}`}
                           />
                         </>
                       ) : (

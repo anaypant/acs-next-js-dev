@@ -326,7 +326,7 @@ export function ConversationCard({
                 <Info className="w-4 h-4 mr-1" />
                 EV {score}
               </button>
-              <EVScoreInfoModal isOpen={showEVModal} onClose={() => setShowEVModal(false)} score={score} />
+              <EVScoreInfoModal isOpen={showEVModal} onClose={() => setShowEVModal(false)} score={score} modalId={`ev-modal-card-${conversation.thread.conversation_id}`} />
             </div>
           )}
         </div>
@@ -427,6 +427,7 @@ export function ConversationCard({
                   EV {score}
                 </button>
               )}
+              <EVScoreInfoModal isOpen={showEVModal} onClose={() => setShowEVModal(false)} score={score} modalId={`ev-modal-card-detailed-${conversation.thread.conversation_id}`} />
             </div>
           </div>
 

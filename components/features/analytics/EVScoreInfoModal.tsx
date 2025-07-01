@@ -4,11 +4,13 @@ import { cn } from '@/lib/utils';
 import { EVScoreScale } from './EVScoreScale';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, usePathname } from 'next/navigation';
+import { useModal } from '@/components/providers/ModalProvider';
 
 interface EVScoreInfoModalProps {
   isOpen: boolean;
   onClose: () => void;
   score?: number;
+  modalId?: string;
 }
 
 const scoreRanges = [
@@ -115,7 +117,7 @@ function EVScoreFullGuideModal({ isOpen, onClose, onBack }: { isOpen: boolean; o
       {isOpen && (
         <>
           <motion.div
-            className="fixed inset-0 z-50 bg-black/60"
+            className="fixed inset-0 z-[60] bg-black/60"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -123,7 +125,7 @@ function EVScoreFullGuideModal({ isOpen, onClose, onBack }: { isOpen: boolean; o
             onClick={onClose}
           />
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center"
+            className="fixed inset-0 z-[61] flex items-center justify-center p-4"
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 40 }}
@@ -132,15 +134,19 @@ function EVScoreFullGuideModal({ isOpen, onClose, onBack }: { isOpen: boolean; o
             role="dialog"
           >
             <div
-              className="relative bg-card text-card-foreground border border-border rounded-2xl shadow-2xl w-full max-w-5xl min-h-[600px] min-w-[1100px] mx-auto overflow-hidden animate-gradient-x flex flex-col"
+              className="relative bg-card text-card-foreground border border-border rounded-2xl shadow-2xl w-full max-w-5xl mx-auto overflow-hidden animate-gradient-x flex flex-col"
               onClick={e => e.stopPropagation()}
-              style={{ height: 600, minHeight: 600, maxHeight: 600 }}
+              style={{ 
+                minHeight: '600px', 
+                maxHeight: '90vh',
+                height: 'auto'
+              }}
             >
               <div className="h-2 w-full bg-gradient-to-r from-primary via-accent to-secondary animate-gradient-x" />
-              <div className="flex items-center justify-between px-10 py-7 border-b border-border bg-card/80 backdrop-blur-sm">
+              <div className="flex items-center justify-between px-6 sm:px-10 py-7 border-b border-border bg-card/80 backdrop-blur-sm">
                 <div className="flex items-center gap-3">
-                  <BookOpen className="w-8 h-8 text-primary" />
-                  <h3 className="text-2xl font-extrabold text-primary tracking-tight">Full EV Score Guide</h3>
+                  <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
+                  <h3 className="text-xl sm:text-2xl font-extrabold text-primary tracking-tight">Full EV Score Guide</h3>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -148,31 +154,24 @@ function EVScoreFullGuideModal({ isOpen, onClose, onBack }: { isOpen: boolean; o
                     className="text-muted-foreground hover:text-primary transition-colors rounded-full p-2 focus:outline-none focus:ring-2 focus:ring-primary"
                     aria-label="Back"
                   >
-                    <ArrowLeft className="w-7 h-7" />
-                  </button>
-                  <button
-                    onClick={onClose}
-                    className="text-muted-foreground hover:text-primary transition-colors rounded-full p-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                    aria-label="Close"
-                  >
-                    <X className="w-7 h-7" />
+                    <ArrowLeft className="w-6 h-6 sm:w-7 sm:h-7" />
                   </button>
                 </div>
               </div>
               {/* Modern, concise, visually appealing guide steps */}
-              <div className="flex-1 flex flex-col justify-center items-center px-12 py-8 bg-gradient-to-br from-card via-background to-muted/60" style={{ overflow: 'hidden' }}>
-                <div className="w-full flex flex-col gap-8 items-center justify-center" style={{ maxWidth: 950 }}>
+              <div className="flex-1 flex flex-col justify-center items-center px-6 sm:px-12 py-8 bg-gradient-to-br from-card via-background to-muted/60" style={{ overflow: 'hidden' }}>
+                <div className="w-full flex flex-col gap-6 sm:gap-8 items-center justify-center" style={{ maxWidth: 950 }}>
                   <EVScoreScale className="mb-4" />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 w-full">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 w-full">
                     {guideSteps.map((step, i) => (
                       <div
                         key={step.title}
-                        className="rounded-2xl p-6 flex flex-col items-center shadow-md bg-card border border-border max-w-xs min-w-0 w-full overflow-hidden"
+                        className="rounded-2xl p-4 sm:p-6 flex flex-col items-center shadow-md bg-card border border-border max-w-xs min-w-0 w-full overflow-hidden"
                         style={{ minWidth: 0 }}
                       >
-                        <step.icon className={cn('w-10 h-10 mb-2', step.color)} />
-                        <div className="font-bold text-lg mb-1 text-card-foreground text-center break-words whitespace-normal w-full">{step.title}</div>
-                        <div className="text-base text-muted-foreground text-center break-words whitespace-normal w-full">{step.desc}</div>
+                        <step.icon className={cn('w-8 h-8 sm:w-10 sm:h-10 mb-2', step.color)} />
+                        <div className="font-bold text-base sm:text-lg mb-1 text-card-foreground text-center break-words whitespace-normal w-full">{step.title}</div>
+                        <div className="text-sm sm:text-base text-muted-foreground text-center break-words whitespace-normal w-full">{step.desc}</div>
                       </div>
                     ))}
                   </div>
@@ -186,24 +185,32 @@ function EVScoreFullGuideModal({ isOpen, onClose, onBack }: { isOpen: boolean; o
   );
 }
 
-export function EVScoreInfoModal({ isOpen, onClose, score }: EVScoreInfoModalProps) {
+export function EVScoreInfoModal({ isOpen, onClose, score, modalId = 'ev-score-modal' }: EVScoreInfoModalProps) {
   const [showGuide, setShowGuide] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+  const { activeModal, openModal, closeModal } = useModal();
+  
   // Store the previous path only once, when the main modal is first opened
   const prevPathRef = useRef<string | null>(null);
   const [initialPrevPath, setInitialPrevPath] = useState<string | null>(null);
+
+  // Use global modal state
+  const isActuallyOpen = isOpen && activeModal === modalId;
 
   useEffect(() => {
     if (isOpen && !prevPathRef.current) {
       prevPathRef.current = pathname;
       setInitialPrevPath(pathname);
+      openModal(modalId);
     }
     if (!isOpen) {
       prevPathRef.current = null;
       setInitialPrevPath(null);
+      setShowGuide(false); // Reset guide state when modal closes
+      closeModal(modalId);
     }
-  }, [isOpen, pathname]);
+  }, [isOpen, pathname, modalId, openModal, closeModal]);
 
   const handleOverlayClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -217,7 +224,7 @@ export function EVScoreInfoModal({ isOpen, onClose, score }: EVScoreInfoModalPro
   return (
     <>
       <AnimatePresence>
-        {isOpen && !showGuide && (
+        {isActuallyOpen && !showGuide && (
           <>
             {/* Overlay with fade-in */}
             <motion.div
@@ -230,7 +237,7 @@ export function EVScoreInfoModal({ isOpen, onClose, score }: EVScoreInfoModalPro
             />
             {/* Modal panel with slide+fade-in */}
             <motion.div
-              className="fixed inset-0 z-50 flex items-center justify-center"
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 40 }}
@@ -239,76 +246,81 @@ export function EVScoreInfoModal({ isOpen, onClose, score }: EVScoreInfoModalPro
               role="dialog"
             >
               <div
-                className="relative bg-card text-card-foreground border border-border rounded-2xl shadow-2xl w-full max-w-5xl min-h-[600px] min-w-[1100px] mx-auto overflow-hidden animate-gradient-x flex flex-col"
+                className="relative bg-card text-card-foreground border border-border rounded-2xl shadow-2xl w-full max-w-5xl mx-auto overflow-hidden animate-gradient-x flex flex-col"
                 onClick={e => e.stopPropagation()}
+                style={{ 
+                  minHeight: '600px', 
+                  maxHeight: '90vh',
+                  height: 'auto'
+                }}
               >
                 {/* Top accent bar with ACS gradient */}
                 <div className="h-2 w-full bg-gradient-to-r from-primary via-accent to-secondary animate-gradient-x" />
                 {/* Header */}
-                <div className="flex flex-col items-center justify-center px-12 pt-10 pb-4 border-b border-border bg-card/80 backdrop-blur-sm relative">
+                <div className="flex flex-col items-center justify-center px-6 sm:px-12 pt-8 sm:pt-10 pb-4 border-b border-border bg-card/80 backdrop-blur-sm relative">
                   <button
                     onClick={handleClose}
                     className="absolute top-4 right-4 text-muted-foreground hover:text-primary transition-colors rounded-full p-2 focus:outline-none focus:ring-2 focus:ring-primary"
                     aria-label="Close"
                   >
-                    <X className="w-7 h-7" />
+                    <X className="w-6 h-6 sm:w-7 sm:h-7" />
                   </button>
-                  <h3 className="text-3xl font-extrabold text-primary tracking-tight mb-2">EV Score Explained</h3>
-                  <div className="text-lg text-muted-foreground font-medium mb-2">AI-powered lead prioritization</div>
+                  <h3 className="text-2xl sm:text-3xl font-extrabold text-primary tracking-tight mb-2 text-center">EV Score Explained</h3>
+                  <div className="text-base sm:text-lg text-muted-foreground font-medium mb-2 text-center">AI-powered lead prioritization</div>
                   <div className="h-1 w-32 rounded-full bg-gradient-to-r from-primary via-accent to-secondary mb-2" />
                 </div>
                 {/* Main content */}
-                <div className="flex-1 flex flex-col gap-8 px-12 py-8 bg-gradient-to-br from-card via-background to-muted/60">
+                <div className="flex-1 flex flex-col gap-6 sm:gap-8 px-6 sm:px-12 py-6 sm:py-8 bg-gradient-to-br from-card via-background to-muted/60">
                   {/* EV Score scale */}
                   <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.1, duration: 0.4 }}>
-                    <EVScoreScale score={score} className="mb-8" />
+                    <EVScoreScale score={score} className="mb-6 sm:mb-8" />
                   </motion.div>
                   {/* Score range cards */}
-                  <div className="grid grid-cols-4 gap-6 mb-8">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
                     {scoreRanges.map((range, i) => (
                       <motion.div
                         key={range.label}
                         className={cn(
-                          'rounded-2xl p-6 flex flex-col items-center shadow-md',
+                          'rounded-2xl p-4 sm:p-6 flex flex-col items-center shadow-md',
                           range.color
                         )}
                         initial={{ y: 30, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ delay: 0.2 + i * 0.08, duration: 0.4 }}
                       >
-                        <range.icon className={cn('w-10 h-10 mb-2', range.iconColor)} />
-                        <div className="font-bold text-xl mb-1 text-card-foreground">{range.label}</div>
+                        <range.icon className={cn('w-8 h-8 sm:w-10 sm:h-10 mb-2', range.iconColor)} />
+                        <div className="font-bold text-lg sm:text-xl mb-1 text-card-foreground text-center">{range.label}</div>
                         <div className="text-xs font-semibold mb-1 text-card-foreground">{range.range}</div>
-                        <div className="text-base text-card-foreground text-center mb-2">{range.desc}</div>
+                        <div className="text-sm sm:text-base text-card-foreground text-center mb-2">{range.desc}</div>
                         <span className={cn('px-3 py-1 rounded-full text-xs font-semibold', range.chipColor)}>{range.action}</span>
                       </motion.div>
                     ))}
                   </div>
                   {/* How to use steps */}
-                  <div className="flex flex-row items-stretch justify-between gap-6 mb-8">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 items-stretch gap-4 sm:gap-6 mb-6 sm:mb-8">
                     {steps.map((step, i) => (
                       <motion.div
                         key={step.title}
-                        className="flex-1 bg-card rounded-xl shadow flex flex-col items-center justify-center p-6 border border-border"
+                        className="bg-card rounded-xl shadow flex flex-col items-center justify-center p-4 sm:p-6 border border-border"
                         initial={{ y: 30, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ delay: 0.4 + i * 0.08, duration: 0.4 }}
                       >
-                        <step.icon className={cn('w-9 h-9 mb-2', step.color)} />
-                        <div className="font-bold text-lg mb-1 text-card-foreground">{step.title}</div>
-                        <div className="text-base text-muted-foreground text-center">{step.desc}</div>
+                        <step.icon className={cn('w-8 h-8 sm:w-9 sm:h-9 mb-2', step.color)} />
+                        <div className="font-bold text-base sm:text-lg mb-1 text-card-foreground text-center">{step.title}</div>
+                        <div className="text-sm sm:text-base text-muted-foreground text-center">{step.desc}</div>
                       </motion.div>
                     ))}
                   </div>
                 </div>
                 {/* Action button */}
-                <div className="flex items-center justify-center py-7 border-t border-border bg-card/80">
+                <div className="flex items-center justify-center py-6 sm:py-7 border-t border-border bg-card/80">
                   <button
-                    className="px-8 py-4 rounded-xl bg-gradient-to-r from-primary via-accent to-secondary text-white font-bold text-xl shadow-md hover:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-primary flex items-center gap-2"
+                    className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-primary via-accent to-secondary text-white font-bold text-lg sm:text-xl shadow-md hover:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-primary flex items-center gap-2"
                     onClick={() => setShowGuide(true)}
                     type="button"
                   >
-                    See Full EV Score Guide <ArrowRight className="w-6 h-6" />
+                    See Full EV Score Guide <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6" />
                   </button>
                 </div>
               </div>
@@ -316,7 +328,7 @@ export function EVScoreInfoModal({ isOpen, onClose, score }: EVScoreInfoModalPro
           </>
         )}
       </AnimatePresence>
-      <EVScoreFullGuideModal isOpen={showGuide} onClose={onClose} onBack={() => setShowGuide(false)} />
+      <EVScoreFullGuideModal isOpen={showGuide && isActuallyOpen} onClose={onClose} onBack={() => setShowGuide(false)} />
     </>
   );
 } 
