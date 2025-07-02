@@ -1,9 +1,10 @@
 import React from 'react';
 import { format } from 'date-fns';
-import { ThumbsUp, ThumbsDown, User, Bot, AlertTriangle } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, User, Bot, AlertTriangle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatLocalTimeOnly } from '@/app/utils/timezone';
 import type { Message } from '@/types/conversation';
+import { EVScoreInfoModal } from '@/components/features/analytics/EVScoreInfoModal';
 
 /**
  * Message Item Component
@@ -44,6 +45,7 @@ export function MessageItem({
   const currentFeedback = feedback[message.id];
   const isEvUpdating = updatingEvFeedbackId === message.id;
   const isUpdating = updatingFeedbackId === message.id;
+  const [showEVModal, setShowEVModal] = React.useState(false);
 
   return (
     <div
@@ -69,7 +71,16 @@ export function MessageItem({
           {/* EV Score and Feedback for Client Messages */}
           {!isUser && typeof message.ev_score === 'number' && message.ev_score >= 0 && message.ev_score <= 100 && (
             <span className="ml-2 flex items-center gap-1">
-              <span className="font-semibold text-status-success">EV {message.ev_score}</span>
+              <button
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border focus:outline-none bg-muted text-foreground"
+                onClick={() => setShowEVModal(true)}
+                aria-label="Show EV Score info"
+                type="button"
+              >
+                <Info className="w-4 h-4 mr-1" />
+                EV {message.ev_score}
+              </button>
+              <EVScoreInfoModal isOpen={showEVModal} onClose={() => setShowEVModal(false)} score={message.ev_score} modalId={`ev-modal-${message.id}`} />
               {!isEvUpdating && (
                 <>
                   <button

@@ -158,7 +158,22 @@ export function useCentralizedDashboardData(options: UseCentralizedDashboardData
 
   // Combine data into dashboard format
   const dashboardData = useMemo(() => {
-    if (!conversations || !usageData) return null;
+    if (!conversations || !usageData) {
+      console.log('[useCentralizedDashboardData] Missing data for dashboard:', {
+        hasConversations: !!conversations,
+        conversationsLength: conversations?.length,
+        hasUsageData: !!usageData
+      });
+      return null;
+    }
+
+    console.log('[useCentralizedDashboardData] Creating dashboard data:', {
+      conversationsLength: conversations.length,
+      sampleConversation: conversations[0] ? {
+        id: conversations[0].thread.conversation_id,
+        lead_name: conversations[0].thread.lead_name
+      } : null
+    });
 
     return {
       metrics: calculateDashboardMetrics(conversations, usageData),

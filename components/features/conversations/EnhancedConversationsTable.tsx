@@ -21,7 +21,8 @@ import {
   Clock,
   AlertCircle,
   Shield,
-  Mail
+  Mail,
+  Info
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
@@ -36,6 +37,9 @@ import {
 } from '@/lib/utils/conversations';
 import { useConversationBulkActions } from '@/hooks/useConversationBulkActions';
 import type { Conversation } from '@/types/conversation';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { EVScoreInfoContent } from '@/components/features/analytics/EVScoreInfoContent';
+import { EVScoreInfoModal } from '@/components/features/analytics/EVScoreInfoModal';
 
 interface EnhancedConversationsTableProps {
   conversations: Conversation[];
@@ -65,6 +69,8 @@ export function EnhancedConversationsTable({
     showPendingOnly: false
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [showEVModal, setShowEVModal] = useState(false);
+  const [modalScore, setModalScore] = useState<number | null>(null);
 
   // Process conversations with enhanced data
   const processedConversations = useMemo(() => {
@@ -382,6 +388,7 @@ export function EnhancedConversationsTable({
                   <tr
                     key={conversation.thread.conversation_id}
                     className="hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={() => { if (!showEVModal) handleRowClick(conversation.thread.conversation_id); }}
                   >
                     <td className="px-6 py-4 whitespace-nowrap w-12">
                       <input
@@ -435,15 +442,29 @@ export function EnhancedConversationsTable({
                     </td>
                     <td 
                       className="px-6 py-4 whitespace-nowrap w-1/6"
-                      onClick={() => handleRowClick(conversation.thread.conversation_id)}
+                      onClick={e => { e.stopPropagation(); if (!showEVModal) handleRowClick(conversation.thread.conversation_id); }}
                     >
                       {conversation.evScore !== null ? (
-                        <span className={cn(
-                          "inline-flex px-2 py-1 text-xs font-semibold rounded-full border",
-                          getEVScoreColor(conversation.evScore)
-                        )}>
-                          {conversation.evScore}
-                        </span>
+                        <>
+                          <button
+                            className={cn(
+                              "inline-flex px-2 py-1 text-xs font-semibold rounded-full border items-center gap-1 focus:outline-none",
+                              getEVScoreColor(conversation.evScore)
+                            )}
+                            onClick={e => { e.stopPropagation(); setShowEVModal(true); setModalScore(conversation.evScore); }}
+                            aria-label="Show EV Score info"
+                            type="button"
+                          >
+                            <Info className="w-4 h-4 mr-1" />
+                            {conversation.evScore}
+                          </button>
+                          <EVScoreInfoModal 
+                            isOpen={showEVModal} 
+                            onClose={() => setShowEVModal(false)} 
+                            score={modalScore ?? undefined} 
+                            modalId={`ev-modal-table-${conversation.thread.conversation_id}`}
+                          />
+                        </>
                       ) : (
                         <span className="text-sm text-gray-400">N/A</span>
                       )}

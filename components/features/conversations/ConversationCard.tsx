@@ -16,7 +16,8 @@ import {
   ChevronRight,
   MoreVertical,
   Trash2,
-  Settings
+  Settings,
+  Info
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
@@ -26,6 +27,9 @@ import {
 } from '@/lib/utils/conversation';
 import { formatLocalTime } from '@/app/utils/timezone';
 import type { Conversation } from '@/types/conversation';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { EVScoreInfoContent } from '@/components/features/analytics/EVScoreInfoContent';
+import { EVScoreInfoModal } from '@/components/features/analytics/EVScoreInfoModal';
 
 // Color palette for conversation avatars
 const CONVERSATION_COLORS = [
@@ -86,6 +90,7 @@ export function ConversationCard({
   const [localIsUpdatingLcp, setLocalIsUpdatingLcp] = useState(false);
   const [localIsUpdatingRead, setLocalIsUpdatingRead] = useState(false);
   const [localIsDeleting, setLocalIsDeleting] = useState(false);
+  const [showEVModal, setShowEVModal] = useState(false);
 
   // Update local state when prop changes
   useEffect(() => {
@@ -191,7 +196,7 @@ export function ConversationCard({
             ? 'border-status-warning/20 bg-status-warning/5'
             : 'border-border'
         }`}
-        onClick={handleClick}
+        onClick={() => { if (!showEVModal) handleClick(); }}
       >
         {/* Status badges */}
         {!isFlagged && isFlaggedForReview && (
@@ -209,7 +214,23 @@ export function ConversationCard({
           </div>
         )}
 
-        <div className="flex items-start gap-3">
+        {/* Delete button for simple variant */}
+        {onDelete && (
+          <button
+            className="absolute top-2 right-2 p-1.5 bg-status-error/10 text-status-error rounded-full hover:bg-status-error/20 transition-colors cursor-pointer z-10"
+            onClick={handleDelete}
+            disabled={deleting}
+            title="Delete conversation"
+          >
+            {deleting ? (
+              <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Trash2 className="w-3 h-3" />
+            )}
+          </button>
+        )}
+
+        <div className="flex items-start gap-3 w-full">
           {/* Avatar */}
           <div className="flex-shrink-0">
             <div 
@@ -240,14 +261,6 @@ export function ConversationCard({
                     <Clock className="w-3 h-3" />
                   </div>
                 )}
-                {score >= 0 && (
-                  <div 
-                    className="px-2 py-0.5 rounded-full text-xs font-semibold"
-                    style={evColorStyle}
-                  >
-                    EV {score}
-                  </div>
-                )}
               </div>
             </div>
 
@@ -255,14 +268,42 @@ export function ConversationCard({
               {subject}
             </p>
 
+            {/* AI Summary */}
             {thread.ai_summary && (
               <p className="text-xs text-muted-foreground/70 mb-2 line-clamp-2">
                 {thread.ai_summary}
               </p>
             )}
 
+            {/* Property Details */}
+            <div className="flex flex-wrap gap-2 mb-2">
+              {/* Price Range */}
+              {thread.budget_range && (
+                <div className="flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full font-medium">
+                  <span className="font-semibold">💰</span>
+                  <span>{thread.budget_range}</span>
+                </div>
+              )}
+              
+              {/* Location */}
+              {thread.location && (
+                <div className="flex items-center gap-1 px-2 py-0.5 bg-secondary/10 text-secondary text-xs rounded-full font-medium">
+                  <span className="font-semibold">📍</span>
+                  <span>{thread.location}</span>
+                </div>
+              )}
+              
+              {/* Property Types */}
+              {thread.preferred_property_types && (
+                <div className="flex items-center gap-1 px-2 py-0.5 bg-accent/10 text-accent text-xs rounded-full font-medium">
+                  <span className="font-semibold">🏠</span>
+                  <span>{thread.preferred_property_types}</span>
+                </div>
+              )}
+            </div>
+
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span>{messageCount} message{messageCount !== 1 ? 's' : ''}</span>
                 {lastMessageTime && (
                   <span>{lastMessageTime.toLocaleString()}</span>
@@ -271,6 +312,23 @@ export function ConversationCard({
               <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
             </div>
           </div>
+
+          {/* EV Score - Bigger and on the right */}
+          {score >= 0 && (
+            <div className="flex-shrink-0">
+              <button
+                className="px-3 py-2 rounded-lg text-sm font-bold shadow-md flex items-center gap-1 focus:outline-none"
+                style={evColorStyle}
+                onClick={e => { e.stopPropagation(); setShowEVModal(true); }}
+                aria-label="Show EV Score info"
+                type="button"
+              >
+                <Info className="w-4 h-4 mr-1" />
+                EV {score}
+              </button>
+              <EVScoreInfoModal isOpen={showEVModal} onClose={() => setShowEVModal(false)} score={score} modalId={`ev-modal-card-${conversation.thread.conversation_id}`} />
+            </div>
+          )}
         </div>
       </div>
     );
@@ -288,7 +346,7 @@ export function ConversationCard({
           ? 'border-status-warning/20 bg-status-warning/5'
           : 'border-border'
       }`}
-      onClick={handleClick}
+      onClick={() => { if (!showEVModal) handleClick(); }}
     >
       {/* Status badges */}
       {!isFlagged && isFlaggedForReview && (
@@ -358,13 +416,18 @@ export function ConversationCard({
                 </div>
               )}
               {score >= 0 && (
-                <div 
-                  className="px-2 py-1 rounded-full text-xs font-semibold"
+                <button
+                  className="px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1 focus:outline-none"
                   style={evColorStyle}
+                  onClick={e => { e.stopPropagation(); setShowEVModal(true); }}
+                  aria-label="Show EV Score info"
+                  type="button"
                 >
+                  <Info className="w-4 h-4 mr-1" />
                   EV {score}
-                </div>
+                </button>
               )}
+              <EVScoreInfoModal isOpen={showEVModal} onClose={() => setShowEVModal(false)} score={score} modalId={`ev-modal-card-detailed-${conversation.thread.conversation_id}`} />
             </div>
           </div>
 

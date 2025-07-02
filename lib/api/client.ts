@@ -302,11 +302,25 @@ export class ApiClient {
 
   // LCP operations with storage integration
   async getThreads(filters?: ThreadFilters): Promise<ApiResponse<{ data: any[] }>> {
+    console.log('[ApiClient] getThreads called:', {
+      hasFilters: !!filters,
+      filters,
+      currentUserId: this.currentUserId,
+      hasCachedData: this.currentUserId ? conversationStorage.hasData() : false,
+      isStale: this.currentUserId ? conversationStorage.isStale(10) : false
+    });
+
     // Check if we have cached data and it's not stale
     if (this.currentUserId && conversationStorage.hasData() && !conversationStorage.isStale(10)) {
       const cachedConversations = conversationStorage.getConversations();
       if (cachedConversations) {
-        console.log('[ApiClient] Using cached conversations data');
+        console.log('[ApiClient] Using cached conversations data:', {
+          conversationCount: cachedConversations.length,
+          sampleConversation: cachedConversations[0] ? {
+            id: cachedConversations[0].thread.conversation_id,
+            lead_name: cachedConversations[0].thread.lead_name
+          } : null
+        });
         return {
           success: true,
           data: { data: cachedConversations },
@@ -315,12 +329,26 @@ export class ApiClient {
       }
     }
 
+    console.log('[ApiClient] Making API request to get_all_threads...');
     // Ensure we always send a proper request body, even if filters is undefined
     const requestBody = filters || {};
     const response = await this.request<{ data: any[] }>('lcp/get_all_threads', { method: 'POST', body: requestBody });
     
+    console.log('[ApiClient] API response received:', {
+      success: response.success,
+      hasData: !!response.data,
+      dataType: typeof response.data,
+      dataKeys: response.data ? Object.keys(response.data) : null,
+      dataLength: response.data?.data?.length,
+      error: response.error,
+      status: response.status
+    });
+    
     // Store successful responses in local storage
     if (response.success && response.data?.data && this.currentUserId) {
+      console.log('[ApiClient] Storing conversations in local storage:', {
+        conversationCount: response.data.data.length
+      });
       conversationStorage.storeConversations(response.data.data);
     }
     
@@ -328,20 +356,13 @@ export class ApiClient {
   }
 
   async getThreadById(conversationId: string): Promise<ApiResponse<Thread>> {
-    // Check local storage first
-    if (this.currentUserId) {
-      const cachedConversation = conversationStorage.getConversation(conversationId);
-      if (cachedConversation) {
-        console.log('[ApiClient] Using cached conversation data');
-        return {
-          success: true,
-          data: cachedConversation.thread,
-          status: 200
-        };
-      }
+    const cacheKey = `thread:${conversationId}`;
+    const cached = this.cache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.cacheTTL) {
+      return cached.data;
     }
 
-    return this.request<Thread>(`lcp/getThreadById`, { method: 'POST', body: { conversationId } });
+    return this.request<Thread>(`lcp/getThreadById`, { method: 'POST', body: { conversation_id: conversationId } });
   }
 
   async updateThread(conversationId: string, updates: ThreadUpdate): Promise<ApiResponse<Thread>> {
@@ -386,7 +407,7 @@ export class ApiClient {
       conversationStorage.removeConversation(conversationId);
     }
 
-    const response = await this.request<void>('lcp/delete_thread', { method: 'POST', body: { conversationId } });
+    const response = await this.request<void>('lcp/delete_thread', { method: 'POST', body: { conversation_id: conversationId } });
     
     // If deletion failed, we could implement rollback here
     if (!response.success && this.currentUserId) {
@@ -407,7 +428,7 @@ export class ApiClient {
       });
     }
 
-    const response = await this.request<void>('lcp/mark_not_spam', { method: 'POST', body: { conversationId } });
+    const response = await this.request<void>('lcp/mark_not_spam', { method: 'POST', body: { conversation_id: conversationId } });
     
     // If update failed, we could implement rollback here
     if (!response.success && this.currentUserId) {

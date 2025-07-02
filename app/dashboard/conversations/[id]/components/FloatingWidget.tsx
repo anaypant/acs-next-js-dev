@@ -120,9 +120,12 @@ export function FloatingWidget({
       const widgetCenterX = x + widgetRect.width / 2;
       const widgetCenterY = y + widgetRect.height / 2;
       
-      return widgetCenterX <= columnRight && 
-             widgetCenterY >= dashboardRect.top && 
-             widgetCenterY <= dashboardRect.bottom;
+      // Add some tolerance for easier snapping
+      const tolerance = 50; // pixels
+      
+      return widgetCenterX <= columnRight + tolerance && 
+             widgetCenterY >= dashboardRect.top - tolerance && 
+             widgetCenterY <= dashboardRect.bottom + tolerance;
     }
     return false;
   };
@@ -261,8 +264,23 @@ export function FloatingWidget({
     
     // Scale based on widget size
     const scaleFactor = Math.max(width, height);
-    const responsiveWidth = Math.min(500, baseWidth * (scaleFactor * 0.8));
-    const responsiveHeight = Math.min(600, baseHeight * (scaleFactor * 0.8));
+    
+    // Responsive adjustments based on screen size
+    let responsiveWidth, responsiveHeight;
+    
+    if (window.innerWidth >= 1200) {
+      // Large screens - larger widgets
+      responsiveWidth = Math.min(600, baseWidth * (scaleFactor * 1.2));
+      responsiveHeight = Math.min(800, baseHeight * (scaleFactor * 1.2));
+    } else if (window.innerWidth >= 768) {
+      // Medium screens - medium widgets
+      responsiveWidth = Math.min(500, baseWidth * (scaleFactor * 1.0));
+      responsiveHeight = Math.min(700, baseHeight * (scaleFactor * 1.0));
+    } else {
+      // Small screens - smaller widgets
+      responsiveWidth = Math.min(400, baseWidth * (scaleFactor * 0.8));
+      responsiveHeight = Math.min(600, baseHeight * (scaleFactor * 0.8));
+    }
     
     return { width: responsiveWidth, height: responsiveHeight };
   };
