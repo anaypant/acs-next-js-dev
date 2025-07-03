@@ -18,7 +18,7 @@ import {
   ConversationMetricsModal,
   CompactStatsSummary
 } from '@/components/features/conversations';
-import { ArrowLeft, Settings } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useRouter } from 'next/navigation';
 
 function ConversationsContent() {
@@ -64,9 +64,9 @@ function ConversationsContent() {
   return (
     <div className="h-full flex flex-col">
       {/* Compact Header with Stats */}
-      <div className="flex-shrink-0 p-6 border-b border-border bg-card">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-4">
+      <div className="flex-shrink-0 p-6 bg-card w-full overflow-x-auto">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2 w-full">
+          <div className="flex items-center space-x-4 w-full max-w-full overflow-x-auto">
             <button
               onClick={() => router.back()}
               className="p-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -79,21 +79,22 @@ function ConversationsContent() {
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <button className="p-2 text-muted-foreground hover:text-foreground transition-colors">
-              <Settings className="w-5 h-5" />
-            </button>
+            {/* Removed the settings button from here */}
           </div>
         </div>
 
+        <div className="mb-2 border-b border-border" />
         {/* Compact Stats Summary */}
-        <CompactStatsSummary 
-          conversations={conversations}
-          onShowMetrics={() => setShowMetricsModal(true)}
-        />
+        <div className="mt-8 w-full overflow-x-auto">
+          <CompactStatsSummary 
+            conversations={conversations}
+            onShowMetrics={() => setShowMetricsModal(true)}
+          />
+        </div>
       </div>
 
       {/* Enhanced Conversations Table - Takes remaining height */}
-      <div className="flex-1 min-h-0 p-6">
+      <div className="flex-1 min-h-0 p-4 pt-2 pb-0 w-full overflow-x-auto">
         <EnhancedConversationsTable
           conversations={conversations}
           loading={loading}

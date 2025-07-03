@@ -80,13 +80,13 @@ export function ConversationMetricsModal({
       color: 'bg-red-500',
       textColor: 'text-red-600'
     },
-    {
-      title: 'Spam',
-      value: metrics.spam,
-      icon: Mail,
-      color: 'bg-gray-500',
-      textColor: 'text-gray-600'
-    },
+    // {
+    //   title: 'Spam',
+    //   value: metrics.spam,
+    //   icon: Mail,
+    //   color: 'bg-gray-500',
+    //   textColor: 'text-gray-600'
+    // },
     {
       title: 'Average EV Score',
       value: metrics.averageEVScore.toFixed(1),
