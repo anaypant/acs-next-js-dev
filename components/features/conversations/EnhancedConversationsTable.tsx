@@ -180,189 +180,138 @@ export function EnhancedConversationsTable({
   return (
     <div className={cn("bg-white rounded-lg shadow-sm h-full flex flex-col", className)}>
       {/* Header */}
-      <div className="p-6 border-b border-gray-200 flex-shrink-0">
+      <div className="p-6 border-b border-gray-200 flex-shrink-0 mb-1">{/* Decrease bottom margin from default to mb-2 */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">Conversations</h2>
           <div className="flex items-center space-x-2">
-            {onRefresh && (
-              <button
-                onClick={onRefresh}
-                disabled={loading}
-                className="p-2 text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
-              >
-                <RefreshCw className={cn("w-5 h-5", loading && "animate-spin")} />
-              </button>
-            )}
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
-            >
-              <Filter className="w-5 h-5" />
-            </button>
+            {/* Removed the old reload button from here */}
           </div>
         </div>
 
         {/* Search and Quick Filters */}
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-black bg-[#ededed] rounded" />
             <input
               type="text"
               placeholder="Search conversations..."
               value={filters.searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-[#ededed] text-black placeholder-black"
             />
           </div>
-          
           <div className="flex items-center space-x-2">
-            <button
-              onClick={handlePendingOnlyToggle}
-              className={cn(
-                "px-3 py-2 text-sm rounded-lg transition-colors",
-                filters.showPendingOnly
-                  ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
-                  : "bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200"
-              )}
-            >
-              Pending Only
-            </button>
+            {onRefresh && (
+              <button
+                onClick={onRefresh}
+                disabled={loading}
+                className="px-3 py-2 text-sm rounded-lg transition-colors bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 flex items-center gap-2 disabled:opacity-50"
+                title="Reload Conversations"
+              >
+                <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")}/>
+                <span>Reload</span>
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Advanced Filters */}
-        {showFilters && (
-          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-            <h3 className="text-sm font-medium text-gray-700 mb-3">Advanced Filters</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {['active', 'pending', 'completed', 'flagged', 'spam'].map(status => (
+        {/* Advanced Filters and Bulk Actions - now on the same row */}
+        <div className="mt-2 flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+          <div className="flex flex-row gap-2 w-auto max-w-2xl">
+            {['active', 'pending', 'completed', 'flagged'].map(status => {
+              // Always count from processedConversations, not filteredConversations
+              const count = processedConversations.filter(c => c.status === status).length;
+              return (
                 <button
                   key={status}
                   onClick={() => handleStatusFilter(status)}
                   className={cn(
-                    "px-3 py-2 text-sm rounded-lg transition-colors",
+                    "px-5 py-2 text-base rounded-lg transition-colors max-w-xs w-full min-w-[140px] whitespace-nowrap border border-gray-200 bg-gray-200 hover:bg-gray-300",
                     filters.status.includes(status as any)
-                      ? "bg-blue-100 text-blue-800 border border-blue-200"
-                      : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+                      ? "bg-white border-blue-200 text-blue-800 hover:bg-white"
+                      : "text-gray-700"
                   )}
                 >
-                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                  {status.charAt(0).toUpperCase() + status.slice(1)} ({count})
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
-        )}
-
-        {/* Bulk Actions */}
-        {bulkActions.selectedIds.length > 0 && (
-          <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-blue-800">
+          {bulkActions.selectedIds.length > 0 && (
+            <div className="flex flex-row items-center gap-2 ml-0 sm:ml-4 mt-2 sm:mt-0 bg-blue-50 rounded-lg border border-blue-200 px-4 py-2 sm:ml-auto">{/* sm:ml-auto to right align on row */}
+              <span className="text-sm font-medium text-blue-800 whitespace-nowrap">
                 {bulkActions.selectedIds.length} conversation(s) selected
               </span>
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={handleBulkAddNote}
-                  disabled={bulkActions.isProcessing}
-                  className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-1 disabled:opacity-50"
-                >
-                  <Edit3 className="w-4 h-4" />
-                  <span>Add Note</span>
-                </button>
-                <button
-                  onClick={handleBulkComplete}
-                  disabled={bulkActions.isProcessing}
-                  className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-1 disabled:opacity-50"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  <span>Mark Complete</span>
-                </button>
-                <button
-                  onClick={handleBulkDelete}
-                  disabled={bulkActions.isProcessing}
-                  className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-1 disabled:opacity-50"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>Delete</span>
-                </button>
-              </div>
+              <button
+                onClick={handleBulkAddNote}
+                disabled={bulkActions.isProcessing}
+                className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-1 disabled:opacity-50"
+              >
+                <Edit3 className="w-4 h-4" />
+                <span>Add Note</span>
+              </button>
+              <button
+                onClick={handleBulkComplete}
+                disabled={bulkActions.isProcessing}
+                className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-1 disabled:opacity-50"
+              >
+                <CheckCircle className="w-4 h-4" />
+                <span>Mark Complete</span>
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={bulkActions.isProcessing}
+                className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-1 disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Delete</span>
+              </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Table Container */}
       <div className="flex-1 min-h-0 flex flex-col">
         {/* Table Header */}
         <div className="flex-shrink-0">
-          <table className="w-full">
+          {/* Titles Row - perfectly aligned with table columns */}
+          <div className="grid grid-cols-12 w-full mb-0">
+            <div className="col-span-3 flex items-center justify-center px-6 py-2">
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Lead</span>
+            </div>
+            <div className="col-span-2 flex items-center justify-center px-2 py-2">
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Email</span>
+            </div>
+            <div className="col-span-2 flex items-center justify-center px-3 py-2">
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Last Message</span>
+            </div>
+            <div className="col-span-2 flex items-center justify-center px-3 py-2">
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Status</span>
+            </div>
+            <div className="col-span-2 flex items-center justify-center px-10 py-2">{/* px-10 for further right shift of EV Score column */}
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">EV Score</span>
+            </div>
+            <div className="col-span-1 flex items-center justify-center px-3 py-2">
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Messages</span>
+            </div>
+          </div>
+          {/* Table Header (for accessibility/screen readers only) */}
+          <table className="w-full" style={{ display: 'none' }}>
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left w-12">
-                  <input
-                    type="checkbox"
-                    checked={bulkActions.selectedIds.length === sortedConversations.length && sortedConversations.length > 0}
-                    onChange={() => bulkActions.selectAll(sortedConversations)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                </th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 w-1/4"
-                  onClick={() => handleSort('name')}
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>Lead</span>
-                    {sortConfig.field === 'name' && (
-                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
-                    )}
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5">
-                  Email
-                </th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 w-1/6"
-                  onClick={() => handleSort('lastMessage')}
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>Last Message</span>
-                    {sortConfig.field === 'lastMessage' && (
-                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
-                    )}
-                  </div>
-                </th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 w-1/6"
-                  onClick={() => handleSort('status')}
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>Status</span>
-                    {sortConfig.field === 'status' && (
-                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
-                    )}
-                  </div>
-                </th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 w-1/6"
-                  onClick={() => handleSort('evScore')}
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>EV Score</span>
-                    {sortConfig.field === 'evScore' && (
-                      sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
-                    )}
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
-                  Messages
-                </th>
+                <th className="px-6 py-3 w-1/4">Lead</th>
+                <th className="px-3 py-3 w-1/5">Email</th>
+                <th className="px-3 py-3 w-1/6">Last Message</th>
+                <th className="px-3 py-3 w-1/6">Status</th>
+                <th className="px-3 py-3 w-1/6">EV Score</th>
+                <th className="px-3 py-3 w-1/12">Messages</th>
               </tr>
             </thead>
           </table>
         </div>
 
         {/* Table Body */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
           <table className="w-full">
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
@@ -386,7 +335,7 @@ export function EnhancedConversationsTable({
                     key={conversation.thread.conversation_id}
                     className="hover:bg-gray-50 cursor-pointer transition-colors"
                   >
-                    <td className="px-6 py-4 whitespace-nowrap w-12">
+                    <td className="px-6 py-4 whitespace-nowrap w-12 text-center">
                       <input
                         type="checkbox"
                         checked={bulkActions.selectedIds.includes(conversation.thread.conversation_id)}
@@ -400,7 +349,7 @@ export function EnhancedConversationsTable({
                       onClick={() => handleRowClick(conversation.thread.conversation_id)}
                     >
                       <div>
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-base font-medium text-gray-900">
                           {conversation.thread.lead_name || 'Unknown Lead'}
                         </div>
                         {conversation.thread.location && (
@@ -409,27 +358,27 @@ export function EnhancedConversationsTable({
                       </div>
                     </td>
                     <td 
-                      className="px-6 py-4 whitespace-nowrap w-1/5"
+                      className="px-3 py-4 whitespace-nowrap w-1/5 text-left align-middle"
                       onClick={() => handleRowClick(conversation.thread.conversation_id)}
                     >
-                      <div className="text-sm text-gray-900">
+                      <div className="text-base text-gray-900">
                         {conversation.thread.client_email || 'No email'}
                       </div>
                     </td>
                     <td 
-                      className="px-6 py-4 whitespace-nowrap w-1/6"
+                      className="px-3 py-4 whitespace-nowrap w-1/6 text-left align-middle"
                       onClick={() => handleRowClick(conversation.thread.conversation_id)}
                     >
-                      <div className="text-sm text-gray-900">
+                      <div className="text-base text-gray-900">
                         {conversation.lastActivity}
                       </div>
                     </td>
                     <td 
-                      className="px-6 py-4 whitespace-nowrap w-1/6"
+                      className="px-3 py-4 whitespace-nowrap w-1/6 text-left align-middle"
                       onClick={() => handleRowClick(conversation.thread.conversation_id)}
                     >
                       <span className={cn(
-                        "inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full border",
+                        "inline-flex items-center px-2 py-1 text-base font-semibold rounded-full border justify-center",
                         getStatusColor(conversation.status)
                       )}>
                         {getStatusIcon(conversation.status)}
@@ -437,7 +386,7 @@ export function EnhancedConversationsTable({
                       </span>
                     </td>
                     <td 
-                      className="px-6 py-4 whitespace-nowrap w-1/6"
+                      className="px-10 py-4 whitespace-nowrap w-1/6 text-left align-middle" // px-10 for further right shift of EV Score cell
                       onClick={() => handleRowClick(conversation.thread.conversation_id)}
                     >
                       {conversation.evScore !== null ? (
@@ -445,7 +394,7 @@ export function EnhancedConversationsTable({
                           <PopoverTrigger asChild>
                             <button
                               className={cn(
-                                "inline-flex px-2 py-1 text-xs font-semibold rounded-full border items-center gap-1 focus:outline-none",
+                                "inline-flex px-2 py-1 text-base font-semibold rounded-full border items-center gap-1 focus:outline-none justify-center",
                                 getEVScoreColor(conversation.evScore)
                               )}
                               onClick={e => e.stopPropagation()}
@@ -460,11 +409,11 @@ export function EnhancedConversationsTable({
                           </PopoverContent>
                         </Popover>
                       ) : (
-                        <span className="text-sm text-gray-400">N/A</span>
+                        <span className="text-base text-gray-400">N/A</span>
                       )}
                     </td>
                     <td 
-                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 w-1/12"
+                      className="px-3 py-4 whitespace-nowrap text-base text-gray-900 w-1/12 text-left align-middle"
                       onClick={() => handleRowClick(conversation.thread.conversation_id)}
                     >
                       {conversation.messages.length}
@@ -478,12 +427,28 @@ export function EnhancedConversationsTable({
       </div>
 
       {/* Footer */}
-      <div className="px-6 py-3 border-t border-gray-200 flex-shrink-0">
+      <div className="px-6 py-1 border-t border-gray-200 flex-shrink-0">{/* py-1 instead of py-3 for reduced height */}
         <div className="flex items-center justify-between text-sm text-gray-500">
           <span>Showing {sortedConversations.length} of {conversations.length} conversations</span>
           {loading && <span>Refreshing...</span>}
         </div>
       </div>
+
+      {/* Add custom scrollbar styles at the bottom of the file */}
+      <style jsx global>{`
+        .custom-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: #e5e7eb #f9fafb;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+          background: #f9fafb;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #e5e7eb;
+          border-radius: 6px;
+        }
+      `}</style>
     </div>
   );
-} 
+}

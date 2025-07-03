@@ -210,12 +210,12 @@ export function ConversationMetricsDashboard({ conversations, className }: Conve
           color="blue"
         />
         
-        <MetricCard
+        {/* <MetricCard
           title="High Priority"
-          value={processedConversations.filter(c => c.priority === 'high' || c.priority === 'urgent').length}
+          value={processedConversations.filter(c => c.thread.priority === 'high' || c.thread.priority === 'urgent').length}
           icon={<AlertCircle className="w-6 h-6" />}
           color="red"
-        />
+        /> */}
       </div>
 
       {/* Status Breakdown */}
@@ -238,10 +238,7 @@ export function ConversationMetricsDashboard({ conversations, className }: Conve
             <div className="text-2xl font-bold text-red-600">{metrics.flagged}</div>
             <div className="text-sm text-gray-600">Flagged</div>
           </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-gray-600">{metrics.spam}</div>
-            <div className="text-sm text-gray-600">Spam</div>
-          </div>
+          {/* Spam card removed as requested */}
         </div>
       </div>
     </div>
@@ -258,4 +255,4 @@ function calculateConversionRate(conversations: ProcessedConversation[]): number
   const completed = conversations.filter(c => c.status === 'completed').length;
   const total = conversations.length;
   return total > 0 ? Math.round((completed / total) * 100) : 0;
-} 
+}
