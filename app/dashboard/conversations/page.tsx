@@ -108,6 +108,7 @@ function ConversationsContent() {
         conversations={conversations}
         isOpen={showMetricsModal}
         onClose={() => setShowMetricsModal(false)}
+        modalId="conversations-metrics-modal"
       />
     </div>
   );

@@ -282,6 +282,7 @@ export default function ConversationDetailPage() {
         onClose={() => setShowReportModal(false)}
         onSubmit={handleReportSubmit}
         isSubmitting={reportingResponse}
+        modalId={`report-modal-${conversation?.thread.conversation_id}`}
       />
       <GenerateModal
         isOpen={showGenerateModal}
@@ -291,6 +292,7 @@ export default function ConversationDetailPage() {
         onRegenerate={handleGenerateAIResponse}
         isRegenerating={generatingResponse}
         isFlagged={isResponseFlagged}
+        modalId={`generate-modal-${conversation?.thread.conversation_id}`}
       />
       <EmailPreviewModal
         isOpen={showEmailPreviewModal}
@@ -304,11 +306,13 @@ export default function ConversationDetailPage() {
         isSending={sendingEmail}
         session={session}
         responseEmail={userResponseEmail}
+        modalId={`email-preview-modal-${conversation?.thread.conversation_id}`}
       />
       <FlaggedNotificationModal
         isOpen={showFlaggedNotification}
         onClose={() => setShowFlaggedNotification(false)}
         onFocusOverrideButton={handleFocusOverrideButton}
+        modalId={`flagged-notification-modal-${conversation?.thread.conversation_id}`}
       />
       <CompletionModal
         isOpen={showCompletionModal}
@@ -317,6 +321,7 @@ export default function ConversationDetailPage() {
         isSubmitting={completingConversation}
         leadName={leadName}
         clientEmail={clientEmail}
+        modalId={`completion-modal-${conversation?.thread.conversation_id}`}
       />
 
       {/* Floating Widgets */}
@@ -447,6 +452,7 @@ export default function ConversationDetailPage() {
           onClose={() => setIsToolboxOpen(false)}
           currentWidgets={widgets}
           onAddWidget={addWidget}
+          modalId={`widget-toolbox-modal-${conversation?.thread.conversation_id}`}
         />
       )}
     </div>
