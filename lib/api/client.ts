@@ -15,18 +15,70 @@ import type {
 import type { Thread, Conversation } from '@/types/conversation';
 import type { LCPEmailRequest } from '@/types/lcp';
 
+// Retry configuration
+interface RetryConfig {
+  maxRetries: number;
+  baseDelay: number;
+  maxDelay: number;
+  backoffMultiplier: number;
+  retryableStatuses: number[];
+  retryableErrors: string[];
+}
+
+const DEFAULT_RETRY_CONFIG: RetryConfig = {
+  maxRetries: 3,
+  baseDelay: 1000, // 1 second
+  maxDelay: 10000, // 10 seconds
+  backoffMultiplier: 2,
+  retryableStatuses: [408, 429, 500, 502, 503, 504],
+  retryableErrors: ['NetworkError', 'fetch', 'timeout', 'ECONNRESET', 'ENOTFOUND']
+};
+
 export class ApiClient {
   private baseURL: string;
   private defaultHeaders: Record<string, string>;
   private cache: Map<string, { data: any; timestamp: number }> = new Map();
   private cacheTTL: number = 5 * 60 * 1000; // 5 minutes
   private currentUserId: string | null = null;
+  private retryConfig: RetryConfig;
 
-  constructor() {
+  constructor(retryConfig?: Partial<RetryConfig>) {
     this.baseURL = process.env.NEXT_PUBLIC_API_URL || '/api';
     this.defaultHeaders = {
       'Content-Type': 'application/json',
     };
+    this.retryConfig = { ...DEFAULT_RETRY_CONFIG, ...retryConfig };
+  }
+
+  /**
+   * Calculate delay for retry with exponential backoff
+   */
+  private calculateDelay(attempt: number): number {
+    const delay = this.retryConfig.baseDelay * Math.pow(this.retryConfig.backoffMultiplier, attempt - 1);
+    return Math.min(delay, this.retryConfig.maxDelay);
+  }
+
+  /**
+   * Check if an error is retryable
+   */
+  private isRetryableError(error: any, status?: number): boolean {
+    // Check status codes
+    if (status && this.retryConfig.retryableStatuses.includes(status)) {
+      return true;
+    }
+
+    // Check error messages
+    const errorMessage = error?.message || error?.toString() || '';
+    return this.retryConfig.retryableErrors.some(retryableError => 
+      errorMessage.toLowerCase().includes(retryableError.toLowerCase())
+    );
+  }
+
+  /**
+   * Sleep utility for retry delays
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**
@@ -52,91 +104,147 @@ export class ApiClient {
       }
     }
 
-    try {
-      const response = await fetch(url, {
-        method: options.method || 'GET',
-        headers: {
-          ...this.defaultHeaders,
-          ...options.headers,
-        },
-        body: options.body ? JSON.stringify(options.body) : undefined,
-        credentials: 'include',
-      });
+    let lastError: any = null;
+    
+    for (let attempt = 1; attempt <= this.retryConfig.maxRetries; attempt++) {
+      try {
+        const response = await fetch(url, {
+          method: options.method || 'GET',
+          headers: {
+            ...this.defaultHeaders,
+            ...options.headers,
+          },
+          body: options.body ? JSON.stringify(options.body) : undefined,
+          credentials: 'include',
+          // Add timeout for fetch
+          signal: AbortSignal.timeout(30000) // 30 second timeout
+        });
 
-      // Check if response has content before trying to parse JSON
-      const contentType = response.headers.get('content-type');
-      const hasContent = contentType && contentType.includes('application/json');
-      
-      let data: any;
-      
-      if (hasContent) {
-        try {
-          const responseText = await response.text();
-          // Only try to parse JSON if there's actual content
-          if (responseText.trim()) {
-            data = JSON.parse(responseText);
-          } else {
-            console.warn(`[ApiClient] Empty response body for ${endpoint}`);
+        // Check if response has content before trying to parse JSON
+        const contentType = response.headers.get('content-type');
+        const hasContent = contentType && contentType.includes('application/json');
+        
+        let data: any;
+        
+        if (hasContent) {
+          try {
+            const responseText = await response.text();
+            // Only try to parse JSON if there's actual content
+            if (responseText.trim()) {
+              data = JSON.parse(responseText);
+            } else {
+              console.warn(`[ApiClient] Empty response body for ${endpoint}`);
+              data = null;
+            }
+          } catch (jsonError) {
+            const responseText = await response.text().catch(() => 'Unable to read response text');
+            console.error(`[ApiClient] JSON parsing error for ${endpoint}:`, {
+              error: jsonError instanceof Error ? jsonError.message : String(jsonError),
+              status: response.status,
+              statusText: response.statusText,
+              url,
+              responseLength: responseText?.length || 0,
+              responsePreview: responseText?.substring(0, 200) || 'No content'
+            });
             data = null;
           }
-        } catch (jsonError) {
-          const responseText = await response.text().catch(() => 'Unable to read response text');
-          console.error(`[ApiClient] JSON parsing error for ${endpoint}:`, {
-            error: jsonError instanceof Error ? jsonError.message : String(jsonError),
+        } else {
+          console.warn(`[ApiClient] Non-JSON response for ${endpoint}:`, {
+            contentType,
             status: response.status,
-            statusText: response.statusText,
-            url,
-            responseLength: responseText?.length || 0,
-            responsePreview: responseText?.substring(0, 200) || 'No content'
+            statusText: response.statusText
           });
           data = null;
         }
-      } else {
-        console.warn(`[ApiClient] Non-JSON response for ${endpoint}:`, {
-          contentType,
+        
+        if (!response.ok) {
+          // Don't retry on authentication errors
+          if (response.status === 401 || response.status === 403) {
+            throw handleApiError({ status: response.status, data });
+          }
+          
+          // Check if this is a retryable error
+          if (this.isRetryableError(data, response.status)) {
+            lastError = handleApiError({ status: response.status, data });
+            
+            // If this is the last attempt, throw the error
+            if (attempt === this.retryConfig.maxRetries) {
+              throw lastError;
+            }
+            
+            // Calculate delay and retry
+            const delay = this.calculateDelay(attempt);
+            console.warn(`[ApiClient] Retryable error on attempt ${attempt}/${this.retryConfig.maxRetries} for ${endpoint}, retrying in ${delay}ms:`, {
+              status: response.status,
+              error: data?.error || data?.message || 'Unknown error'
+            });
+            
+            await this.sleep(delay);
+            continue;
+          }
+          
+          // Non-retryable error, throw immediately
+          throw handleApiError({ status: response.status, data });
+        }
+
+        const result: ApiResponse<T> = {
+          success: true,
+          data,
           status: response.status,
-          statusText: response.statusText
-        });
-        data = null;
-      }
-      
-      if (!response.ok) {
-        throw handleApiError({ status: response.status, data });
-      }
+        };
 
-      const result: ApiResponse<T> = {
-        success: true,
-        data,
-        status: response.status,
-      };
+        // Cache successful GET requests
+        if (options.method === 'GET' || !options.method) {
+          this.cache.set(cacheKey, { data: result, timestamp: Date.now() });
+        }
 
-      // Cache successful GET requests
-      if (options.method === 'GET' || !options.method) {
-        this.cache.set(cacheKey, { data: result, timestamp: Date.now() });
+        return result;
+        
+      } catch (error) {
+        lastError = error;
+        
+        // Check if this is a retryable error
+        if (this.isRetryableError(error)) {
+          // If this is the last attempt, break and throw the error
+          if (attempt === this.retryConfig.maxRetries) {
+            break;
+          }
+          
+          // Calculate delay and retry
+          const delay = this.calculateDelay(attempt);
+          console.warn(`[ApiClient] Retryable error on attempt ${attempt}/${this.retryConfig.maxRetries} for ${endpoint}, retrying in ${delay}ms:`, {
+            error: error instanceof Error ? error.message : String(error)
+          });
+          
+          await this.sleep(delay);
+          continue;
+        }
+        
+        // Non-retryable error, throw immediately
+        break;
       }
-
-      return result;
-    } catch (error) {
-      // More robust error logging
-      const errorInfo = {
-        message: error instanceof Error ? error.message : String(error),
-        name: error instanceof Error ? error.name : 'Unknown',
-        stack: error instanceof Error ? error.stack : undefined,
-        type: typeof error,
-        url,
-        endpoint,
-        method: options.method || 'GET'
-      };
-      
-      console.error(`[ApiClient] Request error for ${endpoint}:`, errorInfo);
-      
-      const appError = handleApiError(error);
-      return {
-        success: false,
-        error: appError.message,
-        status: appError.status || 500,
-      };
     }
+    
+    // More robust error logging
+    const errorInfo = {
+      message: lastError instanceof Error ? lastError.message : String(lastError),
+      name: lastError instanceof Error ? lastError.name : 'Unknown',
+      stack: lastError instanceof Error ? lastError.stack : undefined,
+      type: typeof lastError,
+      url,
+      endpoint,
+      method: options.method || 'GET',
+      attempts: this.retryConfig.maxRetries
+    };
+    
+    console.error(`[ApiClient] Request failed after ${this.retryConfig.maxRetries} attempts for ${endpoint}:`, errorInfo);
+    
+    const appError = handleApiError(lastError);
+    return {
+      success: false,
+      error: appError.message,
+      status: appError.status || 500,
+    };
   }
 
   // Database operations with optimistic updates
