@@ -33,7 +33,7 @@ export function ContactEditProfileCard({
   const [isLinking, setIsLinking] = useState(false)
   
   // Get unified contact data for this contact
-  const { unifiedContacts, createContactFromConversation, linkContactWithConversation } = useContact()
+  const { unifiedContacts, createContactFromConversation, linkContactWithConversation, createContact } = useContact()
   
   // Find the unified contact data for this contact
   const unifiedContact = useMemo(() => {
@@ -186,17 +186,33 @@ export function ContactEditProfileCard({
   const handleCreateContactFromConversation = async (conversationId: string) => {
     if (!unifiedContact) return
     
-    const conversation = unifiedContact.conversations.find(conv => conv.thread.conversation_id === conversationId)
+    const conversation = unifiedContact.conversations.find((conv: any) => conv.thread.conversation_id === conversationId)
     if (conversation) {
-      const result = await createContactFromConversation(conversation)
-      if (result) {
-        toast.success(`Contact created from conversation!`, {
+      // Create a contact object from the conversation data
+      const contactData = {
+        name: conversation.thread.lead_name || "Unknown Contact",
+        email: conversation.thread.client_email,
+        phone: conversation.thread.phone || '',
+        location: conversation.thread.location || '',
+        type: 'other' as const, // Will be determined by the save function
+        status: 'client' as const, // Save as verified client
+        notes: conversation.thread.ai_summary || '',
+        budgetRange: conversation.thread.budget_range || '',
+        propertyTypes: conversation.thread.preferred_property_types || '',
+        linkedConversationIds: [conversation.thread.conversation_id],
+        primaryConversationId: conversation.thread.conversation_id,
+        contactSource: "manual" as const, // Mark as manual/verified
+      }
+      
+      const result = await createContact(contactData)
+      if (result.success) {
+        toast.success(`Contact saved as verified!`, {
           duration: 3000,
           position: 'top-right',
         })
         onClose() // Close the modal after successful creation
       } else {
-        toast.error('Failed to create contact from conversation', {
+        toast.error('Failed to save contact as verified', {
           duration: 4000,
           position: 'top-right',
         })

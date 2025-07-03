@@ -1,9 +1,11 @@
 "use client"
 
-import { Edit, Trash2 } from "lucide-react"
+import { Edit, Trash2, MessageCircle, User2, CheckCircle, Link } from "lucide-react"
 import { useMemo } from "react"
 import type { Contact } from "@/types/contact"
 import { useContact } from "@/hooks/useContact"
+import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
 
 interface ContactProfileCardProps {
   contact: Contact
@@ -26,6 +28,11 @@ export function ContactProfileCard({
   const unifiedContact = useMemo(() => {
     return unifiedContacts.find(uc => uc.contact.id === contact.id || uc.contact.email === contact.email)
   }, [unifiedContacts, contact])
+
+  // Use the most up-to-date contact data from unified contacts if available
+  const currentContact = useMemo(() => {
+    return unifiedContact?.contact || contact
+  }, [unifiedContact, contact])
   
   function formatLastContact(dateString: string): string {
     const date = new Date(dateString)
@@ -46,7 +53,7 @@ export function ContactProfileCard({
   const lastContactTime = useMemo(() => {
     if (unifiedContact && unifiedContact.conversations.length > 0) {
       // Use the most recent conversation's last message time
-      const mostRecentConversation = unifiedContact.conversations.reduce((latest, current) => {
+      const mostRecentConversation = unifiedContact.conversations.reduce((latest: any, current: any) => {
         const latestTime = new Date(latest.thread.lastMessageAt).getTime()
         const currentTime = new Date(current.thread.lastMessageAt).getTime()
         return currentTime > latestTime ? current : latest
@@ -54,17 +61,74 @@ export function ContactProfileCard({
       return formatLastContact(mostRecentConversation.thread.lastMessageAt)
     }
     // Fall back to contact's lastContact
-    return formatLastContact(contact.lastContact)
-  }, [unifiedContact, contact.lastContact])
+    return formatLastContact(currentContact.lastContact)
+  }, [unifiedContact, currentContact.lastContact])
+
+  // Get contact source icon
+  const getContactSourceIcon = () => {
+    if (!currentContact.contactSource) return null
+    
+    // Debug: Log contact source changes
+    console.log(`[ContactProfileCard] Contact ${currentContact.name} (${currentContact.email}) has source: ${currentContact.contactSource}`)
+    
+    const sourceConfig = {
+      conversation: { 
+        icon: <MessageCircle className="h-3 w-3 text-blue-600" />,
+        title: "From Chat"
+      },
+      manual: { 
+        icon: <CheckCircle className="h-3 w-3 text-green-600" />,
+        title: "Verified Contact"
+      },
+      merged: { 
+        icon: <Link className="h-3 w-3 text-orange-600" />,
+        title: "Linked Contact"
+      }
+    }
+    
+    const config = sourceConfig[currentContact.contactSource as keyof typeof sourceConfig]
+    if (!config) return null
+    
+    return (
+      <div title={config.title} className="flex-shrink-0">
+        {config.icon}
+      </div>
+    )
+  }
+
+  // Get relationship strength indicator
+  const getRelationshipStrengthIndicator = () => {
+    if (!unifiedContact) return null
+    
+    const strength = unifiedContact.relationshipStrength
+    const strengthConfig = {
+      strong: { color: "bg-green-500", label: "Strong" },
+      medium: { color: "bg-yellow-500", label: "Medium" },
+      weak: { color: "bg-gray-400", label: "Weak" }
+    }
+    
+    const config = strengthConfig[strength as keyof typeof strengthConfig]
+    if (!config) return null
+    
+    return (
+      <div className="flex items-center gap-1">
+        <div className={cn("w-2 h-2 rounded-full", config.color)} title={config.label} />
+        <span className="text-xs text-muted-foreground">{unifiedContact.conversations.length} conv</span>
+      </div>
+    )
+  }
 
   return (
     <div
       className="bg-card border border-border rounded-lg p-3 hover:shadow-md transition-shadow cursor-pointer"
       onClick={() => onClick(contact)}
     >
-      {/* Name and action buttons on one line */}
+      {/* Name, contact source icon, and action buttons on one line */}
       <div className="flex items-center gap-2 mb-2">
-        <h3 className="font-semibold text-foreground truncate flex-1 text-sm">{contact.name}</h3>
+        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+          <h3 className="font-semibold text-foreground truncate text-sm">{currentContact.name}</h3>
+          {getContactSourceIcon()}
+        </div>
         
         <div className="flex items-center gap-1 flex-shrink-0">
           {/* Action buttons */}
@@ -93,13 +157,16 @@ export function ContactProfileCard({
 
       {/* Simplified contact info */}
       <div className="space-y-1">
-        <p className="text-xs text-muted-foreground truncate">{contact.email}</p>
-        {contact.phone && (
-          <p className="text-xs text-muted-foreground truncate">{contact.phone}</p>
+        <p className="text-xs text-muted-foreground truncate">{currentContact.email}</p>
+        {currentContact.phone && (
+          <p className="text-xs text-muted-foreground truncate">{currentContact.phone}</p>
         )}
-        <p className="text-xs text-muted-foreground">
-          {lastContactTime}
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            {lastContactTime}
+          </p>
+          {getRelationshipStrengthIndicator()}
+        </div>
       </div>
     </div>
   )

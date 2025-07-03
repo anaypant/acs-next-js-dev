@@ -197,7 +197,7 @@ export function UnifiedContactCard({
             className="w-full flex items-center justify-center gap-2 px-3 py-1.5 bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors text-xs font-medium"
           >
             <Plus className="w-3 h-3" />
-            Save as Contact
+            Save as Verified
           </button>
         </div>
       )}

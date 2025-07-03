@@ -38,6 +38,7 @@ export default function ContactsContent() {
   const [locationError, setLocationError] = useState<string | null>(null)
   const [showInfoModal, setShowInfoModal] = useState(false)
   const [selectedContact, setSelectedContact] = useState<Contact | undefined>(undefined)
+  const [showDebugInfo, setShowDebugInfo] = useState(false)
 
   // Use enhanced contact hook with unified functionality
   const { 
@@ -53,10 +54,17 @@ export default function ContactsContent() {
     updateContact,
     deleteContact,
     fetchContacts,
+    refetchConversations,
   } = useContact({
     autoRefresh: true,
     refreshInterval: 30000,
   })
+
+  // Force refresh mechanism for UI updates
+  const [refreshKey, setRefreshKey] = useState(0)
+  const forceRefresh = useCallback(() => {
+    setRefreshKey(prev => prev + 1)
+  }, [])
 
   // Use location autocomplete hook
   const {
@@ -80,9 +88,11 @@ export default function ContactsContent() {
     setSubmitting,
   } = useContactForm()
 
-  // Filter contacts based on search term and filters (using simple contacts for the grid)
+  // Filter contacts based on search term and filters (using unified contacts for the grid)
   const filteredContacts = useMemo(() => {
-    return contacts.filter((contact) => {
+    return unifiedContacts.filter((unifiedContact) => {
+      const contact = unifiedContact.contact;
+      
       const matchesSearch =
         contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         contact.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -92,8 +102,9 @@ export default function ContactsContent() {
       const matchesType = typeFilter === 'all' || contact.type === typeFilter;
       const matchesStatus = statusFilter === 'all' || contact.status === statusFilter;
 
-      // Filter by time
-      const contactDate = new Date(contact.lastContact);
+      // Filter by time - use the most recent activity from conversations or contact
+      const lastActivity = unifiedContact.lastActivity;
+      const contactDate = new Date(lastActivity);
       const now = new Date();
       const matchesTime = (() => {
         switch (timeFilter) {
@@ -116,7 +127,7 @@ export default function ContactsContent() {
 
       return matchesSearch && matchesType && matchesStatus && matchesTime;
     });
-  }, [contacts, searchTerm, typeFilter, statusFilter, timeFilter]);
+  }, [unifiedContacts, searchTerm, typeFilter, statusFilter, timeFilter, refreshKey]);
 
   // Clear all filters
   const clearFilters = () => {
@@ -171,30 +182,74 @@ export default function ContactsContent() {
     setContactToDelete(null)
   }
 
-  // Update the handleSaveAsContact function to refresh contacts after saving
+  // Update the handleSaveAsContact function to properly merge contacts
   const handleSaveAsContact = async (contact: Contact) => {
     try {
-      // Pre-fill the form with all available contact data, setting status to lead
-      const contactData = {
-        name: contact.name,
-        email: contact.email,
-        phone: contact.phone || '',
-        location: contact.location || '',
-        type: contact.type,
-        status: 'lead' as const, // Changed from 'active' to 'lead'
-        notes: contact.notes || '',
-        budgetRange: contact.budgetRange || '',
-        propertyTypes: contact.propertyTypes || '',
-      }
+      console.log('🔄 Starting save as verified process for:', contact.name, contact.email)
+      
+      // Check if there's already a manual contact with the same email
+      const existingManualContact = contacts.find(c => 
+        c.email.toLowerCase() === contact.email.toLowerCase() && 
+        c.contactSource === 'manual'
+      )
 
-      // Create the contact
-      const result = await createContact(contactData)
+      let result
+      
+      if (existingManualContact) {
+        console.log('📝 Found existing manual contact, merging...')
+        // Merge conversation data with existing manual contact
+        const mergedContactData = {
+          id: existingManualContact.id,
+          name: contact.name !== "Unknown Contact" ? contact.name : existingManualContact.name,
+          notes: existingManualContact.notes 
+            ? `${existingManualContact.notes}\n\n--- From Conversation ---\n${contact.notes || ''}`
+            : contact.notes || undefined,
+          linkedConversationIds: [
+            ...(existingManualContact.linkedConversationIds || []),
+            ...(contact.linkedConversationIds || [])
+          ],
+          contactSource: "merged" as const,
+          lastConversationDate: contact.lastConversationDate || contact.lastContact,
+          totalConversationMessages: (existingManualContact.totalConversationMessages || 0) + 
+                                   (contact.totalConversationMessages || 0),
+        }
+
+        result = await updateContact(mergedContactData)
+        console.log('✅ Contact merged successfully!')
+      } else {
+        console.log('🆕 Creating new verified contact...')
+        // Create new verified contact from conversation
+        const contactData = {
+          name: contact.name,
+          email: contact.email,
+          phone: contact.phone || '',
+          location: contact.location || '',
+          type: contact.type,
+          status: 'client' as const, // Save as verified client
+          notes: contact.notes || '',
+          budgetRange: contact.budgetRange || '',
+          propertyTypes: contact.propertyTypes || '',
+          linkedConversationIds: contact.linkedConversationIds || [],
+          primaryConversationId: contact.primaryConversationId || '',
+          contactSource: 'manual' as const, // Mark as manual/verified
+        }
+
+        result = await createContact(contactData)
+        console.log('✅ New contact created successfully!')
+      }
       
       if (result.success) {
-        console.log('✅ Contact saved successfully!')
+        console.log('✅ Contact saved as verified successfully!')
         
-        // Refresh the contacts to get the updated list
-        await fetchContacts()
+        // Force refresh both contacts and conversations to update unified contacts
+        await Promise.all([
+          fetchContacts(),
+          refetchConversations()
+        ])
+        
+        // Close the info modal to refresh the view
+        setShowInfoModal(false)
+        setSelectedContact(undefined)
         
         // Show success popup
         setSavedContactName(contact.name)
@@ -206,9 +261,9 @@ export default function ContactsContent() {
           setSavedContactName('')
         }, 3000)
       } else {
-        console.error('❌ Failed to save contact:', result.error)
-        toast.error(`Failed to save contact: ${result.error}`, {
-          duration: 4000, // 4 seconds for errors
+        console.error('❌ Failed to save contact as verified:', result.error)
+        toast.error(`Failed to save contact as verified: ${result.error}`, {
+          duration: 4000,
           position: 'top-right',
         })
       }
@@ -248,8 +303,25 @@ export default function ContactsContent() {
           <h1 className="text-4xl font-extrabold text-card-foreground mb-2 tracking-tight">Contacts</h1>
           <p className="text-lg text-muted-foreground">
             Manage and view client information extracted from conversations.
-            {contacts.length > 0 && ` Found ${contacts.length} unique contacts.`}
+            {unifiedContacts.length > 0 && ` Found ${unifiedContacts.length} unique contacts.`}
           </p>
+          {/* Debug information */}
+          <div className="text-sm text-muted-foreground mt-2">
+            <button
+              onClick={() => setShowDebugInfo(!showDebugInfo)}
+              className="text-xs underline hover:text-foreground transition-colors"
+            >
+              {showDebugInfo ? 'Hide' : 'Show'} contact breakdown
+            </button>
+            {showDebugInfo && (
+              <div className="mt-2 p-3 bg-muted/50 rounded-lg text-xs">
+                <p>Manual contacts: {contacts.length} | Unified contacts: {unifiedContacts.length}</p>
+                <p>Contacts from conversations: {unifiedContacts.filter(uc => uc.contact.contactSource === 'conversation').length}</p>
+                <p>Manual contacts: {unifiedContacts.filter(uc => uc.contact.contactSource === 'manual').length}</p>
+                <p>Linked contacts: {unifiedContacts.filter(uc => uc.contact.contactSource === 'merged').length}</p>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6">
@@ -329,21 +401,21 @@ export default function ContactsContent() {
               <p className="text-muted-light text-base">
                 {searchTerm || typeFilter !== "all" || statusFilter !== "all"
                   ? "Try adjusting your search or filters"
-                  : "Contacts will appear here as you receive conversations"}
+                  : "Contacts will appear here as you receive conversations or create manual contacts"}
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-              {filteredContacts.map((contact) => (
+              {filteredContacts.map((unifiedContact) => (
                   <ContactProfileCard
-                  key={contact.id}
-                    contact={contact}
+                  key={unifiedContact.contact.id}
+                    contact={unifiedContact.contact}
                     onEdit={handleEditContact}
                     onDelete={handleDeleteContact}
-                                         onClick={(c) => {
-                       setSelectedContact(c);
-                    setShowInfoModal(true);
-                  }}
+                    onClick={(c) => {
+                      setSelectedContact(c);
+                      setShowInfoModal(true);
+                    }}
                   />
               ))}
             </div>
@@ -490,3 +562,4 @@ export default function ContactsContent() {
     </ErrorBoundary>
   )
 }
+

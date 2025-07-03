@@ -51,7 +51,7 @@ export function useContact(options: UseContactOptions = {}) {
   const [error, setError] = useState<string | null>(null);
 
   // Get conversations for unified contact processing
-  const { conversations, loading: conversationsLoading, error: conversationsError } = useContactsData({
+  const { conversations, loading: conversationsLoading, error: conversationsError, refetch: refetchConversations } = useContactsData({
     autoRefresh: options.autoRefresh || false,
     refreshInterval: options.refreshInterval || 30000,
   });
@@ -247,7 +247,7 @@ export function useContact(options: UseContactOptions = {}) {
       status: contactData.status || 'lead',
       lastContact: new Date().toISOString(),
       conversationCount: 0,
-      userId: (session.user as any).id,
+      userId: (session.user as any).id || '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       // Initialize conversation linking fields
@@ -293,7 +293,15 @@ export function useContact(options: UseContactOptions = {}) {
       console.log('[useContact] Update response:', response);
       
       if (response.success) {
+        // Add the new contact to the local state immediately
         setContacts(prev => [...prev, newContact]);
+        
+        // Force a re-computation of unified contacts by triggering a re-render
+        // This ensures the UI updates immediately with the new contact
+        setTimeout(() => {
+          setContacts(prev => [...prev]); // Trigger re-render
+        }, 100);
+        
         return {
           success: true,
           data: newContact,
@@ -474,14 +482,14 @@ export function useContact(options: UseContactOptions = {}) {
 
       const contactData: CreateContactData = {
         name: conversation.thread.lead_name || "Unknown Contact",
-        email: conversation.thread.client_email,
-        phone: conversation.thread.phone,
-        location: conversation.thread.location,
+        email: conversation.thread.client_email || '',
+        phone: conversation.thread.phone || '',
+        location: conversation.thread.location || '',
         type: determineContactType(conversation.thread),
         status: "lead",
-        notes: conversation.thread.ai_summary,
-        budgetRange: conversation.thread.budget_range,
-        propertyTypes: conversation.thread.preferred_property_types,
+        notes: conversation.thread.ai_summary || '',
+        budgetRange: conversation.thread.budget_range || '',
+        propertyTypes: conversation.thread.preferred_property_types || '',
         linkedConversationIds: [conversation.thread.conversation_id],
         primaryConversationId: conversation.thread.conversation_id,
         contactSource: "conversation",
@@ -505,6 +513,77 @@ export function useContact(options: UseContactOptions = {}) {
       setLoading(false);
     }
   }, [session?.user?.email, createContact, fetchContacts]);
+
+  // Save contact from conversation as verified contact with merging
+  const saveContactFromConversation = useCallback(async (conversationContact: Contact): Promise<Contact | null> => {
+    if (!session?.user?.email) return null;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Check if there's already a manual contact with the same email
+      const existingManualContact = contacts.find(c => 
+        c.email.toLowerCase() === conversationContact.email.toLowerCase() && 
+        c.contactSource === 'manual'
+      );
+
+      if (existingManualContact) {
+        // Merge conversation data with existing manual contact
+        const mergedContactData: UpdateContactData = {
+          id: existingManualContact.id,
+          name: conversationContact.name !== "Unknown Contact" ? conversationContact.name : existingManualContact.name,
+          notes: existingManualContact.notes 
+            ? `${existingManualContact.notes}\n\n--- From Conversation ---\n${conversationContact.notes || ''}`
+            : conversationContact.notes || undefined,
+          linkedConversationIds: [
+            ...(existingManualContact.linkedConversationIds || []),
+            ...(conversationContact.linkedConversationIds || [])
+          ],
+          contactSource: "merged" as const,
+          lastConversationDate: conversationContact.lastConversationDate || conversationContact.lastContact,
+          totalConversationMessages: (existingManualContact.totalConversationMessages || 0) + 
+                                   (conversationContact.totalConversationMessages || 0),
+        };
+
+        const result = await updateContact(mergedContactData);
+        
+        if (result.success && result.data) {
+          await fetchContacts();
+          return result.data;
+        } else {
+          setError(result.error || 'Failed to merge contact with conversation');
+          return null;
+        }
+      } else {
+        // Create new verified contact from conversation
+        const contactData: CreateContactData = {
+          name: conversationContact.name,
+          email: conversationContact.email,
+          type: conversationContact.type,
+          status: "client" as const,
+          linkedConversationIds: conversationContact.linkedConversationIds || [],
+          contactSource: "manual" as const,
+        };
+
+        const result = await createContact(contactData);
+        
+        if (result.success && result.data) {
+          await fetchContacts();
+          return result.data;
+        } else {
+          setError(result.error || 'Failed to create verified contact from conversation');
+          return null;
+        }
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(errorMessage);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [session?.user?.email, contacts, createContact, updateContact, fetchContacts]);
 
   // Link an existing manual contact with a conversation
   const linkContactWithConversation = useCallback(async (
@@ -601,6 +680,7 @@ export function useContact(options: UseContactOptions = {}) {
     linkContactWithConversation,
     getContactConversations,
     searchContacts,
+    refetchConversations,
     
     // Raw data access
     conversations,

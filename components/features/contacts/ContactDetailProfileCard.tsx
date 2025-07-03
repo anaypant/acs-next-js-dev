@@ -19,7 +19,7 @@ export function ContactDetailProfileCard({ contact, onClose, onEdit }: ContactDe
   const [isLinking, setIsLinking] = useState(false)
   
   // Get unified contact data for this contact
-  const { unifiedContacts, createContactFromConversation, linkContactWithConversation } = useContact()
+  const { unifiedContacts, contacts, createContactFromConversation, linkContactWithConversation, createContact, updateContact, fetchContacts, refetchConversations } = useContact()
   
   // Find the unified contact data for this contact
   const unifiedContact = useMemo(() => {
@@ -71,16 +71,34 @@ export function ContactDetailProfileCard({ contact, onClose, onEdit }: ContactDe
     if (!source) return null
     
     const sourceConfig = {
-      conversation: { label: "From Chat", color: "bg-blue-100 text-blue-800 border-blue-200", icon: <User2 className="h-3 w-3" /> },
-      manual: { label: "Verified", color: "bg-green-100 text-green-800 border-green-200", icon: <CheckCircle className="h-3 w-3" /> },
-      merged: { label: "Linked", color: "bg-orange-100 text-orange-800 border-orange-200", icon: <Link className="h-3 w-3" /> }
+      conversation: { 
+        label: "Chat", 
+        color: "bg-blue-100 text-blue-800 border-blue-200", 
+        icon: <MessageCircle className="h-3 w-3" />,
+        title: "From Chat"
+      },
+      manual: { 
+        label: "Verified", 
+        color: "bg-green-100 text-green-800 border-green-200", 
+        icon: <CheckCircle className="h-3 w-3" />,
+        title: "Verified Contact"
+      },
+      merged: { 
+        label: "Linked", 
+        color: "bg-orange-100 text-orange-800 border-orange-200", 
+        icon: <Link className="h-3 w-3" />,
+        title: "Linked Contact"
+      }
     }
     
     const config = sourceConfig[source as keyof typeof sourceConfig]
     if (!config) return null
     
     return (
-      <Badge className={cn("text-xs border flex items-center gap-1", config.color)}>
+      <Badge 
+        className={cn("text-sm border flex items-center gap-1", config.color)}
+        title={config.title}
+      >
         {config.icon}
         {config.label}
       </Badge>
@@ -91,17 +109,75 @@ export function ContactDetailProfileCard({ contact, onClose, onEdit }: ContactDe
   const handleCreateContactFromConversation = async (conversationId: string) => {
     if (!unifiedContact) return
     
-    const conversation = unifiedContact.conversations.find(conv => conv.thread.conversation_id === conversationId)
+    const conversation = unifiedContact.conversations.find((conv: any) => conv.thread.conversation_id === conversationId)
     if (conversation) {
-      const result = await createContactFromConversation(conversation)
-      if (result) {
-        toast.success(`Contact created from conversation!`, {
+      console.log('🔄 Starting save as verified process from detail modal for:', conversation.thread.lead_name, conversation.thread.client_email)
+      
+      // Check if there's already a manual contact with the same email
+      const existingManualContact = contacts.find(c => 
+        c.email.toLowerCase() === conversation.thread.client_email.toLowerCase() && 
+        c.contactSource === 'manual'
+      )
+
+      let result
+      
+      if (existingManualContact) {
+        console.log('📝 Found existing manual contact, merging...')
+        // Merge conversation data with existing manual contact
+        const mergedContactData = {
+          id: existingManualContact.id,
+          name: conversation.thread.lead_name !== "Unknown Contact" ? conversation.thread.lead_name : existingManualContact.name,
+          notes: existingManualContact.notes 
+            ? `${existingManualContact.notes}\n\n--- From Conversation ---\n${conversation.thread.ai_summary || ''}`
+            : conversation.thread.ai_summary || undefined,
+          linkedConversationIds: [
+            ...(existingManualContact.linkedConversationIds || []),
+            conversation.thread.conversation_id
+          ],
+          contactSource: "merged" as const,
+          lastConversationDate: conversation.thread.lastMessageAt,
+          totalConversationMessages: (existingManualContact.totalConversationMessages || 0) + conversation.messages.length,
+        }
+
+        result = await updateContact(mergedContactData)
+        console.log('✅ Contact merged successfully!')
+      } else {
+        console.log('🆕 Creating new verified contact...')
+        // Create a contact object from the conversation data
+        const contactData = {
+          name: conversation.thread.lead_name || "Unknown Contact",
+          email: conversation.thread.client_email || '',
+          phone: conversation.thread.phone || '',
+          location: conversation.thread.location || '',
+          type: 'other' as const, // Will be determined by the save function
+          status: 'client' as const, // Save as verified client
+          notes: conversation.thread.ai_summary || '',
+          budgetRange: conversation.thread.budget_range || '',
+          propertyTypes: conversation.thread.preferred_property_types || '',
+          linkedConversationIds: [conversation.thread.conversation_id],
+          primaryConversationId: conversation.thread.conversation_id,
+          contactSource: "manual" as const, // Mark as manual/verified
+        }
+        
+        result = await createContact(contactData)
+        console.log('✅ New contact created successfully!')
+      }
+      
+      if (result.success) {
+        // Refresh both contacts and conversations to ensure UI updates
+        await Promise.all([
+          fetchContacts(),
+          refetchConversations()
+        ])
+        
+        toast.success(`Contact saved as verified!`, {
           duration: 3000,
           position: 'top-right',
         })
-        onClose() // Close the modal after successful creation
+        // Close the modal after successful creation to refresh the view
+        onClose()
       } else {
-        toast.error('Failed to create contact from conversation', {
+        toast.error('Failed to save contact as verified', {
           duration: 4000,
           position: 'top-right',
         })
@@ -250,7 +326,7 @@ export function ContactDetailProfileCard({ contact, onClose, onEdit }: ContactDe
               
               {unifiedContact.conversations.length > 0 ? (
                 <div className="space-y-3">
-                  {unifiedContact.conversations.map((conversation, index) => (
+                  {unifiedContact.conversations.map((conversation: any, index: number) => (
                     <div key={conversation.thread.conversation_id} className="bg-muted/50 rounded-lg p-3">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-medium text-card-foreground">
@@ -275,7 +351,7 @@ export function ContactDetailProfileCard({ contact, onClose, onEdit }: ContactDe
                             className="h-6 text-xs"
                           >
                             <Plus className="h-3 w-3 mr-1" />
-                            Save as Contact
+                            Save as Verified
                           </Button>
                         )}
                       </div>

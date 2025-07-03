@@ -31,7 +31,7 @@ export default function RootLayout({
     return (
         <html lang="en" suppressHydrationWarning className="h-full">
             <head />
-            <body className="h-full">
+            <body className="h-full" suppressHydrationWarning>
                 <React.StrictMode>
                     <AppProvider>
                         <ErrorBoundary>
