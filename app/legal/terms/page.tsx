@@ -5,6 +5,7 @@ import { Shield, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { PageLayout } from "@/components/common/Layout/PageLayout"
 import { applyTheme, getCurrentTheme } from "@/lib/theme/simple-theme"
+import { TERMS_CONTENT } from "./constants/content"
 
 export default function TermsPage() {
   useEffect(() => {
@@ -32,59 +33,57 @@ export default function TermsPage() {
         <div className="bg-[#0e6537] rounded-lg shadow-2xl border border-[#0e6537]/20 p-4 sm:p-6 mb-6">
           <div className="flex items-center gap-2 mb-2">
             <Shield className="w-5 h-5 text-white" />
-            <h1 className="text-xl sm:text-2xl font-bold text-white">Terms of Service</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-white">{TERMS_CONTENT.header.title}</h1>
           </div>
-          <p className="text-white/80 text-sm sm:text-base">Please review our Terms of Service</p>
+          <p className="text-white/80 text-sm sm:text-base">{TERMS_CONTENT.header.subtitle}</p>
         </div>
         {/* Main Content */}
         <div className="bg-[var(--card)] rounded-lg shadow-sm border border-gray-300 p-4 sm:p-6 w-full max-w-5xl md:max-w-7xl mx-auto">
           <div className="space-y-6">
             <section className="space-y-4">
-              <h3 className="text-base sm:text-lg font-medium text-[var(--foreground)]">1. Acceptance of Terms</h3>
+              <h3 className="text-base sm:text-lg font-medium text-[var(--foreground)]">{TERMS_CONTENT.sections.acceptanceOfTerms.title}</h3>
               <p className="text-[var(--text-secondary)] text-sm sm:text-base">
-                By accessing and using ACS, you agree to be bound by these Terms of Service and all applicable laws and regulations. If you do not agree with any of these terms, you are prohibited from using or accessing this site.
+                {TERMS_CONTENT.sections.acceptanceOfTerms.content}
               </p>
             </section>
 
             <section className="space-y-4">
-              <h3 className="text-base sm:text-lg font-medium text-[var(--foreground)]">2. Use License</h3>
+              <h3 className="text-base sm:text-lg font-medium text-[var(--foreground)]">{TERMS_CONTENT.sections.useLicense.title}</h3>
               <p className="text-[var(--text-secondary)] text-sm sm:text-base">
-                Permission is granted to temporarily use ACS for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:
+                {TERMS_CONTENT.sections.useLicense.intro}
               </p>
               <ul className="list-disc list-inside text-[var(--text-secondary)] space-y-2 text-sm sm:text-base">
-                <li>Modify or copy the materials</li>
-                <li>Use the materials for any commercial purpose</li>
-                <li>Attempt to decompile or reverse engineer any software contained on ACS</li>
-                <li>Remove any copyright or other proprietary notations from the materials</li>
+                {TERMS_CONTENT.sections.useLicense.list.map((item, index) => (
+                  <li key={index}>{item}</li>
+                ))}
               </ul>
             </section>
 
             <section className="space-y-4">
-              <h3 className="text-base sm:text-lg font-medium text-[var(--foreground)]">3. User Responsibilities</h3>
+              <h3 className="text-base sm:text-lg font-medium text-[var(--foreground)]">{TERMS_CONTENT.sections.userResponsibilities.title}</h3>
               <p className="text-[var(--text-secondary)] text-sm sm:text-base">
-                As a user of ACS, you are responsible for:
+                {TERMS_CONTENT.sections.userResponsibilities.intro}
               </p>
               <ul className="list-disc list-inside text-[var(--text-secondary)] space-y-2 text-sm sm:text-base">
-                <li>Maintaining the confidentiality of your account</li>
-                <li>All activities that occur under your account</li>
-                <li>Providing accurate and complete information</li>
-                <li>Complying with all applicable laws and regulations</li>
+                {TERMS_CONTENT.sections.userResponsibilities.list.map((item, index) => (
+                  <li key={index}>{item}</li>
+                ))}
               </ul>
             </section>
 
             <section className="space-y-4">
-              <h3 className="text-base sm:text-lg font-medium text-[var(--foreground)]">4. Service Modifications</h3>
+              <h3 className="text-base sm:text-lg font-medium text-[var(--foreground)]">{TERMS_CONTENT.sections.serviceModifications.title}</h3>
               <p className="text-[var(--text-secondary)] text-sm sm:text-base">
-                ACS reserves the right to modify or discontinue, temporarily or permanently, the service with or without notice. We shall not be liable to you or any third party for any modification, suspension, or discontinuance of the service.
+                {TERMS_CONTENT.sections.serviceModifications.content}
               </p>
             </section>
           </div>
         </div>
         <div className="mt-6 text-center text-xs sm:text-sm text-[var(--text-muted)] w-full max-w-5xl md:max-w-7xl mx-auto">
-          Last updated: {new Date().toLocaleDateString()}
+          {TERMS_CONTENT.footer.lastUpdated} {new Date().toLocaleDateString()}
         </div>
         <div className="mb-4 text-center text-xs text-gray-400 w-full max-w-5xl md:max-w-7xl mx-auto">
-          © 2025 ACS. All rights reserved.
+          {TERMS_CONTENT.footer.copyright}
         </div>
       </div>
     </>

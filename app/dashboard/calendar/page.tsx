@@ -15,7 +15,7 @@ import { Logo } from "@/app/utils/Logo"
 import { ErrorBoundary } from '@/components/common/Feedback/ErrorBoundary';
 import { Suspense } from 'react';
 import { LoadingSpinner } from '@/components/common/Feedback/LoadingSpinner';
-import CalendarContent from './CalendarContent';
+import CalendarContent from './component/CalendarContent';
 
 /**
  * CalendarPage Component

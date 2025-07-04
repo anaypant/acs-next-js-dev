@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { useAnalytics } from '@/app/dashboard/analytics/AnalyticsContext';
+import { useAnalytics } from '@/app/dashboard/analytics/components/AnalyticsContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';

@@ -2,13 +2,11 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { ErrorBoundary } from '@/components/common/Feedback/ErrorBoundary';
 import { LoadingSpinner } from '@/components/common/Feedback/LoadingSpinner';
-import { 
-  HeroSection, 
-  FeaturesSection, 
-  BenefitsSection, 
-  CTASection 
-} from './index';
-import { useLandingData } from '@/hooks/useLandingData';
+import { FeaturesSection } from './FeaturesSection';
+import { HeroSection } from './HeroSection';
+import { BenefitsSection } from './BenefitsSection';
+import { CTASection } from './CTASection';
+import { useLandingData } from '../hooks/useLandingData';
 
 interface LandingPageProps {
   className?: string;

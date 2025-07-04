@@ -5,7 +5,7 @@ import { ArrowRight, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { HeroData } from '@/types/landing';
 import { ThreeJSViewer } from './ThreeJSViewer';
-import { shuffleArray } from '@/lib/utils/landing';
+import { shuffleArray } from '@/lib/utils/landing/landing';
 
 interface HeroSectionProps {
   data: HeroData;

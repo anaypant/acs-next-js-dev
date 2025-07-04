@@ -9,7 +9,7 @@
  */
 
 import Link from "next/link"
-import { Logo } from "@/app/utils/Logo"
+import { Logo } from "@/components/ui/Logo"
 import { cn } from "@/lib/utils"
 
 /**

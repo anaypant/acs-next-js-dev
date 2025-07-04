@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { LANDING_PAGE_DATA } from '@/app/constants/landing-data';
+import { LANDING_PAGE_DATA } from '@/app/(marketing)/landing/constants/landing-data';
 import type { LandingPageData } from '@/types/landing';
 
 /**

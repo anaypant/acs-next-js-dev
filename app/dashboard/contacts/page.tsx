@@ -10,7 +10,7 @@
 import { ErrorBoundary } from '@/components/common/Feedback/ErrorBoundary';
 import { Suspense } from 'react';
 import { LoadingSpinner } from '@/components/common/Feedback/LoadingSpinner';
-import ContactsContent from './ContactsContent';
+import ContactsContent from './components/ContactsContent';
 
 /**
  * ContactsPage Component

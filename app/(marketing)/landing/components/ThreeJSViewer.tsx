@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { addCacheBustingToSplineUrl, isValidSplineUrl, clearSplineCache } from '@/lib/utils/spline';
+import { addCacheBustingToSplineUrl, isValidSplineUrl, clearSplineCache } from '@/lib/utils/landing/spline';
 
 // Type declaration for Spline
 declare global {
