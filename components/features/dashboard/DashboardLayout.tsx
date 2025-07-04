@@ -5,7 +5,6 @@ import { RecentConversations } from './RecentConversations';
 import { QuickResources } from './QuickResources';
 import { AnalyticsSnippet } from './AnalyticsSnippet';
 import { useDashboardSettings } from './DashboardSettings';
-import { DashboardHeader } from './DashboardHeader';
 import { WelcomeHeader } from '@/app/dashboard/components/WelcomeHeader';
 import { UsageOverview } from './UsageOverview';
 import type { DashboardData } from '@/types/dashboard';
@@ -103,22 +102,16 @@ export function DashboardLayout({
 
   return (
     <div className="h-full bg-muted/50 overflow-y-auto">
-      {/* Centralized Header with Date Range */}
-      <DashboardHeader 
-        onRefresh={handleRefresh} 
-        isRefreshing={isRefreshing}
-      />
+      {/* Welcome Widget with Real Data */}
+      <div className="mb-8">
+        <WelcomeHeader 
+          activeLeads={welcomeMetrics.activeLeads}
+          newMessages={welcomeMetrics.newMessages}
+          conversionRate={welcomeMetrics.conversionRate}
+        />
+      </div>
 
       <main className="flex-1 p-6 lg:p-8">
-        {/* Welcome Widget with Real Data */}
-        <div className="mb-8">
-          <WelcomeHeader 
-            activeLeads={welcomeMetrics.activeLeads}
-            newMessages={welcomeMetrics.newMessages}
-            conversionRate={welcomeMetrics.conversionRate}
-          />
-        </div>
-
         {/* Enhanced Metrics Row */}
         {settings.showMetrics && (
           <div className="mb-8">
