@@ -79,4 +79,4 @@ export {
   processConversationsData,
   calculateConversationMetrics,
   getStatusColor as getConversationStatusColor
-} from './conversations'; 
+} from '../api/conversations'; 

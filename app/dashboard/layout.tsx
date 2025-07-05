@@ -9,9 +9,9 @@
 'use client';
 
 import AuthGuard from '@/components/features/auth/AuthGuard';
-import DashboardLayout from '@/components/common/Layout/DashboardLayout';
 import { ConversationsProvider } from './lib/conversations-context';
 import React from 'react';
+import DashboardLayout from './components/layout/DashboardLayout';
 
 export default function ProtectedDashboardLayout({
   children,

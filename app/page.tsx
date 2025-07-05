@@ -11,7 +11,7 @@ import HomePage from './(marketing)/landing/page';
 import Navbar from '@/components/common/Navigation/Navbar';
 import Footer from './Footer';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth-options';
+import { authOptions } from '@/lib/auth/auth-options';
 import { redirect } from 'next/navigation';
 
 /**

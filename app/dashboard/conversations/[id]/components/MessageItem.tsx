@@ -1,10 +1,10 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { ThumbsUp, ThumbsDown, User, Bot, AlertTriangle, Info } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { formatLocalTimeOnly } from '@/app/utils/timezone';
-import type { Message } from '@/types/conversation';
-import { EVScoreInfoModal } from '@/components/features/analytics/EVScoreInfoModal';
+import { EVScoreInfoModal } from '@/app/dashboard/analytics/components/EVScoreInfoModal';
+import { formatLocalTimeOnly } from '@/lib/utils/timezone';
+import { cn } from '@/lib/utils/utils';
+import { Message } from 'postcss';
 
 /**
  * Message Item Component

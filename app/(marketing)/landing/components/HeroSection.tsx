@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowRight, Info } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 import { HeroData } from '@/types/landing';
 import { ThreeJSViewer } from './ThreeJSViewer';
-import { shuffleArray } from '@/lib/utils/landing/landing';
+import { shuffleArray } from '@/lib/utils/landing';
 
 interface HeroSectionProps {
   data: HeroData;

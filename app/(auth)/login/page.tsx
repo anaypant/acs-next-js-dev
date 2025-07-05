@@ -14,10 +14,11 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { signIn, useSession } from "next-auth/react"
-import { handleAuthError, validateAuthForm } from "@/lib/auth-utils"
+import { handleAuthError, validateAuthForm } from "@/lib/auth/auth-utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { LoadingSpinner } from "@/components/common/Feedback/LoadingSpinner"
+import { Logo } from "@/components/ui/Logo"
 
 /**
  * LoginPage Component
@@ -163,9 +164,7 @@ const LoginPage = () => {
       <div className="p-6">
         <div className="flex items-center">
           <Link href="/" className="no-underline">
-            <span className="text-xl font-semibold bg-gradient-to-br from-primary to-secondary bg-clip-text text-transparent">
-              ACS
-            </span>
+            <Logo variant="icon-only" />
           </Link>
         </div>
       </div>

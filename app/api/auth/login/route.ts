@@ -1,6 +1,6 @@
 // src/app/api/auth/login/route.ts
 import { NextResponse } from 'next/server';
-import { config } from '@/lib/local-api-config';
+import { config } from '@/lib/config/local-api-config';
 
 export async function POST(request: Request) {
     try {

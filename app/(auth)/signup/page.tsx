@@ -15,7 +15,7 @@ import Image from 'next/image';
 import { signIn } from 'next-auth/react';
 import { SignupData } from '@/types/auth';
 import Script from 'next/script';
-import { handleAuthError, validateAuthForm, clearAuthData, setAuthType } from '@/lib/auth-utils';
+import { handleAuthError, validateAuthForm, clearAuthData, setAuthType } from '@/lib/auth/auth-utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';

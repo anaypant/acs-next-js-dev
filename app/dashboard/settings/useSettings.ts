@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { useDbOperations } from "@/hooks/useDbOperations";
+import { useDbOperations } from "@/lib/hooks/useDbOperations";
 import type { Session } from "next-auth";
 
 // Types for settings data

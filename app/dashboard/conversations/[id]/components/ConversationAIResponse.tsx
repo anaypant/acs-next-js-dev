@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Sparkles, Mail, Info } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 import { OverrideStatus } from './OverrideStatus';
 
 interface ConversationAIResponseProps {

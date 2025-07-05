@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useSimpleTheme } from '@/lib/theme/simple-theme-provider';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';

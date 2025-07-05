@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useRef } from 'react';
-import { useApi } from '@/hooks/useApi';
+import { useApi } from '@/lib/hooks/useApi';
 import { useSession } from 'next-auth/react';
 import type { Session } from 'next-auth';
 import type { Conversation, Message, Thread } from '@/types/conversation';

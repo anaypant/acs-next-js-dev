@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { ShieldX, LogOut, AlertTriangle } from 'lucide-react';
-import { clearAuthData } from '@/lib/auth-utils';
+import { clearAuthData } from '@/lib/auth/auth-utils';
 import { PageLayout } from '@/components/common/Layout/PageLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 

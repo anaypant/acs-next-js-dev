@@ -29,8 +29,8 @@ import {
 } from "lucide-react"
 import { LoadingSpinner } from "@/components/common/Feedback/LoadingSpinner"
 import { ErrorBoundary } from "@/components/common/Feedback/ErrorBoundary"
-import { CalendarIntegration } from "@/components/features/calendar/CalendarIntegration"
-import { useCalendarData } from "@/hooks/useCalendarData"
+
+import { useCalendarData } from "@/lib/hooks/useCalendarData"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -42,7 +42,8 @@ import type {
   CalendarIntegration as CalendarIntegrationType,
   AISchedulingPreferences,
   CalendarFilters
-} from "@/types/calendar"
+} from "@/lib/types/calendar"
+import { CalendarIntegration } from "../CalendarIntegration"
 
 export default function CalendarContent() {
   const router = useRouter()

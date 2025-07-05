@@ -6,7 +6,7 @@
 import { redirect } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { config } from '@/lib/local-api-config';
+import { config } from '@/lib/config/local-api-config';
 import { goto404 } from '../utils/error';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';

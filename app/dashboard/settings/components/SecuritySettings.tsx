@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Shield, Save, CheckCircle, AlertCircle, Lock, Key, Eye, EyeOff, Smartphone } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 
 interface SecuritySettingsProps {
     userData: any;

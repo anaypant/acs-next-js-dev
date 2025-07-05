@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { SignupData } from '@/types/auth';
-import { config } from '@/lib/local-api-config';
+import { config } from '@/lib/config/local-api-config';
 import { v4 as uuidv4 } from 'uuid';
 
 /**

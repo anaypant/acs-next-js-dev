@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, Sparkles, DollarSign, Calendar, Home, Target } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 import type { Conversation } from '@/types/conversation';
 
 interface EnhancedAIInsightsProps {

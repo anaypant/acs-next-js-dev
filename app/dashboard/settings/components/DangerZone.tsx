@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { AlertTriangle, Trash2, X, CheckCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 import { useModal } from '@/components/providers/ModalProvider';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect } from 'react';

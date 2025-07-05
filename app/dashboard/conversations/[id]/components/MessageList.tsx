@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, forwardRef } from 'react';
 import { ChevronDown, Calendar } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 import { MessageItem } from './MessageItem';
 import { groupMessagesByDate } from '@/lib/utils/conversation';
 import type { Conversation, Message } from '@/types/conversation';

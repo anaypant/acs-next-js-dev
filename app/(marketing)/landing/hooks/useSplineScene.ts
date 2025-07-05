@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { createFreshSplineUrl, clearSplineCache, isValidSplineUrl } from '@/lib/utils/landing/spline';
+import { createFreshSplineUrl, clearSplineCache, isValidSplineUrl } from '@/lib/utils/spline';
 
 interface UseSplineSceneOptions {
   initialUrl?: string;

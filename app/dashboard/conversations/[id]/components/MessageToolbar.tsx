@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Search, Calendar, Plus, Grid3X3, HelpCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 import type { WidgetInstance } from '@/types/widgets';
 
 interface MessageToolbarProps {

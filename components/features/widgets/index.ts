@@ -4,10 +4,4 @@
  */
 
 export { WidgetWrapper } from './WidgetWrapper';
-export { ContactWidget } from './ContactWidget';
-export { AIInsightsWidget } from './AIInsightsWidget';
-export { FlaggedStatusWidget } from './FlaggedStatusWidget';
-export { SpamStatusWidget } from './SpamStatusWidget';
-export { NotesWidget } from './NotesWidget';
-export { QuickActionsWidget } from './QuickActionsWidget';
-export { SingleColumnWidgetLayout } from './SingleColumnWidgetLayout'; 
+export { SingleColumnWidgetLayout } from '@/app/dashboard/components/layout/SingleColumnWidgetLayout';

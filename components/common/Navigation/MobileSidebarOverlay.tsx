@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { useSidebar } from './Sidebar';
+import { useSidebar } from '@/app/dashboard/components/navigation/Sidebar';
 import { X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 
 interface MobileSidebarOverlayProps {
   children: React.ReactNode;

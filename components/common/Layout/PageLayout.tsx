@@ -1,6 +1,7 @@
 import React from 'react';
 import { ErrorBoundary } from '../Feedback/ErrorBoundary';
 import Footer from '@/app/Footer';
+import { Logo } from '@/components/ui/Logo';
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -53,7 +54,7 @@ export function PageLayout({
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex justify-between h-16">
                 <div className="flex items-center">
-                  <span className="text-xl font-semibold text-gray-900">ACS</span>
+                  <Logo />
                 </div>
               </div>
             </div>
@@ -106,7 +107,7 @@ export function PageLayout({
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between h-16">
               <div className="flex items-center">
-                <span className="text-xl font-semibold text-gray-900">ACS</span>
+                <Logo />
               </div>
             </div>
           </div>

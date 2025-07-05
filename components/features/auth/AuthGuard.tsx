@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 import { LoadingSpinner } from '@/components/common/Feedback/LoadingSpinner';
-import { verifySessionCookie } from '@/lib/auth-utils';
+import { verifySessionCookie } from '@/lib/auth/auth-utils';
 
 interface AuthGuardProps {
   children: React.ReactNode;

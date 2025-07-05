@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Mail, Save, CheckCircle, AlertCircle, Eye, EyeOff } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 
 interface EmailSignatureSettingsProps {
     userData: any;

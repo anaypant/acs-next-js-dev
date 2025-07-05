@@ -16,7 +16,7 @@ import { useRouter } from "next/navigation";
 import { ErrorBoundary } from '@/components/common/Feedback/ErrorBoundary';
 import { Suspense } from 'react';
 import { LoadingSpinner } from '@/components/common/Feedback/LoadingSpinner';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 import { applyTheme, greenTheme } from "../../../lib/theme/simple-theme";
 
 function ResourcesContent() {

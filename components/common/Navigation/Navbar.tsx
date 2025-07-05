@@ -11,8 +11,8 @@ import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import { useState, useEffect } from "react"
 import { Menu, X } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { Logo } from "components/ui/Logo"
+import { cn } from "@/lib/utils/utils"
+import { Logo } from "@/components/ui/Logo"
 interface NavbarProps {
   className?: string;
 }

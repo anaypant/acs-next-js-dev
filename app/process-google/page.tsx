@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { handleSessionCookie, getAuthRedirectPath, validateSession } from '@/lib/auth-utils';
+import { handleSessionCookie, getAuthRedirectPath, validateSession } from '@/lib/auth/auth-utils';
 import { PageLayout } from '@/components/common/Layout/PageLayout';
 import { LoadingSpinner } from '@/components/common/Feedback/LoadingSpinner';
 

@@ -10,7 +10,7 @@
 
 import Link from "next/link"
 import { Logo } from "@/components/ui/Logo"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils/utils"
 
 /**
  * Footer Component

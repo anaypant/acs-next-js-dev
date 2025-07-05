@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import { Plus, Grid3X3, Settings, Search, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 import type { WidgetInstance } from '@/types/widgets';
 
 interface HeaderToolboxProps {

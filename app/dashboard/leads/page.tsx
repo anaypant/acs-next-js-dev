@@ -12,16 +12,11 @@ import React, { Suspense } from 'react';
 import { ErrorBoundary } from '@/components/common/Feedback/ErrorBoundary';
 import { LoadingSpinner } from '@/components/common/Feedback/LoadingSpinner';
 import { PageLayout } from '@/components/common/Layout/PageLayout';
-import { useLeadsData } from '@/hooks/useCentralizedDashboardData';
-import { DataTable } from '@/components/features/dashboard/DataTable';
-import { 
-  LeadsMetricCard, 
-  ConversionMetricCard, 
-  ResponseTimeMetricCard,
-  GrowthMetricCard 
-} from '@/components/features/dashboard/MetricsCard';
+import { useLeadsData } from '@/lib/hooks/useCentralizedDashboardData';
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from 'next/navigation';
+import { DataTable } from '../components/cards/DataTable';
+import { LeadsMetricCard, ConversionMetricCard, ResponseTimeMetricCard, GrowthMetricCard } from '../components/cards/MetricsCard';
 
 function LeadsContent() {
   const router = useRouter();
@@ -150,16 +145,3 @@ export default function LeadsPage() {
     </PageLayout>
   );
 }
-
-/**
- * Change Log:
- * 5/25/25 - Version 1.1.0
- * - Updated to fit within max screen height container
- * - Improved height management for child components
- * 
- * 5/25/25 - Initial version
- * - Created leads dashboard with search and filtering
- * - Implemented lead status tracking and AI scoring
- * - Added quick action buttons for communication
- * - Integrated responsive design for all screen sizes
- */

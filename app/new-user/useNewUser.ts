@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useDbOperations } from '@/hooks/useDbOperations';
+import { useDbOperations } from '@/lib/hooks/useDbOperations';
 
 export function useNewUser() {
     const router = useRouter();

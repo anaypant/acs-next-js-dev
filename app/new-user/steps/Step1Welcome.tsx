@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { ArrowRight, CheckCircle2, Globe, Sparkles, Zap, Users } from 'lucide-react';
 import React from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 
 interface Step1WelcomeProps {
   onContinue: () => void;

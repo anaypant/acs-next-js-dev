@@ -11,8 +11,6 @@ import { ArrowLeft, HelpCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import { useSession } from "next-auth/react"
-import { Logo } from "@/app/utils/Logo"
-import { cn } from "@/lib/utils"
 
 // Import components
 import {
@@ -30,16 +28,17 @@ import {
 } from "./components"
 
 // Import widget system
-import { SingleColumnWidgetLayout } from "@/components/features/widgets"
-import { useWidgetLayout } from "@/hooks/useWidgetLayout"
+import { useWidgetLayout } from "@/lib/hooks/useWidgetLayout"
+import { SingleColumnWidgetLayout } from "@/app/dashboard/components/layout/SingleColumnWidgetLayout"
 
-import type { Conversation } from '@/types/conversation';
-import type { WidgetActions, WidgetState } from '@/types/widgets';
 
 // Import hooks and utilities
 import { useConversationDetail } from "./hooks/useConversationDetail"
 import { useConversationActions } from "./hooks/useConversationActions"
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts"
+import Logo from "@/components/ui/Logo"
+import { WidgetActions, WidgetState } from "@/lib/types/widgets"
+import { cn } from "@/lib/utils/utils"
 
 export default function ConversationDetailPage() {
   const router = useRouter();

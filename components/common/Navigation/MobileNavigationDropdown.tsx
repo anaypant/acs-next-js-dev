@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useSidebar } from './Sidebar';
+import { useSidebar } from '@/app/dashboard/components/navigation/Sidebar';
 import { Menu, X, ChevronDown, ChevronRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 
 // Import navigation data from the Sidebar component
-import { navigationGroups } from './Sidebar';
+import { navigationGroups } from '@/app/dashboard/components/navigation/Sidebar';
+
+  // this is dead code
 
 interface MobileNavigationDropdownProps {
   children?: React.ReactNode;

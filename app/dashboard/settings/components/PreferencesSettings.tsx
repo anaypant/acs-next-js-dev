@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Settings, Save, CheckCircle, AlertCircle, Palette, Bell, Globe, Monitor } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 
 interface PreferencesSettingsProps {
     userData: any;

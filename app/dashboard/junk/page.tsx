@@ -12,19 +12,11 @@ import React, { Suspense } from 'react';
 import { ErrorBoundary } from '@/components/common/Feedback/ErrorBoundary';
 import { LoadingSpinner } from '@/components/common/Feedback/LoadingSpinner';
 import { PageLayout } from '@/components/common/Layout/PageLayout';
-import { useJunk } from '@/hooks/useJunk';
-import { DataTable } from '@/components/features/dashboard/DataTable';
-import { 
-  LeadsMetricCard, 
-  ConversionMetricCard, 
-  ResponseTimeMetricCard,
-  GrowthMetricCard,
-  SpamDetectedMetricCard,
-  FilteredTodayMetricCard,
-  AccuracyRateMetricCard
-} from '@/components/features/dashboard/MetricsCard';
+import { useJunk } from '@/lib/hooks/useJunk';
 import { ArrowLeft, AlertTriangle } from "lucide-react";
 import { useRouter } from 'next/navigation';
+import { DataTable } from '../components/cards/DataTable';
+import { SpamDetectedMetricCard, FilteredTodayMetricCard, AccuracyRateMetricCard, LeadsMetricCard } from '../components/cards/MetricsCard';
 
 function JunkContent() {
   const router = useRouter();

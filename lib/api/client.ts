@@ -1,5 +1,5 @@
 import { handleApiError } from './errorHandling';
-import { conversationStorage } from '@/lib/storage/ConversationStorage';
+import { conversationStorage } from '@/lib/utils/ConversationStorage';
 import type { 
   ApiResponse, 
   RequestOptions, 

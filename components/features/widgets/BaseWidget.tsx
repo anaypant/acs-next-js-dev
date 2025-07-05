@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Maximize2, Minimize2, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 import type { WidgetInstance, WidgetActions, WidgetState } from '@/types/widgets';
 import type { Conversation } from '@/types/conversation';
 

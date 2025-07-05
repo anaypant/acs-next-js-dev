@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { FileText, Save, CheckCircle, AlertCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 
 interface BioSettingsProps {
     userData: any;

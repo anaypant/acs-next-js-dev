@@ -3,16 +3,11 @@
 import React from 'react';
 import { Settings, RefreshCw, ArrowLeft } from 'lucide-react';
 import { useHistory } from './useHistory';
-import { DataTable } from '@/components/features/dashboard/DataTable';
-import { 
-  LeadsMetricCard, 
-  ConversionMetricCard, 
-  ResponseTimeMetricCard,
-  GrowthMetricCard 
-} from '@/components/features/dashboard/MetricsCard';
-import { LoadingSpinner } from '@/components/common/Feedback/LoadingSpinner';
-import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import { LoadingSpinner } from '@/components/common/Feedback/LoadingSpinner';
+import { cn } from '@/lib/utils/utils';
+import { DataTable } from '../components/cards/DataTable';
+import { LeadsMetricCard, ConversionMetricCard, ResponseTimeMetricCard, GrowthMetricCard } from '../components/cards/MetricsCard';
 
 export function HistoryContent() {
   const router = useRouter();

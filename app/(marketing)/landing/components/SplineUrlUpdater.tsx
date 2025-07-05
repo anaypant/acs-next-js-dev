@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useSplineScene } from '@/hooks/useSplineScene';
-import { isValidSplineUrl } from '@/lib/utils/landing/spline';
+import { isValidSplineUrl } from '@/lib/utils/spline';
 
 interface SplineUrlUpdaterProps {
   initialUrl?: string;

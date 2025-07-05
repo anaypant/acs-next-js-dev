@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback } from 'react';
-import { useHistoryData } from '@/hooks/useCentralizedDashboardData';
+import { useHistoryData } from '@/lib/hooks/useCentralizedDashboardData';
 import type { HistoryMetrics, HistoryData, HistoryFilters } from '@/types/history';
 import type { Conversation } from '@/types/conversation';
 

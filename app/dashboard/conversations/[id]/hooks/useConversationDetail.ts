@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import type { Session } from "next-auth"
-import { useOptimisticConversations } from "@/hooks/useOptimisticConversations"
+import { useOptimisticConversations } from "@/lib/hooks/useOptimisticConversations"
 import type { Conversation } from "@/types/conversation"
 
 // Temporary state type, will be removed.

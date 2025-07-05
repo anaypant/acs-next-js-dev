@@ -11,11 +11,11 @@
 import React, { Suspense } from 'react';
 import { ErrorBoundary } from '@/components/common/Feedback/ErrorBoundary';
 import { LoadingSpinner } from '@/components/common/Feedback/LoadingSpinner';
-import { DashboardLayout } from '@/components/features/dashboard/DashboardLayout';
-import { DashboardSettingsProvider } from '@/components/features/dashboard/DashboardSettings';
-import { useCentralizedDashboardData } from '@/hooks/useCentralizedDashboardData';
+import { DashboardContent } from '@/app/dashboard/components/cards/DashboardContent';
+import { useCentralizedDashboardData } from '@/lib/hooks/useCentralizedDashboardData';
+import { DashboardSettingsProvider } from './components/cards/DashboardSettings';
 
-function DashboardContent() {
+function DashboardPageContent() {
   const { data, loading, error, refetch } = useCentralizedDashboardData();
   
   if (loading) {
@@ -43,7 +43,7 @@ function DashboardContent() {
     );
   }
 
-  return <DashboardLayout data={data} onRefresh={refetch} />;
+  return <DashboardContent data={data} onRefresh={refetch} />;
 }
 
 export default function DashboardPage() {
@@ -65,7 +65,7 @@ export default function DashboardPage() {
           </div>
         }>
           <Suspense fallback={<LoadingSpinner size="lg" text="Loading dashboard..." />}>
-            <DashboardContent />
+            <DashboardPageContent />
           </Suspense>
         </ErrorBoundary>
       </div>

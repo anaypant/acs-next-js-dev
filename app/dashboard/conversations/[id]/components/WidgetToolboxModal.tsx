@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, User, Sparkles, Flag, Shield, StickyNote, Zap, BarChart3, Mail } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 import { AVAILABLE_WIDGETS, getWidgetsByCategory } from '@/lib/utils/widgets';
 import type { WidgetInstance } from '@/types/widgets';
 import { useModal } from '@/components/providers/ModalProvider';

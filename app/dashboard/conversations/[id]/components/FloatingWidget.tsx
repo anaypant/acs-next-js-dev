@@ -6,15 +6,14 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { X, GripVertical, Minimize2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { ContactWidget } from '@/components/features/widgets/ContactWidget';
-import { AIInsightsWidget } from '@/components/features/widgets/AIInsightsWidget';
-import { FlaggedStatusWidget } from '@/components/features/widgets/FlaggedStatusWidget';
-import { SpamStatusWidget } from '@/components/features/widgets/SpamStatusWidget';
-import { NotesWidget } from '@/components/features/widgets/NotesWidget';
-import { QuickActionsWidget } from '@/components/features/widgets/QuickActionsWidget';
-import type { WidgetInstance, WidgetActions, WidgetState } from '@/types/widgets';
-import type { Conversation } from '@/types/conversation';
+import { ContactWidget } from '@/app/dashboard/contacts/components/ContactWidget';
+import { AIInsights } from './AIInsights';
+import { FlaggedStatusWidget } from './FlaggedStatusWidget';
+import { SpamStatusWidget } from './SpamStatusWidget';
+import { NotesWidget } from './NotesWidget';
+import { cn } from '@/lib/utils/utils';
+import { Conversation } from '@/lib/types/conversation';
+import { WidgetActions, WidgetInstance, WidgetState } from '@/lib/types/widgets';
 
 interface FloatingWidgetProps {
   widget: WidgetInstance;
@@ -29,11 +28,10 @@ interface FloatingWidgetProps {
 // Widget component mapping
 const WIDGET_COMPONENTS = {
   'contact': ContactWidget,
-  'ai-insights': AIInsightsWidget,
+  'ai-insights': AIInsights,
   'flagged-status': FlaggedStatusWidget,
   'spam-status': SpamStatusWidget,
   'notes': NotesWidget,
-  'quick-actions': QuickActionsWidget,
 } as const;
 
 export function FloatingWidget({
@@ -57,6 +55,60 @@ export function FloatingWidget({
   // Mock onRemoveWidget for floating widgets - just calls onClose
   const handleRemoveWidget = () => {
     onClose();
+  };
+
+  // Handle different widget prop requirements
+  const renderWidget = () => {
+    if (widget.widgetId === 'ai-insights') {
+      return <AIInsights thread={conversation?.thread || null} />;
+    }
+    
+    if (widget.widgetId === 'contact') {
+      return (
+        <ContactWidget
+          widget={widget}
+          conversation={conversation}
+          actions={actions}
+          state={state}
+          onRemoveWidget={handleRemoveWidget}
+          className="w-full h-full"
+        />
+      );
+    }
+    
+    if (widget.widgetId === 'flagged-status') {
+      return (
+        <FlaggedStatusWidget
+          conversation={conversation}
+          onUnflag={() => actions.onUnflag?.()}
+          updating={state.updating || false}
+          onComplete={actions.onComplete}
+          onClearFlag={actions.onClearFlag}
+          clearingFlag={state.clearingFlag || false}
+        />
+      );
+    }
+    
+    if (widget.widgetId === 'spam-status') {
+      return (
+        <SpamStatusWidget
+          conversation={conversation}
+          onMarkAsNotSpam={() => actions.onMarkAsNotSpam?.()}
+          updating={state.updating || false}
+        />
+      );
+    }
+    
+    if (widget.widgetId === 'notes') {
+      return (
+        <NotesWidget
+          notes={''}
+          onSave={(notes: string) => console.log('Save notes:', notes)}
+        />
+      );
+    }
+    
+    return null;
   };
 
   // Initialize position if not already set
@@ -339,14 +391,7 @@ export function FloatingWidget({
 
         {/* Widget Content */}
         <div className="p-3 bg-background/80 h-full">
-          <WidgetComponent
-            widget={widget}
-            conversation={conversation}
-            actions={actions}
-            state={state}
-            onRemoveWidget={handleRemoveWidget}
-            className="w-full h-full"
-          />
+          {renderWidget()}
         </div>
       </div>
     </div>

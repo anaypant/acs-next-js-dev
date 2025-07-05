@@ -12,19 +12,7 @@ import React, { Suspense } from 'react';
 import { ErrorBoundary } from '@/components/common/Feedback/ErrorBoundary';
 import { LoadingSpinner } from '@/components/common/Feedback/LoadingSpinner';
 import { PageLayout } from '@/components/common/Layout/PageLayout';
-import { useUsageData } from '@/hooks/useCentralizedDashboardData';
-import { DataTable } from '@/components/features/dashboard/DataTable';
-import { UsageOverview } from '@/components/features/dashboard/UsageOverview';
-import { 
-  EmailsSentMetricCard,
-  TotalLoginsMetricCard,
-  ActiveDaysMetricCard,
-  AverageEmailsPerDayMetricCard,
-  EngagementRateMetricCard,
-  AccuracyRateMetricCard,
-  FilteredTodayMetricCard,
-  SpamDetectedMetricCard
-} from '@/components/features/dashboard/MetricsCard';
+import { useUsageData } from '@/lib/hooks/useCentralizedDashboardData';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -43,6 +31,9 @@ import {
   TrendingUp
 } from "lucide-react";
 import { useRouter } from 'next/navigation';
+import { DataTable } from '../components/cards/DataTable';
+import { EmailsSentMetricCard, TotalLoginsMetricCard, ActiveDaysMetricCard, EngagementRateMetricCard, AverageEmailsPerDayMetricCard, AccuracyRateMetricCard, FilteredTodayMetricCard, SpamDetectedMetricCard } from '../components/cards/MetricsCard';
+import { UsageOverview } from '../components/cards/UsageOverview';
 
 function UsageContent() {
   const router = useRouter();

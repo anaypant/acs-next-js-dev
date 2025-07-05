@@ -14,7 +14,7 @@ import { ThemeSettings } from './components/ThemeSettings';
 import { LoadingSpinner } from '@/components/common/Feedback/LoadingSpinner';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 
 export function SettingsContent() {
     const { 

@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { User, MapPin, Building, Briefcase, ArrowRight, ChevronDown, Loader2, Sparkles } from 'lucide-react';
-import { useLocation } from '@/hooks/useLocation';
+import { useLocation } from '@/lib/hooks/useLocation';
 import type { LocationSuggestion } from '@/types/location';
 
 const PROFILE_TITLE = "Tell Us About Yourself";

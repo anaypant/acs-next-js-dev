@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useTheme } from '@/lib/theme/theme-context';
+import { useSimpleTheme } from '@/lib/theme/simple-theme-provider';
 import { ThemeSelector } from './ThemeSelector';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 
 export function ThemeDemoContent() {
-  const { currentTheme, themeConfig } = useTheme();
+  const { currentTheme } = useSimpleTheme();
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -44,8 +44,8 @@ export function ThemeDemoContent() {
           {/* Current Theme Info */}
           <div className="bg-card border rounded-lg p-4 max-w-md mx-auto">
             <h3 className="font-semibold text-card-foreground mb-2">Current Theme</h3>
-            <p className="text-muted-foreground">{themeConfig.name}</p>
-            <p className="text-sm text-muted-foreground">{themeConfig.description}</p>
+            <p className="text-muted-foreground">{currentTheme.name}</p>
+            <p className="text-sm text-muted-foreground">Radius: {currentTheme.radius}rem</p>
           </div>
         </div>
 
@@ -304,15 +304,11 @@ export function ThemeDemoContent() {
                 <dl className="space-y-1">
                   <div className="flex justify-between">
                     <dt className="text-muted-foreground">Name:</dt>
-                    <dd className="text-foreground">{themeConfig.name}</dd>
+                    <dd className="text-foreground">{currentTheme.name}</dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-muted-foreground">Description:</dt>
-                    <dd className="text-foreground">{themeConfig.description}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-muted-foreground">Theme ID:</dt>
-                    <dd className="text-foreground">{currentTheme}</dd>
+                    <dt className="text-muted-foreground">Radius:</dt>
+                    <dd className="text-foreground">{currentTheme.radius}rem</dd>
                   </div>
                 </dl>
               </div>
@@ -321,15 +317,15 @@ export function ThemeDemoContent() {
                 <dl className="space-y-1">
                   <div className="flex justify-between">
                     <dt className="text-muted-foreground">Main:</dt>
-                    <dd className="text-foreground">{themeConfig.colors.primary.main}</dd>
+                    <dd className="text-foreground">{currentTheme.colors.primary}</dd>
                   </div>
                   <div className="flex justify-between">
                     <dt className="text-muted-foreground">Light:</dt>
-                    <dd className="text-foreground">{themeConfig.colors.primary.light}</dd>
+                    <dd className="text-foreground">{currentTheme.colors['primary-light']}</dd>
                   </div>
                   <div className="flex justify-between">
                     <dt className="text-muted-foreground">Dark:</dt>
-                    <dd className="text-foreground">{themeConfig.colors.primary.dark}</dd>
+                    <dd className="text-foreground">{currentTheme.colors['primary-dark']}</dd>
                   </div>
                 </dl>
               </div>

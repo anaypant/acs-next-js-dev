@@ -12,14 +12,14 @@ import React, { Suspense } from 'react';
 import { ErrorBoundary } from '@/components/common/Feedback/ErrorBoundary';
 import { LoadingSpinner } from '@/components/common/Feedback/LoadingSpinner';
 import { PageLayout } from '@/components/common/Layout/PageLayout';
-import { useAnalyticsData } from '@/hooks/useCentralizedDashboardData';
-import { DataTable } from '@/components/features/dashboard/DataTable';
+import { useAnalyticsData } from '@/lib/hooks/useCentralizedDashboardData';
+import { DataTable } from '@/app/dashboard/components/cards/DataTable';
 import { 
   LeadsMetricCard, 
   ConversionMetricCard, 
   ResponseTimeMetricCard,
   GrowthMetricCard 
-} from '@/components/features/dashboard/MetricsCard';
+} from '@/app/dashboard/components/cards/MetricsCard';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';

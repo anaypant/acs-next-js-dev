@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Settings, Save, CheckCircle, AlertCircle, Zap, Clock, Shield, RefreshCw } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 
 interface LCPSettingsProps {
     userData: any;

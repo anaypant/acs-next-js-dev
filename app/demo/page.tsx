@@ -10,11 +10,9 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Eye, EyeOff, ArrowRight, UserPlus, LogIn, Lock, Info, CheckCircle, AlertTriangle } from 'lucide-react'
-import { PageLayout } from '@/components/common/Layout/PageLayout'
-import { useApi } from '@/hooks/useApi'
+import { useApi } from '@/lib/hooks/useApi'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
@@ -84,7 +82,6 @@ const DemoPage = () => {
   }, [verify, refetch]);
 
   return (
-    <PageLayout>
       <div className="min-h-screen bg-gradient-to-br from-accent/50 to-accent flex flex-col w-full h-full">
         
 
@@ -101,7 +98,7 @@ const DemoPage = () => {
               <div className="text-center mb-8">
                 <div className="mb-4">
                   <div className="w-16 h-16 bg-gradient-to-br from-secondary-dark to-secondary rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Lock className="w-8 h-8 text-secondary-foreground" />
+                    <Lock className="w-8 h-8 text-text-on-gradient" />
                   </div>
                 </div>
                 <h1 className="text-2xl font-semibold text-foreground mb-2 font-sans">
@@ -180,7 +177,7 @@ const DemoPage = () => {
                   
                   <div className="space-y-3">
                     {/* Sign Up Button */}
-                    <Button onClick={() => handleNavigation('/signup')} className="w-full text-white">
+                    <Button onClick={() => handleNavigation('/signup')} className="w-full text-text-on-gradient">
                         <UserPlus className="w-5 h-5 mr-2" />
                         Create New Account
                         <ArrowRight className="w-4 h-4 ml-2" />
@@ -232,7 +229,7 @@ const DemoPage = () => {
                   <Button
                     type="submit"
                     disabled={loading || !demoCode.trim()}
-                    className="w-full text-white"
+                    className="w-full text-text-on-gradient"
                   >
                     {loading ? (
                         <>
@@ -249,7 +246,6 @@ const DemoPage = () => {
           </div>
         </div>
       </div>
-    </PageLayout>
   )
 }
 

@@ -4,9 +4,9 @@ import { Search, Calendar, Plus, Phone, Mail, User2, Building2, Home, X, Edit, T
 import { useState, useMemo, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { useContact } from "@/hooks/useContact"
-import { useContactForm } from "@/hooks/useContact"
-import { useLocation } from "@/hooks/useLocation"
+import { useContact } from "@/lib/hooks/useContact"
+import { useContactForm } from "@/lib/hooks/useContact"
+import { useLocation } from "@/lib/hooks/useLocation"
 import type { Contact, CreateContactData, UnifiedContactData } from "@/types/contact"
 import type { LocationSuggestion } from "@/types/location"
 import { LoadingSpinner } from "@/components/common/Feedback/LoadingSpinner"
@@ -15,11 +15,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils/utils"
 import { toast } from 'react-hot-toast'
-import { ContactProfileCard } from "@/components/features/contacts/ContactProfileCard"
-import { ContactDetailProfileCard } from "@/components/features/contacts/ContactDetailProfileCard"
-import { ContactEditProfileCard } from "@/components/features/contacts/ContactEditProfileCard"
+import { ContactProfileCard } from "@/app/dashboard/contacts/components/ContactProfileCard"
+import { ContactDetailProfileCard } from "@/app/dashboard/contacts/components/ContactDetailProfileCard"
+import { ContactEditProfileCard } from "@/app/dashboard/contacts/components/ContactEditProfileCard"
 
 export default function ContactsContent() {
   const router = useRouter()

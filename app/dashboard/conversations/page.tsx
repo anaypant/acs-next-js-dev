@@ -12,12 +12,12 @@ import React, { Suspense, useState } from 'react';
 import { ErrorBoundary } from '@/components/common/Feedback/ErrorBoundary';
 import { LoadingSpinner } from '@/components/common/Feedback/LoadingSpinner';
 import { PageLayout } from '@/components/common/Layout/PageLayout';
-import { useConversationsData } from '@/hooks/useCentralizedDashboardData';
+import { useConversationsData } from '@/lib/hooks/useCentralizedDashboardData';
 import { 
   EnhancedConversationsTable,
   ConversationMetricsModal,
   CompactStatsSummary
-} from '@/components/features/conversations';
+} from '@/app/dashboard/conversations/conversations';
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from 'next/navigation';
 

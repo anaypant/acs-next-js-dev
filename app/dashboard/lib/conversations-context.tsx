@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext } from 'react';
-import { useOptimisticConversations } from '@/hooks/useOptimisticConversations';
+import { useOptimisticConversations } from '@/lib/hooks/useOptimisticConversations';
 import type { Conversation } from '@/types/conversation';
 
 interface ConversationsContextType {

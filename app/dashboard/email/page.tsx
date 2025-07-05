@@ -11,7 +11,7 @@
 import React, { Suspense, useState } from 'react';
 import { ErrorBoundary } from '@/components/common/Feedback/ErrorBoundary';
 import { LoadingSpinner } from '@/components/common/Feedback/LoadingSpinner';
-import { useEmailData } from '@/hooks/useCentralizedDashboardData';
+import { useEmailData } from '@/lib/hooks/useCentralizedDashboardData';
 import { ArrowLeft, Mail, Inbox, Send, Archive, Trash2, Star, Search, Filter, RefreshCw, MoreVertical } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
